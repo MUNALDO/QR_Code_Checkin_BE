@@ -5,19 +5,16 @@ const ScheduleSchema = new mongoose.Schema({
         type: Date,
         required: true,
     },
-    shifts: [
-        {
-            shift: {
-                type: String,
-                enum: ["Morning", "Afternoon"],
-                required: true,
-            },
-            isChecked: {
-                type: Boolean,
-                default: false,
-            },
-        }
-    ]
+    shifts: {
+        shift_morning: {
+            type: Boolean,
+            default: false,
+        },
+        shift_afternoon: {
+            type: Boolean,
+            default: false,
+        },
+    },
 });
 
 const employeeSchema = new mongoose.Schema(
@@ -28,6 +25,10 @@ const employeeSchema = new mongoose.Schema(
             unique: true
         },
         name: {
+            type: String,
+            required: true,
+        },
+        password: {
             type: String,
             required: true,
         },
@@ -44,9 +45,6 @@ const employeeSchema = new mongoose.Schema(
         salary_per_hour: {
             type: Number,
             required: true,
-        },
-        ip: {
-            type: String,
         },
         schedules: {
             type: [ScheduleSchema]

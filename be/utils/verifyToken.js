@@ -15,3 +15,17 @@ export const verifyTokenAdmin = (req, res, next) => {
         }
     });
 };
+
+export const verifyTokenEmployee = (req, res, next) => {
+    const token_employee = req.cookies.access_token_employee;
+    if (!token_employee) return next(createError(UNAUTHORIZED, "You are not authenticated"));
+
+    jwt.verify(token_employee, process.env.JWT_EMPLOYEE, (err, employee) => {
+        if (err) {
+            return next(createError(FORBIDDEN, "Token is not valid"));
+        } else {
+            req.employee = employee;
+            next();
+        }
+    });
+};

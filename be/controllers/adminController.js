@@ -5,6 +5,7 @@ import { BAD_REQUEST, CONFLICT, CREATED, NOT_FOUND, OK } from "../constant/HttpS
 import dotenv from 'dotenv';
 import AdminSchema from "../models/AdminSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
+import AttendanceSchema from "../models/AttendanceSchema.js";
 
 dotenv.config();
 
@@ -23,6 +24,21 @@ export const registerAdmin = async (req, res, next) => {
     }
 };
 
+export const registerEmployee = async (req, res, next) => {
+    try {
+        const salt = bcrypt.genSaltSync(10)
+        const hash = bcrypt.hashSync(req.body.password, salt)
+        const newEmployee = new EmployeeSchema({
+            ...req.body,
+            password: hash,
+        })
+        await newEmployee.save()
+        res.status(CREATED).json("Employee has been created")
+    } catch (err) {
+        next(err)
+    }
+};
+
 export const loginAdmin = async (req, res, next) => {
     try {
         const admin = await AdminSchema.findOne({ name: req.body.name })
@@ -33,7 +49,7 @@ export const loginAdmin = async (req, res, next) => {
         )
         if (!isPasswordCorrect) return next(createError(BAD_REQUEST, "Wrong password!"))
         const token_admin = jwt.sign(
-            { id: admin._id, role: admin.role == "admin" },
+            { id: admin.id, role: admin.role == "admin" },
             process.env.JWT_ADMIN,
             { expiresIn: "24h" },
         )
@@ -52,28 +68,6 @@ export const logoutAdmin = (req, res, next) => {
     res.clearCookie("access_token_admin")
         .status(OK).
         json("Admin has been successfully logged out.");
-};
-
-export const addEmployee = async (req, res, next) => {
-    const employeeID = req.body.employeeID;
-
-    const existingEmployee = await EmployeeSchema.findOne({ id: employeeID });
-
-    try {
-        if (existingEmployee) {
-            res.status(CONFLICT).json("Employee already exists", existingEmployee);
-        } else {
-            const newEmployee = new EmployeeSchema({
-                id: employeeID,
-                role: "employee",
-                ...req.body,
-            });
-            await newEmployee.save();
-            res.status(CREATED).json(newEmployee);
-        }
-    } catch (err) {
-        next(err);
-    }
 };
 
 export const getAllEmployees = async (req, res, next) => {
@@ -188,6 +182,35 @@ export const getEmployeeSchedule = async (req, res, next) => {
             return;
         }
         res.status(OK).json(employee.schedules);
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getAttendanceByMonth = async (req, res, next) => {
+    const employeeID = req.body.employeeID;
+    const year = req.body.year; 
+    const month = req.body.month; 
+    try {
+        // Find the employee by their ID
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+
+        if (!employee) {
+            res.status(NOT_FOUND).json({ error: 'Employee not found' });
+            return;
+        }
+
+        // Define the start and end date of the selected month
+        const startDate = new Date(year, month, 1, 0, 0, 0);
+        const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+
+        // Find attendance records for the specified employee within the selected month
+        const attendanceRecords = await AttendanceSchema.find({
+            employee_id: employee.id,
+            date: { $gte: startDate, $lte: endDate },
+        });
+
+        return res.status(OK).json({ success: 'Attendance records retrieved successfully', attendanceRecords });
     } catch (err) {
         next(err);
     }

@@ -232,90 +232,90 @@ async function getAttendance(year, month) {
     }
 }
 
-// const columnMapping = {
-//     'Date': { header: 'Date', key: 'date', width: 15 },
-//     'Employee ID': { header: 'Employee ID', key: 'employee_id', width: 15 },
-//     'Employee Name': { header: 'Employee Name', key: 'employee_name', width: 20 },
-//     'Check In': { header: 'Check In', key: 'check_in', width: 15 },
-//     'Check In Status': { header: 'Check In Status', key: 'check_in_status', width: 15 },
-//     'Check Out': { header: 'Check Out', key: 'check_out', width: 15 },
-//     'Check Out Status': { header: 'Check Out Status', key: 'check_out_status', width: 15 },
-//     'Total Salary': { header: 'Total Salary', key: 'total_salary', width: 15 },
-// };
+export const scanAttendance = async () => {
+    try {
+        const currentTime = new Date();
+        const date = currentTime.toLocaleDateString();
+        const hour = currentTime.getHours();
+        const minutes = currentTime.getMinutes();
 
-// export const exportAttendanceToExcel = async (req, res) => {
-//     const { year, month } = req.query;
-//     const columnNames = req.body.columns;
+        // Check for employees who haven't checked in after 11 am
+        if (hour >= 11 && minutes > 0) {
+            await markMissingCheckIn();
+        }
 
-//     try {
-//         const attendanceList = await getAttendance(year, month);
+        // Check for employees who haven't checked out after 9 pm
+        if (hour >= 21 && minutes > 0) {
+            await markMissingCheckOut();
+        }
 
-//         if (!attendanceList || attendanceList.length === 0) {
-//             return res.status(NOT_FOUND).json({ error: "No attendance data found" });
-//         }
+        console.log("Attendance scanning completed.");
+    } catch (error) {
+        console.error("Error scanning attendance:", error);
+    }
+};
 
-//         const fileName = `${month ? month + '_' : ''}${year}.xlsx`;
+const markMissingCheckIn = async () => {
+    const employees = await EmployeeSchema.find({});
 
-//         const filePath = `../${fileName}`;
+    for (const employee of employees) {
+        const existingAttendance = await AttendanceSchema.findOne({
+            employee_id: employee.id,
+            date: {
+                $gte: new Date().setHours(0, 0, 0, 0),
+                $lt: new Date().setHours(23, 59, 59, 999),
+            },
+        });
 
-//         const workbook = new ExcelJS.Workbook();
-//         const worksheet = workbook.addWorksheet('Attendance');
+        if (!existingAttendance || !existingAttendance.isChecked[0].check_in) {
+            // If no attendance record for today or check-in is missing, create/update a record
+            await createOrUpdateAttendanceRecord(employee, "check_in");
+        }
+    }
+};
 
-//         const defaultColumns = [
-//             { header: 'Date', key: 'date', width: 15 },
-//             { header: 'Employee ID', key: 'employee_id', width: 15 },
-//             { header: 'Employee Name', key: 'employee_name', width: 20 },
-//             { header: 'Check In', key: 'check_in', width: 15 },
-//             { header: 'Check In Status', key: 'check_in_status', width: 15 },
-//             { header: 'Check Out', key: 'check_out', width: 15 },
-//             { header: 'Check Out Status', key: 'check_out_status', width: 15 },
-//             { header: 'Total Salary', key: 'total_salary', width: 15 },
-//         ];
+const markMissingCheckOut = async () => {
+    const employees = await EmployeeSchema.find({});
 
-//         const exportColumns = columnNames
-//             ? columnNames.map(columnName => columnMapping[columnName] || defaultColumns[0])
-//             : defaultColumns;
+    for (const employee of employees) {
+        const existingAttendance = await AttendanceSchema.findOne({
+            employee_id: employee.id,
+            date: {
+                $gte: new Date().setHours(0, 0, 0, 0),
+                $lt: new Date().setHours(23, 59, 59, 999),
+            },
+        });
 
-//         worksheet.columns = exportColumns;
+        if (!existingAttendance || !existingAttendance.isChecked[1].check_out) {
+            // If no attendance record for today or check-in is missing, create/update a record
+            await createOrUpdateAttendanceRecord(employee, "check_out");
+        }
+    }
+};
 
-//         attendanceList.forEach((attendance) => {
-//             try {
-//                 const date = new Date(attendance.date);
-//                 const rowData = {
-//                     date: date.toISOString().split('T')[0],
-//                     employee_id: attendance.employee_id,
-//                     employee_name: attendance.employee_name,
-//                     check_in: attendance.isChecked[0].check_in ? 'Yes' : 'No',
-//                     check_in_status: attendance.isChecked[0].status,
-//                     check_out: attendance.isChecked[1] ? (attendance.isChecked[1].check_out ? 'Yes' : 'No') : 'N/A',
-//                     check_out_status: attendance.isChecked[1] ? attendance.isChecked[1].status : 'N/A',
-//                     total_salary: attendance.total_salary,
-//                 };
+const createOrUpdateAttendanceRecord = async (employee, shift) => {
+    const totalSalary = employee.salary_per_hour;
+    const status = "missing";
 
-//                 worksheet.addRow(rowData);
-//             } catch (error) {
-//                 console.error('Error processing attendance date:', error);
-//             }
-//         });
+    const currentTime = new Date();
+    const date = currentTime.toLocaleDateString();
 
-//         const buffer = await workbook.xlsx.writeBuffer();
+    const attendanceRecord = new AttendanceSchema({
+        date: date,
+        isChecked: [
+            {
+                [shift]: false,
+                time: "N/A",
+                status,
+            },
+        ],
+        employee_id: employee.id,
+        employee_name: employee.name,
+        total_salary: totalSalary,
+    });
 
-//         try {
-//             fs.writeFileSync(filePath, buffer);
-//             console.log(`Excel file saved to ${filePath}`);
-//         } catch (error) {
-//             console.error('Error saving the Excel file:', error);
-//         }
-
-//         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-//         res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
-
-//         res.send(buffer);
-//     } catch (error) {
-//         console.error('Error exporting Excel:', error);
-//         return res.status(SYSTEM_ERROR).json({ error: 'Internal server error' });
-//     }
-// };
+    await attendanceRecord.save();
+};
 
 const columnMapping = {
     'Month': { header: 'Month', key: 'month', width: 15 },
@@ -324,8 +324,10 @@ const columnMapping = {
     'Employee Name': { header: 'Employee Name', key: 'employee_name', width: 20 },
     'Check In': { header: 'Check In', key: 'check_in', width: 15 },
     'Check In Status': { header: 'Check In Status', key: 'check_in_status', width: 15 },
+    'Check In Time': { header: 'Check In Time', key: 'check_in_time', width: 15 },
     'Check Out': { header: 'Check Out', key: 'check_out', width: 15 },
     'Check Out Status': { header: 'Check Out Status', key: 'check_out_status', width: 15 },
+    'Check Out Time': { header: 'Check Out Time', key: 'check_out_time', width: 15 },
     'Total Salary': { header: 'Total Salary', key: 'total_salary', width: 15 },
 };
 
@@ -363,8 +365,10 @@ export const exportAttendanceToExcel = async (req, res) => {
             { header: 'Employee Name', key: 'employee_name', width: 20 },
             { header: 'Check In', key: 'check_in', width: 15 },
             { header: 'Check In Status', key: 'check_in_status', width: 15 },
+            { header: 'Check In Time', key: 'check_in_time', width: 15 },
             { header: 'Check Out', key: 'check_out', width: 15 },
             { header: 'Check Out Status', key: 'check_out_status', width: 15 },
+            { header: 'Check Out Time', key: 'check_out_time', width: 15 },
             { header: 'Total Salary', key: 'total_salary', width: 15 },
         ];
 
@@ -382,15 +386,19 @@ export const exportAttendanceToExcel = async (req, res) => {
                 try {
                     dateData.attendanceList.forEach((attendance, index) => {
                         const date = new Date(attendance.date);
+                        const checkIn = attendance.isChecked.check_in ? 'Yes' : 'No';
+                        const checkOut = attendance.isChecked.check_out ? 'Yes' : 'No';
                         const rowData = {
                             month: index === 0 ? date.getUTCMonth() + 1 : null,
-                            date: index === 0 ? date.toISOString().split('T')[0] : null,
+                            date: index === 0 ? date.toLocaleDateString().split('T')[0] : null,
                             employee_id: attendance.employee_id,
                             employee_name: attendance.employee_name,
-                            check_in: attendance.isChecked[0].check_in ? 'Yes' : 'No',
-                            check_in_status: attendance.isChecked[0].status,
-                            check_out: attendance.isChecked[1] ? (attendance.isChecked[1].check_out ? 'Yes' : 'No') : 'N/A',
-                            check_out_status: attendance.isChecked[1] ? attendance.isChecked[1].status : 'N/A',
+                            check_in: checkIn,
+                            check_in_status: attendance.isChecked.check_in_status,
+                            check_in_time: attendance.isChecked.check_in_time || 'N/A',
+                            check_out: checkOut,
+                            check_out_status: attendance.isChecked.check_out_status || 'N/A',
+                            check_out_time: attendance.isChecked.check_out_time || 'N/A',
                             total_salary: attendance.total_salary,
                         };
                         worksheet.addRow(rowData);
@@ -401,7 +409,7 @@ export const exportAttendanceToExcel = async (req, res) => {
             });
         });
 
-        // Write the workbook to a buffer
+        // Generate the Excel file in memory
         const buffer = await workbook.xlsx.writeBuffer();
 
         // Save the buffer to the file path
@@ -415,31 +423,34 @@ export const exportAttendanceToExcel = async (req, res) => {
         // Set content type and attachment header with the generated file name
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
-
         // Send the buffer as the response
         res.send(buffer);
     } catch (error) {
         console.error('Error exporting Excel:', error);
-        return res.status(500).json({ error: 'Internal server error' });
+        return res.status(SYSTEM_ERROR).json({ error: 'Internal server error' });
     }
 };
+
 
 // Helper function to group attendance by date
 function groupByDate(attendanceList) {
     const groupedData = new Map();
 
     attendanceList.forEach((attendance) => {
-        const dateKey = attendance.date.toISOString().split('T')[0];
+        const dateKey = attendance.date.toLocaleDateString();
         if (!groupedData.has(dateKey)) {
             groupedData.set(dateKey, []);
         }
         groupedData.get(dateKey).push(attendance);
     });
 
-    return Array.from(groupedData).map(([date, attendanceList]) => ({
-        date: new Date(date),
-        attendanceList,
-    }));
+    // Sort the dates by ascending order
+    return Array.from(groupedData)
+        .map(([date, attendanceList]) => ({
+            date: new Date(date),
+            attendanceList,
+        }))
+        .sort((a, b) => a.date - b.date);
 }
 
 // Helper function to group attendance by month
@@ -461,5 +472,8 @@ function groupByMonth(attendanceList) {
         groupedData.get(dateKey).dates.push(data);
     });
 
-    return Array.from(groupedData).map(([key, monthData]) => monthData);
+    // Sort the months by ascending order
+    return Array.from(groupedData)
+        .map(([key, monthData]) => monthData)
+        .sort((a, b) => new Date(a.year, a.month) - new Date(b.year, b.month));
 }

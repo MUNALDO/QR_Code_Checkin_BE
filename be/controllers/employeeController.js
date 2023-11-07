@@ -51,22 +51,22 @@ export const checkAttendance = async (req, res, next) => {
         }
 
         const currentTime = new Date();
+        const date = currentTime.toLocaleDateString();
         const hour = currentTime.getHours();
         const minutes = currentTime.getMinutes();
 
+        // Determine whether it's check-in or check-out based on the current time
         let shift = '';
-        if ((hour >= 1 && hour < 9) || (hour === 9 && minutes < 30)) {
+        if (hour >= 8 && hour <= 12) {
             shift = 'check_in';
-        } else if (hour === 9 && minutes >= 30 && minutes <= 59) {
-            shift = 'check_in';
-        } else if ((hour >= 17 && hour < 19) || (hour === 19 && minutes < 30)) {
-            shift = 'check_out';
-        } else if (hour === 19 && minutes >= 30 && minutes <= 59) {
+        } else if (hour >= 17 && hour <= 22) {
             shift = 'check_out';
         } else {
             res.status(BAD_REQUEST).json({ error: 'Not within shift hours' });
             return;
         }
+
+        // console.log(shift);
 
         const existingAttendance = await AttendanceSchema.findOne({
             employee_id: employee.id,
@@ -76,49 +76,99 @@ export const checkAttendance = async (req, res, next) => {
             },
         });
 
+        console.log(existingAttendance);
+
+        if (!existingAttendance) {
+            if (shift == 'check_out') {
+                res.status(BAD_REQUEST).json({ error: 'You need to check in before checking out' });
+                return;
+            }
+            if ((hour >= 8 && hour < 9) || hour == 9) {
+                const totalSalary = employee.salary_per_hour * 5;
+                const status = 'on time';
+                // console.log(status);
+                const attendanceRecord = new AttendanceSchema({
+                    date: date,
+                    isChecked: {
+                        [shift]: true,
+                        [`${shift}_time`]: `${hour}:${minutes < 10 ? '0' : ''}${minutes}`,
+                        [`${shift}_status`]: status,
+                    },
+                    employee_id: employee.id,
+                    employee_name: employee.name,
+                    total_salary: totalSalary,
+                });
+                const saveAttend = await attendanceRecord.save();
+                return res.status(OK).json({ success: `${shift} recorded successfully`, saveAttend });
+            } else if ((hour > 10 && hour < 12) || hour == 12) {
+                const status = 'missing';
+                // console.log(status);
+                const attendanceRecord = new AttendanceSchema({
+                    date: date,
+                    isChecked: {
+                        [shift]: false,
+                        [`${shift}_time`]: `${hour}:${minutes < 10 ? '0' : ''}${minutes}`,
+                        [`${shift}_status`]: status,
+                    },
+                    employee_id: employee.id,
+                    employee_name: employee.name,
+                    total_salary: totalSalary,
+                });
+                const saveAttend = await attendanceRecord.save();
+                return res.status(OK).json({ success: `${shift} recorded successfully`, saveAttend });
+            } else if ((hour > 9 && hour < 10) || hour == 10) {
+                const totalSalary = employee.salary_per_hour * 5;
+                const status = 'late';
+                // console.log(status);
+                const attendanceRecord = new AttendanceSchema({
+                    date: date,
+                    isChecked: {
+                        [shift]: true,
+                        [`${shift}_time`]: `${hour}:${minutes < 10 ? '0' : ''}${minutes}`,
+                        [`${shift}_status`]: status,
+                    },
+                    employee_id: employee.id,
+                    employee_name: employee.name,
+                    total_salary: totalSalary,
+                });
+                const saveAttend = await attendanceRecord.save();
+                return res.status(OK).json({ success: `${shift} recorded successfully`, saveAttend });
+            }
+        }
+
         if (existingAttendance) {
-            if (existingAttendance.isChecked[0][shift]) {
+            if (existingAttendance.isChecked[shift]) {
+                // Trying to check in or check out twice on the same shift
                 res.status(BAD_REQUEST).json({ error: `${shift} already recorded today` });
                 return;
             }
+
+            // if (shift == 'check_in') {
+            //     res.status(BAD_REQUEST).json({ error: 'You already check in today' });
+            //     return;
+            // }
+            // Check-out logic
+            if (hour > 20 && hour < 21) {
+                // Late check-out
+                existingAttendance.isChecked.check_out = true;
+                existingAttendance.total_salary += employee.salary_per_hour * 5;
+                existingAttendance.isChecked.check_out_status = 'late';
+            } else if ((hour > 17 && hour < 20) || (hour == 20)) {
+                // On-time check-out
+                existingAttendance.isChecked.check_out = true;
+                existingAttendance.total_salary += employee.salary_per_hour * 5;
+                existingAttendance.isChecked.check_out_status = 'on time';
+            } else if (hour > 21 || hour == 21) {
+                // Missing check-out
+                existingAttendance.isChecked.check_out = false;
+                existingAttendance.isChecked.check_out_status = 'missing';
+            }
+            // Update check-out details
+            existingAttendance.isChecked.check_out_time = `${hour}:${minutes < 10 ? '0' : ''}${minutes}`;
         }
-
-        const totalSalary = employee.salary_per_hour * 5;
-
-        let status = 'on time';
-        if (shift === 'check_in') {
-            if ((hour === 9 && minutes >= 30) || hour >= 10) {
-                status = 'late';
-            }
-            if (hour >= 12) {
-                status = 'missing';
-            }
-        } else if (shift === 'check_out') {
-            if ((hour === 19 && minutes >= 30) || hour >= 20) {
-                status = 'late';
-            }
-            if (hour >= 24) {
-                status = 'missing';
-            }
-        }
-
-        const attendanceRecord = new AttendanceSchema({
-            date: currentTime,
-            isChecked: [
-                {
-                    [shift]: true,
-                    time: `${hour}:${minutes < 10 ? '0' : ''}${minutes}`,
-                    status,
-                },
-            ],
-            employee_id: employee.id,
-            employee_name: employee.name,
-            total_salary: totalSalary,
-        });
-
-        const saveAttend = await attendanceRecord.save();
-
-        return res.status(OK).json({ success: 'Attendance recorded successfully', saveAttend });
+        // Update total_salary
+        const updateCheckOut = await existingAttendance.save();
+        return res.status(OK).json({ success: `${shift} update successfully`, updateCheckOut });
     } catch (err) {
         next(err);
     }

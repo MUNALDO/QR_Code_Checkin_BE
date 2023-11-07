@@ -1,7 +1,7 @@
 import express from 'express';
 import {
-    createSchedule, getAllEmployees,
-    getAttendanceByMonth,
+    createSchedule, exportAttendanceToExcel, getAllEmployees,
+    getAttendanceByTime,
     getEmployeeById, getEmployeeByName,
     getEmployeeSchedule,
     loginAdmin, logoutAdmin, registerAdmin, registerEmployee
@@ -22,6 +22,7 @@ router.get('/get-employee-byName', verifyTokenAdmin, getEmployeeByName);
 router.post('/create-schedule', verifyTokenAdmin, createSchedule);
 router.get('/get-schedule', verifyTokenAdmin, getEmployeeSchedule);
 
-router.get('/get-attendance-byMonth', verifyTokenAdmin, getAttendanceByMonth)
+router.get('/get-attendance', verifyTokenAdmin, getAttendanceByTime)
+router.post('/export-attendance', verifyTokenAdmin, exportAttendanceToExcel)
 
 export default router;

@@ -43,7 +43,6 @@ export const checkAttendance = async (req, res, next) => {
     const employeeID = req.body.employeeID;
 
     try {
-        // Find the employee by their ID
         const employee = await EmployeeSchema.findOne({ id: employeeID });
 
         if (!employee) {
@@ -55,7 +54,6 @@ export const checkAttendance = async (req, res, next) => {
         const hour = currentTime.getHours();
         const minutes = currentTime.getMinutes();
 
-        // Determine the shift (check_in or check_out) based on the current time
         let shift = '';
         if ((hour >= 1 && hour < 9) || (hour === 9 && minutes < 30)) {
             shift = 'check_in';
@@ -70,7 +68,6 @@ export const checkAttendance = async (req, res, next) => {
             return;
         }
 
-        // Check if an attendance record already exists for the same day
         const existingAttendance = await AttendanceSchema.findOne({
             employee_id: employee.id,
             date: {
@@ -80,17 +77,14 @@ export const checkAttendance = async (req, res, next) => {
         });
 
         if (existingAttendance) {
-            // Check if the employee has already checked the respective shift for the day
             if (existingAttendance.isChecked[0][shift]) {
                 res.status(BAD_REQUEST).json({ error: `${shift} already recorded today` });
                 return;
             }
         }
 
-        // Calculate the total salary for this attendance record (assuming 5 hours per shift)
         const totalSalary = employee.salary_per_hour * 5;
 
-        // Determine the status (on time, late, missing) based on the current time
         let status = 'on time';
         if (shift === 'check_in') {
             if ((hour === 9 && minutes >= 30) || hour >= 10) {
@@ -108,7 +102,6 @@ export const checkAttendance = async (req, res, next) => {
             }
         }
 
-        // Create an attendance record
         const attendanceRecord = new AttendanceSchema({
             date: currentTime,
             isChecked: [
@@ -123,7 +116,6 @@ export const checkAttendance = async (req, res, next) => {
             total_salary: totalSalary,
         });
 
-        // Save the attendance record
         const saveAttend = await attendanceRecord.save();
 
         return res.status(OK).json({ success: 'Attendance recorded successfully', saveAttend });
@@ -132,4 +124,36 @@ export const checkAttendance = async (req, res, next) => {
     }
 }
 
+export const getAttendanceHistory = async (req, res, next) => {
+    const employeeID = req.params.employeeID;
+    const year = req.query.year;
+    const month = req.query.month;
+
+    try {
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+
+        if (!employee) {
+            res.status(NOT_FOUND).json({ error: 'Employee not found' });
+            return;
+        }
+
+        const query = {
+            employee_id: employee.id,
+            date: {
+                $gte: new Date(year, month ? month - 1 : 0, 1, 0, 0, 0, 0),
+                $lt: new Date(year, month ? month : 12, 1, 0, 0, 0, 0),
+            },
+        };
+
+        const attendanceList = await AttendanceSchema.find(query);
+
+        if (Array.isArray(attendanceList) && attendanceList.length === 0) {
+            return res.status(NOT_FOUND).json({ error: "Cannot find attendance history" });
+        }
+
+        return res.status(OK).json({ success: 'Attendance found', attendanceList });
+    } catch (err) {
+        next(err);
+    }
+}
 

@@ -1,11 +1,13 @@
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
 import { createError } from "../utils/error.js";
-import { BAD_REQUEST, CONFLICT, CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
+import { BAD_REQUEST, CREATED, NOT_FOUND, OK, SYSTEM_ERROR } from "../constant/HttpStatus.js";
 import dotenv from 'dotenv';
 import AdminSchema from "../models/AdminSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
+import ExcelJS from 'exceljs';
+import fs from 'fs';
 
 dotenv.config();
 
@@ -187,31 +189,130 @@ export const getEmployeeSchedule = async (req, res, next) => {
     }
 };
 
-export const getAttendanceByMonth = async (req, res, next) => {
-    const employeeID = req.body.employeeID;
-    const year = req.body.year; 
-    const month = req.body.month; 
-    try {
-        // Find the employee by their ID
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+export const getAttendanceByTime = async (req, res, next) => {
+    const year = req.query.year;
+    const month = req.query.month;
 
-        if (!employee) {
-            res.status(NOT_FOUND).json({ error: 'Employee not found' });
-            return;
+    try {
+        const query = {
+            date: {
+                $gte: new Date(year, month ? month - 1 : 0, 1, 0, 0, 0, 0),
+                $lt: new Date(year, month ? month : 12, 1, 0, 0, 0, 0),
+            },
+        };
+
+        const attendanceList = await AttendanceSchema.find(query);
+
+        if (Array.isArray(attendanceList) && attendanceList.length === 0) {
+            return res.status(NOT_FOUND).json({ error: "Cannot find attendance history" });
         }
 
-        // Define the start and end date of the selected month
-        const startDate = new Date(year, month, 1, 0, 0, 0);
-        const endDate = new Date(year, month + 1, 0, 23, 59, 59);
-
-        // Find attendance records for the specified employee within the selected month
-        const attendanceRecords = await AttendanceSchema.find({
-            employee_id: employee.id,
-            date: { $gte: startDate, $lte: endDate },
-        });
-
-        return res.status(OK).json({ success: 'Attendance records retrieved successfully', attendanceRecords });
+        return res.status(OK).json({ success: 'Attendance found', attendanceList });
     } catch (err) {
         next(err);
+    }
+}
+
+async function getAttendance(year, month) {
+
+    try {
+        const query = {
+            date: {
+                $gte: new Date(year, month ? month - 1 : 0, 1, 0, 0, 0, 0),
+                $lt: new Date(year, month ? month : 12, 1, 0, 0, 0, 0),
+            },
+        };
+
+        const attendanceList = await AttendanceSchema.find(query);
+
+        return attendanceList;
+    } catch (err) {
+        console.error('Error fetching attendance data:', err);
+        throw err;
+    }
+}
+
+const columnMapping = {
+    'Date': { header: 'Date', key: 'date', width: 15 },
+    'Employee ID': { header: 'Employee ID', key: 'employee_id', width: 15 },
+    'Employee Name': { header: 'Employee Name', key: 'employee_name', width: 20 },
+    'Check In': { header: 'Check In', key: 'check_in', width: 15 },
+    'Check In Status': { header: 'Check In Status', key: 'check_in_status', width: 15 },
+    'Check Out': { header: 'Check Out', key: 'check_out', width: 15 },
+    'Check Out Status': { header: 'Check Out Status', key: 'check_out_status', width: 15 },
+    'Total Salary': { header: 'Total Salary', key: 'total_salary', width: 15 },
+};
+
+export const exportAttendanceToExcel = async (req, res) => {
+    const { year, month } = req.query;
+    const columnNames = req.body.columns;
+
+    try {
+        const attendanceList = await getAttendance(year, month);
+
+        if (!attendanceList || attendanceList.length === 0) {
+            return res.status(NOT_FOUND).json({ error: "No attendance data found" });
+        }
+
+        const fileName = `${month ? month + '_' : ''}${year}.xlsx`;
+
+        const filePath = `../${fileName}`;
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Attendance');
+
+        const defaultColumns = [
+            { header: 'Date', key: 'date', width: 15 },
+            { header: 'Employee ID', key: 'employee_id', width: 15 },
+            { header: 'Employee Name', key: 'employee_name', width: 20 },
+            { header: 'Check In', key: 'check_in', width: 15 },
+            { header: 'Check In Status', key: 'check_in_status', width: 15 },
+            { header: 'Check Out', key: 'check_out', width: 15 },
+            { header: 'Check Out Status', key: 'check_out_status', width: 15 },
+            { header: 'Total Salary', key: 'total_salary', width: 15 },
+        ];
+
+        const exportColumns = columnNames
+            ? columnNames.map(columnName => columnMapping[columnName] || defaultColumns[0])
+            : defaultColumns;
+
+        worksheet.columns = exportColumns;
+
+        attendanceList.forEach((attendance) => {
+            try {
+                const date = new Date(attendance.date);
+                const rowData = {
+                    date: date.toISOString().split('T')[0],
+                    employee_id: attendance.employee_id,
+                    employee_name: attendance.employee_name,
+                    check_in: attendance.isChecked[0].check_in ? 'Yes' : 'No',
+                    check_in_status: attendance.isChecked[0].status,
+                    check_out: attendance.isChecked[1] ? (attendance.isChecked[1].check_out ? 'Yes' : 'No') : 'N/A',
+                    check_out_status: attendance.isChecked[1] ? attendance.isChecked[1].status : 'N/A',
+                    total_salary: attendance.total_salary,
+                };
+
+                worksheet.addRow(rowData);
+            } catch (error) {
+                console.error('Error processing attendance date:', error);
+            }
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+
+        try {
+            fs.writeFileSync(filePath, buffer);
+            console.log(`Excel file saved to ${filePath}`);
+        } catch (error) {
+            console.error('Error saving the Excel file:', error);
+        }
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+
+        res.send(buffer);
+    } catch (error) {
+        console.error('Error exporting Excel:', error);
+        return res.status(SYSTEM_ERROR).json({ error: 'Internal server error' });
     }
 };

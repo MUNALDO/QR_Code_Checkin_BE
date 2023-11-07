@@ -232,7 +232,93 @@ async function getAttendance(year, month) {
     }
 }
 
+// const columnMapping = {
+//     'Date': { header: 'Date', key: 'date', width: 15 },
+//     'Employee ID': { header: 'Employee ID', key: 'employee_id', width: 15 },
+//     'Employee Name': { header: 'Employee Name', key: 'employee_name', width: 20 },
+//     'Check In': { header: 'Check In', key: 'check_in', width: 15 },
+//     'Check In Status': { header: 'Check In Status', key: 'check_in_status', width: 15 },
+//     'Check Out': { header: 'Check Out', key: 'check_out', width: 15 },
+//     'Check Out Status': { header: 'Check Out Status', key: 'check_out_status', width: 15 },
+//     'Total Salary': { header: 'Total Salary', key: 'total_salary', width: 15 },
+// };
+
+// export const exportAttendanceToExcel = async (req, res) => {
+//     const { year, month } = req.query;
+//     const columnNames = req.body.columns;
+
+//     try {
+//         const attendanceList = await getAttendance(year, month);
+
+//         if (!attendanceList || attendanceList.length === 0) {
+//             return res.status(NOT_FOUND).json({ error: "No attendance data found" });
+//         }
+
+//         const fileName = `${month ? month + '_' : ''}${year}.xlsx`;
+
+//         const filePath = `../${fileName}`;
+
+//         const workbook = new ExcelJS.Workbook();
+//         const worksheet = workbook.addWorksheet('Attendance');
+
+//         const defaultColumns = [
+//             { header: 'Date', key: 'date', width: 15 },
+//             { header: 'Employee ID', key: 'employee_id', width: 15 },
+//             { header: 'Employee Name', key: 'employee_name', width: 20 },
+//             { header: 'Check In', key: 'check_in', width: 15 },
+//             { header: 'Check In Status', key: 'check_in_status', width: 15 },
+//             { header: 'Check Out', key: 'check_out', width: 15 },
+//             { header: 'Check Out Status', key: 'check_out_status', width: 15 },
+//             { header: 'Total Salary', key: 'total_salary', width: 15 },
+//         ];
+
+//         const exportColumns = columnNames
+//             ? columnNames.map(columnName => columnMapping[columnName] || defaultColumns[0])
+//             : defaultColumns;
+
+//         worksheet.columns = exportColumns;
+
+//         attendanceList.forEach((attendance) => {
+//             try {
+//                 const date = new Date(attendance.date);
+//                 const rowData = {
+//                     date: date.toISOString().split('T')[0],
+//                     employee_id: attendance.employee_id,
+//                     employee_name: attendance.employee_name,
+//                     check_in: attendance.isChecked[0].check_in ? 'Yes' : 'No',
+//                     check_in_status: attendance.isChecked[0].status,
+//                     check_out: attendance.isChecked[1] ? (attendance.isChecked[1].check_out ? 'Yes' : 'No') : 'N/A',
+//                     check_out_status: attendance.isChecked[1] ? attendance.isChecked[1].status : 'N/A',
+//                     total_salary: attendance.total_salary,
+//                 };
+
+//                 worksheet.addRow(rowData);
+//             } catch (error) {
+//                 console.error('Error processing attendance date:', error);
+//             }
+//         });
+
+//         const buffer = await workbook.xlsx.writeBuffer();
+
+//         try {
+//             fs.writeFileSync(filePath, buffer);
+//             console.log(`Excel file saved to ${filePath}`);
+//         } catch (error) {
+//             console.error('Error saving the Excel file:', error);
+//         }
+
+//         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+//         res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+
+//         res.send(buffer);
+//     } catch (error) {
+//         console.error('Error exporting Excel:', error);
+//         return res.status(SYSTEM_ERROR).json({ error: 'Internal server error' });
+//     }
+// };
+
 const columnMapping = {
+    'Month': { header: 'Month', key: 'month', width: 15 },
     'Date': { header: 'Date', key: 'date', width: 15 },
     'Employee ID': { header: 'Employee ID', key: 'employee_id', width: 15 },
     'Employee Name': { header: 'Employee Name', key: 'employee_name', width: 20 },
@@ -254,14 +340,24 @@ export const exportAttendanceToExcel = async (req, res) => {
             return res.status(NOT_FOUND).json({ error: "No attendance data found" });
         }
 
-        const fileName = `${month ? month + '_' : ''}${year}.xlsx`;
+        // Group attendance by date
+        const groupedByDate = groupByDate(attendanceList);
+        // Group attendance by month, if year is provided
+        const groupedByMonth = year ? groupByMonth(groupedByDate) : groupedByDate;
 
+        // Define the file name based on year and, optionally, the month
+        const fileName = `${year}${month ? `_${month}` : ''}.xlsx`;
+
+        // Define the file path where you want to save the Excel file
         const filePath = `../${fileName}`;
 
+        // Create a new Excel workbook and worksheet
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Attendance');
 
+        // Define the default columns for the Excel sheet
         const defaultColumns = [
+            { header: 'Month', key: 'month', width: 15 },
             { header: 'Date', key: 'date', width: 15 },
             { header: 'Employee ID', key: 'employee_id', width: 15 },
             { header: 'Employee Name', key: 'employee_name', width: 20 },
@@ -272,34 +368,43 @@ export const exportAttendanceToExcel = async (req, res) => {
             { header: 'Total Salary', key: 'total_salary', width: 15 },
         ];
 
+        // Determine the columns to export based on user input or use default columns
         const exportColumns = columnNames
             ? columnNames.map(columnName => columnMapping[columnName] || defaultColumns[0])
             : defaultColumns;
 
+        // Set columns for the Excel sheet
         worksheet.columns = exportColumns;
 
-        attendanceList.forEach((attendance) => {
-            try {
-                const date = new Date(attendance.date);
-                const rowData = {
-                    date: date.toISOString().split('T')[0],
-                    employee_id: attendance.employee_id,
-                    employee_name: attendance.employee_name,
-                    check_in: attendance.isChecked[0].check_in ? 'Yes' : 'No',
-                    check_in_status: attendance.isChecked[0].status,
-                    check_out: attendance.isChecked[1] ? (attendance.isChecked[1].check_out ? 'Yes' : 'No') : 'N/A',
-                    check_out_status: attendance.isChecked[1] ? attendance.isChecked[1].status : 'N/A',
-                    total_salary: attendance.total_salary,
-                };
-
-                worksheet.addRow(rowData);
-            } catch (error) {
-                console.error('Error processing attendance date:', error);
-            }
+        // Populate the worksheet with data
+        groupedByMonth.forEach((monthData) => {
+            monthData.dates.forEach((dateData) => {
+                try {
+                    dateData.attendanceList.forEach((attendance, index) => {
+                        const date = new Date(attendance.date);
+                        const rowData = {
+                            month: index === 0 ? date.getUTCMonth() + 1 : null,
+                            date: index === 0 ? date.toISOString().split('T')[0] : null,
+                            employee_id: attendance.employee_id,
+                            employee_name: attendance.employee_name,
+                            check_in: attendance.isChecked[0].check_in ? 'Yes' : 'No',
+                            check_in_status: attendance.isChecked[0].status,
+                            check_out: attendance.isChecked[1] ? (attendance.isChecked[1].check_out ? 'Yes' : 'No') : 'N/A',
+                            check_out_status: attendance.isChecked[1] ? attendance.isChecked[1].status : 'N/A',
+                            total_salary: attendance.total_salary,
+                        };
+                        worksheet.addRow(rowData);
+                    });
+                } catch (error) {
+                    console.error('Error processing attendance data:', error);
+                }
+            });
         });
 
+        // Write the workbook to a buffer
         const buffer = await workbook.xlsx.writeBuffer();
 
+        // Save the buffer to the file path
         try {
             fs.writeFileSync(filePath, buffer);
             console.log(`Excel file saved to ${filePath}`);
@@ -307,12 +412,54 @@ export const exportAttendanceToExcel = async (req, res) => {
             console.error('Error saving the Excel file:', error);
         }
 
+        // Set content type and attachment header with the generated file name
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
 
+        // Send the buffer as the response
         res.send(buffer);
     } catch (error) {
         console.error('Error exporting Excel:', error);
-        return res.status(SYSTEM_ERROR).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
+
+// Helper function to group attendance by date
+function groupByDate(attendanceList) {
+    const groupedData = new Map();
+
+    attendanceList.forEach((attendance) => {
+        const dateKey = attendance.date.toISOString().split('T')[0];
+        if (!groupedData.has(dateKey)) {
+            groupedData.set(dateKey, []);
+        }
+        groupedData.get(dateKey).push(attendance);
+    });
+
+    return Array.from(groupedData).map(([date, attendanceList]) => ({
+        date: new Date(date),
+        attendanceList,
+    }));
+}
+
+// Helper function to group attendance by month
+function groupByMonth(attendanceList) {
+    const groupedData = new Map();
+
+    attendanceList.forEach((data) => {
+        const year = data.date.getUTCFullYear();
+        const month = data.date.getUTCMonth();
+
+        const dateKey = `${year}_${month}`;
+        if (!groupedData.has(dateKey)) {
+            groupedData.set(dateKey, {
+                year,
+                month,
+                dates: [],
+            });
+        }
+        groupedData.get(dateKey).dates.push(data);
+    });
+
+    return Array.from(groupedData).map(([key, monthData]) => monthData);
+}

@@ -232,89 +232,86 @@ async function getAttendance(year, month) {
     }
 }
 
-export const scanAttendance = async () => {
+export const scanAttendance = async (req) => {
+    // Define the check-in and check-out time ranges
+    const checkInStartTime = 8; // 8:00 AM
+    const checkInEndTime = 12; // 12:00 PM
+    const checkOutStartTime = 17; // 5:00 PM
+    const checkOutEndTime = 22; // 10:00 PM
+
     try {
-        const currentTime = new Date();
-        const date = currentTime.toLocaleDateString();
-        const hour = currentTime.getHours();
-        const minutes = currentTime.getMinutes();
+        // Get all employees
+        const employees = await EmployeeSchema.find({});
 
-        // Check for employees who haven't checked in after 11 am
-        if (hour >= 11 && minutes > 0) {
-            await markMissingCheckIn();
+        // Get the day and time from the request
+        const requestedDay = req.query.day;
+        const requestedTime = req.query.time;
+
+        // Loop through each employee to check attendance
+        for (const employee of employees) {
+            const employeeID = employee.id;
+
+            // Check if there is an existing attendance record for the employee for the requested day
+            const existingAttendance = await AttendanceSchema.findOne({
+                employee_id: employeeID,
+                date: {
+                    $gte: new Date(requestedDay).setHours(0, 0, 0, 0),
+                    $lt: new Date(requestedDay).setHours(23, 59, 59, 999),
+                },
+            });
+
+            // Calculate the check-in and check-out statuses
+ 
+
+
+            if (requestedTime >= checkInStartTime && requestedTime <= checkInEndTime) {
+                const checkInStatus = existingAttendance
+                ? existingAttendance.isChecked.check_in_status
+                : 'missing';
+            }
+
+            if (requestedTime >= checkOutStartTime && requestedTime <= checkOutEndTime) {
+                let checkOutStatus = existingAttendance
+                ? existingAttendance.isChecked.check_out_status
+                : 'missing';            
+            }
+
+            if (!existingAttendance) {
+                // Create a new attendance record if it doesn't exist
+                const date = new Date(requestedDay).toLocaleDateString();
+                const attendanceRecord = new AttendanceSchema({
+                    date: date,
+                    isChecked: {
+                        check_in: false,
+                        check_out: false,
+                        check_in_time: 'N/A',
+                        check_out_time: 'N/A',
+                        check_in_status: checkInStatus,
+                        check_out_status: checkOutStatus,
+                    },
+                    employee_id: employeeID,
+                    employee_name: employee.name,
+                    total_salary: 0,
+                });
+
+                await attendanceRecord.save();
+            } else {
+                // Update the existing attendance record if it exists
+                if (!existingAttendance.isChecked.check_in) {
+                    existingAttendance.isChecked.check_in_status = checkInStatus;
+                }
+
+                if (!existingAttendance.isChecked.check_out) {
+                    existingAttendance.isChecked.check_out_status = checkOutStatus;
+                }
+
+                // Save the updated attendance record
+                await existingAttendance.save();
+            }
         }
-
-        // Check for employees who haven't checked out after 9 pm
-        if (hour >= 21 && minutes > 0) {
-            await markMissingCheckOut();
-        }
-
-        console.log("Attendance scanning completed.");
     } catch (error) {
-        console.error("Error scanning attendance:", error);
+        console.error('Error scanning attendance:', error);
     }
-};
-
-const markMissingCheckIn = async () => {
-    const employees = await EmployeeSchema.find({});
-
-    for (const employee of employees) {
-        const existingAttendance = await AttendanceSchema.findOne({
-            employee_id: employee.id,
-            date: {
-                $gte: new Date().setHours(0, 0, 0, 0),
-                $lt: new Date().setHours(23, 59, 59, 999),
-            },
-        });
-
-        if (!existingAttendance || !existingAttendance.isChecked[0].check_in) {
-            // If no attendance record for today or check-in is missing, create/update a record
-            await createOrUpdateAttendanceRecord(employee, "check_in");
-        }
-    }
-};
-
-const markMissingCheckOut = async () => {
-    const employees = await EmployeeSchema.find({});
-
-    for (const employee of employees) {
-        const existingAttendance = await AttendanceSchema.findOne({
-            employee_id: employee.id,
-            date: {
-                $gte: new Date().setHours(0, 0, 0, 0),
-                $lt: new Date().setHours(23, 59, 59, 999),
-            },
-        });
-
-        if (!existingAttendance || !existingAttendance.isChecked[1].check_out) {
-            // If no attendance record for today or check-in is missing, create/update a record
-            await createOrUpdateAttendanceRecord(employee, "check_out");
-        }
-    }
-};
-
-const createOrUpdateAttendanceRecord = async (employee, shift) => {
-    const totalSalary = employee.salary_per_hour;
-    const status = "missing";
-
-    const currentTime = new Date();
-    const date = currentTime.toLocaleDateString();
-
-    const attendanceRecord = new AttendanceSchema({
-        date: date,
-        isChecked: [
-            {
-                [shift]: false,
-                time: "N/A",
-                status,
-            },
-        ],
-        employee_id: employee.id,
-        employee_name: employee.name,
-        total_salary: totalSalary,
-    });
-
-    await attendanceRecord.save();
 };
 
 const columnMapping = {

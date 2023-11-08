@@ -76,7 +76,7 @@ export const checkAttendance = async (req, res, next) => {
             },
         });
 
-        console.log(existingAttendance);
+        // console.log(existingAttendance);
 
         if (!existingAttendance) {
             if (shift == 'check_out') {

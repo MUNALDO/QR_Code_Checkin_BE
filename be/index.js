@@ -111,7 +111,7 @@ async function startApp() {
     app.listen(8800, () => {
         connect();
         myLogger.info('Server is running on port 8800');
-        scanAndUpdateAttendance();
+        // scanAndUpdateAttendance();
     });
 }
 

@@ -232,20 +232,17 @@ async function getAttendance(year, month) {
     }
 }
 
-export const scanAndUpdateAttendance = async () => {
-    const checkInEndTime = 11; 
+export const scanAndUpdateAttendance = async (req, res, next) => {
+    const checkInEndTime = 11;
     const checkOutEndTime = 21;
 
     try {
-        // Get all employees
         const employees = await EmployeeSchema.find();
 
-        // Loop through each employee
         for (const employee of employees) {
             const employeeID = employee.id;
             // console.log(employeeID);
 
-            // Check if there is an existing attendance record for the employee for today
             const existingAttendance = await AttendanceSchema.findOne({
                 employee_id: employeeID,
                 date: {
@@ -254,7 +251,6 @@ export const scanAndUpdateAttendance = async () => {
                 },
             });
 
-            // Create a new attendance record if it doesn't exist
             if (!existingAttendance) {
                 const date = new Date().toLocaleDateString();
                 const currentHour = new Date().getHours();
@@ -276,8 +272,8 @@ export const scanAndUpdateAttendance = async () => {
 
                 const attendanceRecord = await newAttendance.save();
                 // console.log('New Attendance Record:', attendanceRecord);
+                res.status(CREATED).json(attendanceRecord);
             } else {
-                // Update the existing attendance record if it exists
                 const attendance = existingAttendance.isChecked;
                 const currentHour = new Date().getHours();
 
@@ -285,14 +281,14 @@ export const scanAndUpdateAttendance = async () => {
                     attendance.check_out = false;
                     attendance.check_out_status = 'missing';
                     // Save the updated attendance record
-                    await existingAttendance.save();
+                    const updateAttendance = await existingAttendance.save();
+                    res.status(OK).json(updateAttendance);
                 }
             }
         }
-
         console.log('Scan and update attendance completed.');
     } catch (error) {
-        console.error('Error scanning and updating attendance:', error);
+        next(error);
     }
 };
 

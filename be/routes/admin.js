@@ -4,7 +4,7 @@ import {
     getAttendanceByTime,
     getEmployeeById, getEmployeeByName,
     getEmployeeSchedule,
-    loginAdmin, logoutAdmin, registerAdmin, registerEmployee
+    loginAdmin, logoutAdmin, registerAdmin, registerEmployee, scanAndUpdateAttendance
 } from '../controllers/adminController.js';
 import { verifyTokenAdmin } from '../utils/verifyToken.js';
 
@@ -22,8 +22,8 @@ router.get('/get-employee-byName', verifyTokenAdmin, getEmployeeByName);
 router.post('/create-schedule', verifyTokenAdmin, createSchedule);
 router.get('/get-schedule', verifyTokenAdmin, getEmployeeSchedule);
 
-router.get('/get-attendance', verifyTokenAdmin, getAttendanceByTime)
-router.post('/export-attendance', verifyTokenAdmin, exportAttendanceToExcel)
-// router.post('/scan-attendance', verifyTokenAdmin, scanAttendance)
+router.get('/get-attendance', verifyTokenAdmin, getAttendanceByTime);
+router.post('/export-attendance', verifyTokenAdmin, exportAttendanceToExcel);
+router.post('/scan-attendance', verifyTokenAdmin, scanAndUpdateAttendance);
 
 export default router;

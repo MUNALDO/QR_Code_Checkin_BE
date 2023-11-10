@@ -232,87 +232,71 @@ async function getAttendance(year, month) {
     }
 }
 
-export const scanAttendance = async (req) => {
-    // Define the check-in and check-out time ranges
-    const checkInStartTime = 8; // 8:00 AM
-    const checkInEndTime = 12; // 12:00 PM
-    const checkOutStartTime = 17; // 5:00 PM
-    const checkOutEndTime = 22; // 10:00 PM
+export const scanAndUpdateAttendance = async () => {
+    const checkInEndTime = 11; 
+    const checkOutEndTime = 21;
 
     try {
         // Get all employees
-        const employees = await EmployeeSchema.find({});
+        const employees = await EmployeeSchema.find();
 
-        // Get the day and time from the request
-        const requestedDay = req.query.day;
-        const requestedTime = req.query.time;
-
-        // Loop through each employee to check attendance
+        // Loop through each employee
         for (const employee of employees) {
             const employeeID = employee.id;
+            // console.log(employeeID);
 
-            // Check if there is an existing attendance record for the employee for the requested day
+            // Check if there is an existing attendance record for the employee for today
             const existingAttendance = await AttendanceSchema.findOne({
                 employee_id: employeeID,
                 date: {
-                    $gte: new Date(requestedDay).setHours(0, 0, 0, 0),
-                    $lt: new Date(requestedDay).setHours(23, 59, 59, 999),
+                    $gte: new Date().setHours(0, 0, 0, 0),
+                    $lt: new Date().setHours(23, 59, 59, 999),
                 },
             });
 
-            // Calculate the check-in and check-out statuses
- 
-
-
-            if (requestedTime >= checkInStartTime && requestedTime <= checkInEndTime) {
-                const checkInStatus = existingAttendance
-                ? existingAttendance.isChecked.check_in_status
-                : 'missing';
-            }
-
-            if (requestedTime >= checkOutStartTime && requestedTime <= checkOutEndTime) {
-                let checkOutStatus = existingAttendance
-                ? existingAttendance.isChecked.check_out_status
-                : 'missing';            
-            }
-
+            // Create a new attendance record if it doesn't exist
             if (!existingAttendance) {
-                // Create a new attendance record if it doesn't exist
-                const date = new Date(requestedDay).toLocaleDateString();
-                const attendanceRecord = new AttendanceSchema({
+                const date = new Date().toLocaleDateString();
+                const currentHour = new Date().getHours();
+
+                const newAttendance = new AttendanceSchema({
                     date: date,
                     isChecked: {
-                        check_in: false,
-                        check_out: false,
+                        check_in: currentHour > checkInEndTime ? false : true,
+                        check_out: currentHour > checkOutEndTime ? false : true,
                         check_in_time: 'N/A',
                         check_out_time: 'N/A',
-                        check_in_status: checkInStatus,
-                        check_out_status: checkOutStatus,
+                        check_in_status: currentHour > checkInEndTime ? 'missing' : null,
+                        check_out_status: currentHour > checkOutEndTime ? 'missing' : null,
                     },
                     employee_id: employeeID,
                     employee_name: employee.name,
                     total_salary: 0,
                 });
 
-                await attendanceRecord.save();
+                const attendanceRecord = await newAttendance.save();
+                // console.log('New Attendance Record:', attendanceRecord);
             } else {
                 // Update the existing attendance record if it exists
-                if (!existingAttendance.isChecked.check_in) {
-                    existingAttendance.isChecked.check_in_status = checkInStatus;
-                }
+                const attendance = existingAttendance.isChecked;
+                const currentHour = new Date().getHours();
 
-                if (!existingAttendance.isChecked.check_out) {
-                    existingAttendance.isChecked.check_out_status = checkOutStatus;
+                if (attendance.check_out_status === null && currentHour > checkOutEndTime) {
+                    attendance.check_out = false;
+                    attendance.check_out_status = 'missing';
+                    // Save the updated attendance record
+                    await existingAttendance.save();
                 }
-
-                // Save the updated attendance record
-                await existingAttendance.save();
             }
         }
+
+        console.log('Scan and update attendance completed.');
     } catch (error) {
-        console.error('Error scanning attendance:', error);
+        console.error('Error scanning and updating attendance:', error);
     }
 };
+
+
 
 const columnMapping = {
     'Month': { header: 'Month', key: 'month', width: 15 },

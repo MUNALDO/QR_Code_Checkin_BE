@@ -44,7 +44,7 @@ const attendanceSchema = new mongoose.Schema(
         },
         total_salary: {
             type: Number,
-            required: true,
+            // required: true,
         },
         note: {
             type: String,

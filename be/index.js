@@ -9,6 +9,7 @@ import adminRoute from "./routes/admin.js";
 import qrRoute from "./routes/qrCode.js";
 import employeeRoute from "./routes/employee.js";
 import wifi from 'node-wifi'; 
+import { scanAndUpdateAttendance } from './controllers/adminController.js';
 
 const app = express();
 dotenv.config();
@@ -110,6 +111,7 @@ async function startApp() {
     app.listen(8800, () => {
         connect();
         myLogger.info('Server is running on port 8800');
+        scanAndUpdateAttendance();
     });
 }
 

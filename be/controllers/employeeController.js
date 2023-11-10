@@ -57,7 +57,7 @@ export const checkAttendance = async (req, res, next) => {
 
         // Determine whether it's check-in or check-out based on the current time
         let shift = '';
-        if (hour >= 8 && hour <= 12) {
+        if (hour >= 8 && hour <= 15) {
             shift = 'check_in';
         } else if (hour >= 17 && hour <= 22) {
             shift = 'check_out';
@@ -112,7 +112,7 @@ export const checkAttendance = async (req, res, next) => {
                     },
                     employee_id: employee.id,
                     employee_name: employee.name,
-                    total_salary: totalSalary,
+                    // total_salary,
                 });
                 const saveAttend = await attendanceRecord.save();
                 return res.status(OK).json({ success: `${shift} recorded successfully`, saveAttend });
@@ -147,28 +147,33 @@ export const checkAttendance = async (req, res, next) => {
             //     res.status(BAD_REQUEST).json({ error: 'You already check in today' });
             //     return;
             // }
+            // console.log(hour);
             // Check-out logic
             if (hour > 20 && hour < 21) {
                 // Late check-out
                 existingAttendance.isChecked.check_out = true;
                 existingAttendance.total_salary += employee.salary_per_hour * 5;
                 existingAttendance.isChecked.check_out_status = 'late';
-            } else if ((hour > 17 && hour < 20) || (hour == 20)) {
+                existingAttendance.isChecked.check_out_time = `${hour}:${minutes < 10 ? '0' : ''}${minutes}`;
+                const updateCheckOut = await existingAttendance.save();
+                return res.status(OK).json({ success: `${shift} update successfully`, updateCheckOut });
+            } else if ((hour > 17 && hour < 20) || (hour == 20) || (hour == 17)) {
                 // On-time check-out
                 existingAttendance.isChecked.check_out = true;
                 existingAttendance.total_salary += employee.salary_per_hour * 5;
                 existingAttendance.isChecked.check_out_status = 'on time';
+                existingAttendance.isChecked.check_out_time = `${hour}:${minutes < 10 ? '0' : ''}${minutes}`;
+                const updateCheckOut = await existingAttendance.save();
+                return res.status(OK).json({ success: `${shift} update successfully`, updateCheckOut });
             } else if (hour > 21 || hour == 21) {
                 // Missing check-out
                 existingAttendance.isChecked.check_out = false;
                 existingAttendance.isChecked.check_out_status = 'missing';
+                existingAttendance.isChecked.check_out_time = `${hour}:${minutes < 10 ? '0' : ''}${minutes}`;
+                const updateCheckOut = await existingAttendance.save();
+                return res.status(OK).json({ success: `${shift} update successfully`, updateCheckOut });
             }
-            // Update check-out details
-            existingAttendance.isChecked.check_out_time = `${hour}:${minutes < 10 ? '0' : ''}${minutes}`;
         }
-        // Update total_salary
-        const updateCheckOut = await existingAttendance.save();
-        return res.status(OK).json({ success: `${shift} update successfully`, updateCheckOut });
     } catch (err) {
         next(err);
     }

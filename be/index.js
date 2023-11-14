@@ -3,13 +3,13 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import cookieParser from 'cookie-parser';
 import { FORBIDDEN, OK, SYSTEM_ERROR } from './constant/HttpStatus.js';
-import myLogger from './winstonLog/winston.js';
+// import myLogger from './winstonLog/winston.js';
 import cors from 'cors';
 import adminRoute from "./routes/admin.js";
 import qrRoute from "./routes/qrCode.js";
 import employeeRoute from "./routes/employee.js";
 import wifi from 'node-wifi'; 
-import { scanAndUpdateAttendance } from './controllers/adminController.js';
+// import { scanAndUpdateAttendance } from './controllers/adminController.js';
 
 const app = express();
 dotenv.config();

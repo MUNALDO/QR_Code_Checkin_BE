@@ -108,8 +108,9 @@ app.use((err, req, res, next) => {
 });
 
 async function startApp() {
+    await connect();
     app.listen(8800, () => {
-        connect();
+        // connect();
         myLogger.info('Server is running on port 8800');
         // scanAndUpdateAttendance();
     });

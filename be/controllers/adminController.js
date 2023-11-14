@@ -361,6 +361,11 @@ export const exportAttendanceToExcel = async (req, res, next) => {
 
         // Generate the Excel file in memory
         const buffer = await workbook.xlsx.writeBuffer();
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename=orders.xlsx');
+
+        // Send the buffer as the response
+        res.send(buffer);
 
         // Save the buffer to the file path
         try {
@@ -369,18 +374,11 @@ export const exportAttendanceToExcel = async (req, res, next) => {
         } catch (error) {
             next(error);
         }
-
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', 'attachment; filename=orders.xlsx');
-
-        // Send the buffer as the response
-        res.send(buffer);
     } catch (error) {
         console.error('Error exporting Excel:', error);
         return res.status(SYSTEM_ERROR).json({ error: 'Internal server error' });
     }
 };
-
 
 // Helper function to group attendance by date
 function groupByDate(attendanceList) {

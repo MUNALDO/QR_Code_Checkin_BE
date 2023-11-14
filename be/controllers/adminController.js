@@ -85,9 +85,7 @@ export const getEmployeeById = async (req, res, next) => {
     const employeeID = req.query.employeeID;
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) {
-            res.status(NOT_FOUND).json("Employee not found");
-        }
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
         res.status(OK).json(employee);
     } catch (err) {
         next(err);
@@ -98,9 +96,7 @@ export const getEmployeeByName = async (req, res, next) => {
     const employeeName = req.query.employeeName;
     try {
         const employee = await EmployeeSchema.find({ name: employeeName });
-        if (!employee) {
-            res.status(NOT_FOUND).json("Employee not found");
-        }
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
         res.status(OK).json(employee);
     } catch (err) {
         next(err);
@@ -114,10 +110,7 @@ export const createSchedule = async (req, res, next) => {
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
 
-        if (!employee) {
-            res.status(NOT_FOUND).json({ error: "Employee not found" });
-            return;
-        }
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
 
         const currentTime = new Date();
         const scheduleDate = new Date(newSchedule.date);
@@ -129,42 +122,23 @@ export const createSchedule = async (req, res, next) => {
             return;
         }
 
-        const existingSchedule = employee.schedules.find(
+        const existingSchedule = employee.employee_schedules.find(
             (schedule) =>
-                schedule.date.toISOString() === scheduleDate.toISOString() &&
-                schedule.shifts.some(
-                    (shift) => shift.shift === newSchedule.shift && !shift.isChecked
-                )
+                schedule.date.toISOString() === scheduleDate.toISOString()
         );
 
         if (existingSchedule) {
             res
                 .status(BAD_REQUEST)
-                .json(`Shift '${newSchedule.shift}' already exists for ${newSchedule.date}`);
+                .json(`Schedule already exists for ${newSchedule.date}`);
             return;
         }
 
-        const newShift = {
-            shift: newSchedule.shift,
-            startTime: newSchedule.startTime,
-            endTime: newSchedule.endTime,
-            isBooked: false,
+        const newScheduleEntry = {
+            date: scheduleDate,
         };
 
-        const scheduleToUpdate = employee.schedules.find(
-            (schedule) =>
-                schedule.date.toISOString() === scheduleDate.toISOString()
-        );
-
-        if (scheduleToUpdate) {
-            scheduleToUpdate.shifts.push(newShift);
-        } else {
-            const newScheduleEntry = {
-                date: scheduleDate,
-                shifts: [newShift],
-            };
-            employee.schedules.push(newScheduleEntry);
-        }
+        employee.employee_schedules.push(newScheduleEntry);
 
         const updatedEmployee = await employee.save();
         res.status(OK).json(updatedEmployee);
@@ -179,10 +153,7 @@ export const getEmployeeSchedule = async (req, res, next) => {
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
 
-        if (!employee) {
-            res.status(NOT_FOUND).json({ error: "Employee not found" });
-            return;
-        }
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
         res.status(OK).json(employee.schedules);
     } catch (err) {
         next(err);
@@ -239,6 +210,8 @@ export const scanAndUpdateAttendance = async (req, res, next) => {
     try {
         const employees = await EmployeeSchema.find();
 
+        if (!employees) return next(createError(NOT_FOUND, "Employees not found!"))
+
         for (const employee of employees) {
             const employeeID = employee.id;
             // console.log(employeeID);
@@ -267,7 +240,7 @@ export const scanAndUpdateAttendance = async (req, res, next) => {
                     },
                     employee_id: employeeID,
                     employee_name: employee.name,
-                    total_salary: 0,
+                    // total_salary: 0,
                 });
 
                 const attendanceRecord = await newAttendance.save();
@@ -283,6 +256,8 @@ export const scanAndUpdateAttendance = async (req, res, next) => {
                     // Save the updated attendance record
                     const updateAttendance = await existingAttendance.save();
                     res.status(OK).json(updateAttendance);
+                } else {
+                    res.status(OK).json("All employees have been checked");
                 }
             }
         }
@@ -291,8 +266,6 @@ export const scanAndUpdateAttendance = async (req, res, next) => {
         next(error);
     }
 };
-
-
 
 const columnMapping = {
     'Month': { header: 'Month', key: 'month', width: 15 },
@@ -305,10 +278,10 @@ const columnMapping = {
     'Check Out': { header: 'Check Out', key: 'check_out', width: 15 },
     'Check Out Status': { header: 'Check Out Status', key: 'check_out_status', width: 15 },
     'Check Out Time': { header: 'Check Out Time', key: 'check_out_time', width: 15 },
-    'Total Salary': { header: 'Total Salary', key: 'total_salary', width: 15 },
+    // 'Total Salary': { header: 'Total Salary', key: 'total_salary', width: 15 },
 };
 
-export const exportAttendanceToExcel = async (req, res) => {
+export const exportAttendanceToExcel = async (req, res, next) => {
     const { year, month } = req.query;
     const columnNames = req.body.columns;
 
@@ -346,7 +319,7 @@ export const exportAttendanceToExcel = async (req, res) => {
             { header: 'Check Out', key: 'check_out', width: 15 },
             { header: 'Check Out Status', key: 'check_out_status', width: 15 },
             { header: 'Check Out Time', key: 'check_out_time', width: 15 },
-            { header: 'Total Salary', key: 'total_salary', width: 15 },
+            // { header: 'Total Salary', key: 'total_salary', width: 15 },
         ];
 
         // Determine the columns to export based on user input or use default columns
@@ -376,12 +349,12 @@ export const exportAttendanceToExcel = async (req, res) => {
                             check_out: checkOut,
                             check_out_status: attendance.isChecked.check_out_status || 'N/A',
                             check_out_time: attendance.isChecked.check_out_time || 'N/A',
-                            total_salary: attendance.total_salary,
+                            // total_salary: attendance.total_salary,
                         };
                         worksheet.addRow(rowData);
                     });
                 } catch (error) {
-                    console.error('Error processing attendance data:', error);
+                    next(error);
                 }
             });
         });
@@ -394,12 +367,12 @@ export const exportAttendanceToExcel = async (req, res) => {
             fs.writeFileSync(filePath, buffer);
             console.log(`Excel file saved to ${filePath}`);
         } catch (error) {
-            console.error('Error saving the Excel file:', error);
+            next(error);
         }
 
-        // Set content type and attachment header with the generated file name
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+        res.setHeader('Content-Disposition', 'attachment; filename=orders.xlsx');
+
         // Send the buffer as the response
         res.send(buffer);
     } catch (error) {
@@ -454,3 +427,80 @@ function groupByMonth(attendanceList) {
         .map(([key, monthData]) => monthData)
         .sort((a, b) => new Date(a.year, a.month) - new Date(b.year, b.month));
 }
+
+export const salaryCalculate = async (req, res, next) => {
+    const employeeID = req.query.id;
+    const month = req.query.month;
+    const year = req.query.year;
+    const bonus = req.body.bonus;
+
+    try {
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+
+        if (!employee) {
+            return next(createError(NOT_FOUND, "Employee not found!"));
+        }
+
+        // console.log(employee);
+
+        // Find the relevant schedules for the given month and year
+        const schedules = employee.employee_schedules.filter(schedule => {
+            const scheduleDate = new Date(schedule.date);
+            const scheduleYear = scheduleDate.getFullYear();
+            const scheduleMonth = scheduleDate.getMonth() + 1;
+            // console.log(scheduleMonth);
+            // console.log(scheduleYear);
+
+            return (
+                scheduleYear === parseInt(year) &&  
+                scheduleMonth === parseInt(month)
+            );
+        });
+
+        // console.log("Schedules:", schedules);
+
+        // Find the relevant attendances for the given month and year
+        const attendances = await AttendanceSchema.find({
+            employee_id: employeeID,
+            date: {
+                $gte: new Date(year, month ? month - 1 : 0, 1, 0, 0, 0, 0),
+                $lt: new Date(year, month ? month : 12, 1, 0, 0, 0, 0),
+            },
+        });
+
+        // Calculate day_in_schedule and day_work_real
+        let dayInSchedule = 0;
+        let dayWorkReal = 0;
+
+        schedules.forEach(schedule => {
+            dayInSchedule += 1;
+        });
+
+        attendances.forEach(attendance => {
+            const checkInStatus = attendance.isChecked.check_in_status;
+            const checkOutStatus = attendance.isChecked.check_out_status;
+
+            if (checkInStatus === 'on time' && checkOutStatus === 'on time') {
+                dayWorkReal += 1;
+            } else if (checkInStatus === 'late' && checkOutStatus === 'late') {
+                dayWorkReal += 0.5;
+            } else if (checkInStatus === 'missing' || checkOutStatus === 'missing') {
+                dayWorkReal += 0;
+            } else if (checkInStatus === 'on time' || checkOutStatus === 'late') {
+                dayWorkReal += 0.75;
+            } else if (checkInStatus === 'late' || checkOutStatus === 'on time') {
+                dayWorkReal += 0.75;
+            }
+        });
+
+        // console.log(dayInSchedule);
+        // console.log(dayWorkReal);
+
+        // Calculate total_salary
+        const totalSalary = (employee.basic_salary_per_month + bonus) / (dayInSchedule * dayWorkReal);
+
+        res.status(OK).json({ totalSalary });
+    } catch (err) {
+        next(err);
+    }
+};

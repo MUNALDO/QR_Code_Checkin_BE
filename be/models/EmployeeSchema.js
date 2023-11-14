@@ -5,16 +5,6 @@ const ScheduleSchema = new mongoose.Schema({
         type: Date,
         required: true,
     },
-    shifts: {
-        shift_morning: {
-            type: Boolean,
-            default: false,
-        },
-        shift_afternoon: {
-            type: Boolean,
-            default: false,
-        },
-    },
 });
 
 const employeeSchema = new mongoose.Schema(
@@ -42,13 +32,16 @@ const employeeSchema = new mongoose.Schema(
         position: {
             type: String,
         },
-        salary_per_hour: {
+        basic_salary_per_month: {
             type: Number,
-            required: true,
+            // required: true,
         },
-        schedules: {
+        employee_schedules: {
             type: [ScheduleSchema]
         },
+        work_days: {
+            type: Number,
+        }
     },
     { timestamps: true }
 );

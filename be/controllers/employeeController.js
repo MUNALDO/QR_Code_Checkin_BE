@@ -39,16 +39,57 @@ export const logoutEmployee = (req, res, next) => {
         json("Employee has been successfully logged out.");
 };
 
+export const createSchedule = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+    const newSchedule = req.body.newSchedule;
+
+    try {
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+
+        const currentTime = new Date();
+        const scheduleDate = new Date(newSchedule.date);
+
+        if (scheduleDate <= currentTime) {
+            res
+                .status(BAD_REQUEST)
+                .json("Cannot create a past time schedule");
+            return;
+        }
+
+        const existingSchedule = employee.employee_schedules.find(
+            (schedule) =>
+                schedule.date.toISOString() === scheduleDate.toISOString()
+        );
+
+        if (existingSchedule) {
+            res
+                .status(BAD_REQUEST)
+                .json(`Schedule already exists for ${newSchedule.date}`);
+            return;
+        }
+
+        const newScheduleEntry = {
+            date: scheduleDate,
+        };
+
+        employee.employee_schedules.push(newScheduleEntry);
+
+        const updatedEmployee = await employee.save();
+        res.status(OK).json(updatedEmployee);
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const checkAttendance = async (req, res, next) => {
     const employeeID = req.body.employeeID;
 
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
 
-        if (!employee) {
-            res.status(NOT_FOUND).json({ error: 'Employee not found' });
-            return;
-        }
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found"))
 
         const currentTime = new Date();
         const date = currentTime.toLocaleDateString();
@@ -62,8 +103,7 @@ export const checkAttendance = async (req, res, next) => {
         } else if (hour >= 17 && hour <= 22) {
             shift = 'check_out';
         } else {
-            res.status(BAD_REQUEST).json({ error: 'Not within shift hours' });
-            return;
+            return next(createError(BAD_REQUEST, "Not within shift hour!"))
         }
 
         // console.log(shift);
@@ -84,7 +124,7 @@ export const checkAttendance = async (req, res, next) => {
                 return;
             }
             if ((hour >= 8 && hour < 9) || hour == 9) {
-                const totalSalary = employee.salary_per_hour * 5;
+                // const totalSalary = employee.salary_per_hour * 5;
                 const status = 'on time';
                 // console.log(status);
                 const attendanceRecord = new AttendanceSchema({
@@ -96,7 +136,7 @@ export const checkAttendance = async (req, res, next) => {
                     },
                     employee_id: employee.id,
                     employee_name: employee.name,
-                    total_salary: totalSalary,
+                    // total_salary: totalSalary,
                 });
                 const saveAttend = await attendanceRecord.save();
                 return res.status(OK).json({ success: `${shift} recorded successfully`, saveAttend });
@@ -117,7 +157,7 @@ export const checkAttendance = async (req, res, next) => {
                 const saveAttend = await attendanceRecord.save();
                 return res.status(OK).json({ success: `${shift} recorded successfully`, saveAttend });
             } else if ((hour > 9 && hour < 10) || hour == 10) {
-                const totalSalary = employee.salary_per_hour * 5;
+                // const totalSalary = employee.salary_per_hour * 5;
                 const status = 'late';
                 // console.log(status);
                 const attendanceRecord = new AttendanceSchema({
@@ -129,7 +169,7 @@ export const checkAttendance = async (req, res, next) => {
                     },
                     employee_id: employee.id,
                     employee_name: employee.name,
-                    total_salary: totalSalary,
+                    // total_salary: totalSalary,
                 });
                 const saveAttend = await attendanceRecord.save();
                 return res.status(OK).json({ success: `${shift} recorded successfully`, saveAttend });
@@ -143,16 +183,11 @@ export const checkAttendance = async (req, res, next) => {
                 return;
             }
 
-            // if (shift == 'check_in') {
-            //     res.status(BAD_REQUEST).json({ error: 'You already check in today' });
-            //     return;
-            // }
-            // console.log(hour);
             // Check-out logic
             if (hour > 20 && hour < 21) {
                 // Late check-out
                 existingAttendance.isChecked.check_out = true;
-                existingAttendance.total_salary += employee.salary_per_hour * 5;
+                // existingAttendance.total_salary += employee.salary_per_hour * 5;
                 existingAttendance.isChecked.check_out_status = 'late';
                 existingAttendance.isChecked.check_out_time = `${hour}:${minutes < 10 ? '0' : ''}${minutes}`;
                 const updateCheckOut = await existingAttendance.save();
@@ -160,7 +195,7 @@ export const checkAttendance = async (req, res, next) => {
             } else if ((hour > 17 && hour < 20) || (hour == 20) || (hour == 17)) {
                 // On-time check-out
                 existingAttendance.isChecked.check_out = true;
-                existingAttendance.total_salary += employee.salary_per_hour * 5;
+                // existingAttendance.total_salary += employee.salary_per_hour * 5;
                 existingAttendance.isChecked.check_out_status = 'on time';
                 existingAttendance.isChecked.check_out_time = `${hour}:${minutes < 10 ? '0' : ''}${minutes}`;
                 const updateCheckOut = await existingAttendance.save();
@@ -187,10 +222,7 @@ export const getAttendanceHistory = async (req, res, next) => {
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
 
-        if (!employee) {
-            res.status(NOT_FOUND).json({ error: 'Employee not found' });
-            return;
-        }
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found"))
 
         const query = {
             employee_id: employee.id,

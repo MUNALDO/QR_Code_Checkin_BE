@@ -8,7 +8,7 @@ import cors from 'cors';
 import adminRoute from "./routes/admin.js";
 import qrRoute from "./routes/qrCode.js";
 import employeeRoute from "./routes/employee.js";
-import wifi from 'node-wifi'; 
+// import wifi from 'node-wifi'; 
 // import { scanAndUpdateAttendance } from './controllers/adminController.js';
 
 const app = express();
@@ -56,38 +56,38 @@ mongoose.connection.on('disconnected', () => {
 
 // Initialize wifi-control
 
-wifi.init({
-    iface: null, 
-});
+// wifi.init({
+//     iface: null, 
+// });
 
-// Middleware to allow access based on Wi-Fi SSID
-app.use(async (req, res, next) => {
-    try {
-        // Scan for available networks and get the currently connected SSID
-        const currentConnections = await wifi.getCurrentConnections();
-        // console.log(currentConnections);
+// // Middleware to allow access based on Wi-Fi SSID
+// app.use(async (req, res, next) => {
+//     try {
+//         // Scan for available networks and get the currently connected SSID
+//         const currentConnections = await wifi.getCurrentConnections();
+//         // console.log(currentConnections);
 
-        if (currentConnections.length > 0) {
-            const connectedSSID = currentConnections[0].ssid;
-            // Define the allowed SSID (replace 'Devssidex' with your SSID)
-            const allowedSSID = wifiName;
+//         if (currentConnections.length > 0) {
+//             const connectedSSID = currentConnections[0].ssid;
+//             // Define the allowed SSID (replace 'Devssidex' with your SSID)
+//             const allowedSSID = wifiName;
 
-            if (connectedSSID === allowedSSID) {
-                console.log(`Device connected to Wi-Fi with SSID: ${allowedSSID}`);
-                next();
-            } else {
-                console.log(`Device is not connected to the allowed Wi-Fi SSID.`);
-                res.status(FORBIDDEN).json({ error: 'Access denied' });
-            }
-        } else {
-            console.log(`Device is not connected to any Wi-Fi network.`);
-            res.status(FORBIDDEN).json({ error: 'Access denied' });
-        }
-    } catch (error) {
-        console.error('Error checking Wi-Fi SSID:', error);
-        res.status(SYSTEM_ERROR).json({ error: 'Something went wrong' });
-    }
-});
+//             if (connectedSSID === allowedSSID) {
+//                 console.log(`Device connected to Wi-Fi with SSID: ${allowedSSID}`);
+//                 next();
+//             } else {
+//                 console.log(`Device is not connected to the allowed Wi-Fi SSID.`);
+//                 res.status(FORBIDDEN).json({ error: 'Access denied' });
+//             }
+//         } else {
+//             console.log(`Device is not connected to any Wi-Fi network.`);
+//             res.status(FORBIDDEN).json({ error: 'Access denied' });
+//         }
+//     } catch (error) {
+//         console.error('Error checking Wi-Fi SSID:', error);
+//         res.status(SYSTEM_ERROR).json({ error: 'Something went wrong' });
+//     }
+// });
 
 app.use(cors());
 app.use(cookieParser());

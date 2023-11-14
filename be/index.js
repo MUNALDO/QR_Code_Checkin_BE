@@ -18,7 +18,7 @@ mongoose.set('strictQuery', false);
 // const localIpAddress = process.env.IP_ADDRESS; 
 // console.log(localIpAddress);
 
-const wifiName = process.env.WIFI_NAME;
+// const wifiName = process.env.WIFI_NAME;
 
 const connect = async () => {
     try {

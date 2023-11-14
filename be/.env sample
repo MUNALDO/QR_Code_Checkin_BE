@@ -1,6 +1,6 @@
-MONGO_URL: mongodb+srv://thaiboomnguyen:thai0934678855@cluster0.jau7vkd.mongodb.net/?retryWrites=true&w=majority
-JWT_ADMIN: cx7zKh3kH1EH1Zhok3ZmkR2g12fNRg/bSBGDmslW5zQ=
-JWT_EMPLOYEE: Z/dihJewcljBBj5YRIVrGdsZzq/ikrBgLG2iImKuK60=
-IP_ADDRESS: 192.168.0.106
-# IP_ADDRESS: 192.168.1.86
-WIFI_NAME: DEVSSIDEX
+MONGO_URL=mongodb+srv://thaiboomnguyen:thai0934678855@cluster0.jau7vkd.mongodb.net/?retryWrites=true&w=majority
+JWT_ADMIN=cx7zKh3kH1EH1Zhok3ZmkR2g12fNRg/bSBGDmslW5zQ=
+JWT_EMPLOYEE=Z/dihJewcljBBj5YRIVrGdsZzq/ikrBgLG2iImKuK60=
+IP_ADDRESS=192.168.0.106
+# IP_ADDRESS=192.168.1.86
+WIFI_NAME=DEVSSIDEX

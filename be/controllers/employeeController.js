@@ -184,7 +184,7 @@ export const checkAttendance = async (req, res, next) => {
             }
 
             // Check-out logic
-            if (hour > 20 && hour < 21) {
+            if (hour > 20 && hour < 21 || (hour == 20)) {
                 // Late check-out
                 existingAttendance.isChecked.check_out = true;
                 // existingAttendance.total_salary += employee.salary_per_hour * 5;
@@ -192,7 +192,7 @@ export const checkAttendance = async (req, res, next) => {
                 existingAttendance.isChecked.check_out_time = `${hour}:${minutes < 10 ? '0' : ''}${minutes}`;
                 const updateCheckOut = await existingAttendance.save();
                 return res.status(OK).json({ success: `${shift} update successfully`, updateCheckOut });
-            } else if ((hour > 17 && hour < 20) || (hour == 20) || (hour == 17)) {
+            } else if ((hour > 17 && hour < 20) || (hour == 17)) {
                 // On-time check-out
                 existingAttendance.isChecked.check_out = true;
                 // existingAttendance.total_salary += employee.salary_per_hour * 5;

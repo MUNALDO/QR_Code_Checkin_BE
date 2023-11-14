@@ -23,14 +23,14 @@ const wifiName = process.env.WIFI_NAME;
 const connect = async () => {
     try {
         await mongoose.connect(process.env.MONGO_URL);
-        myLogger.info("Database connected");
+        console.log("Database connected");
     } catch (error) {
         throw error;
     }
 }
 
 mongoose.connection.on('disconnected', () => {
-    myLogger.info("Database disconnected");
+    console.log("Database disconnected");
 });
 
 // app.use((req, res, next) => {
@@ -111,7 +111,7 @@ async function startApp() {
     await connect();
     app.listen(8800, () => {
         // connect();
-        myLogger.info('Server is running on port 8800');
+        console.log('Server is running on port 8800');
         // scanAndUpdateAttendance();
     });
 }

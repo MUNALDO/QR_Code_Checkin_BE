@@ -84,7 +84,7 @@ export const createSchedule = async (req, res, next) => {
 };
 
 export const checkAttendance = async (req, res, next) => {
-    const employeeID = req.body.employeeID;
+    const { employeeID } = req.body;
 
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });

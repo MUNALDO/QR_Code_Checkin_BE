@@ -29,8 +29,10 @@ const employeeSchema = new mongoose.Schema(
             type: String,
             default: 'employee',
         },
-        position: {
+        level: {
             type: String,
+            enum: ['L1', 'L2', 'L3', 'L4', 'L5'],
+            required: true
         },
         basic_salary_per_month: {
             type: Number,

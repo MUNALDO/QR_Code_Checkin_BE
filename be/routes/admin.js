@@ -1,12 +1,13 @@
 import express from 'express';
 import {
-    createSchedule, exportAttendanceToExcel, getAllEmployees,
-    getAttendanceByTime,
-    getEmployeeById, getEmployeeByName,
-    getEmployeeSchedule,
-    loginAdmin, logoutAdmin, registerAdmin, registerEmployee, salaryCalculate, scanAndUpdateAttendance
+    createSchedule, getAllEmployees,
+    getAttendanceByTime, getEmployeeById, getEmployeeByName,
+    getEmployeeSchedule, loginAdmin, logoutAdmin, registerAdmin,
+    registerEmployee, scanAndUpdateAttendance
 } from '../controllers/adminController.js';
 import { verifyTokenAdmin } from '../utils/verifyToken.js';
+import { salaryCalculate } from '../controllers/salaryController.js';
+import { exportAttendanceToExcel } from '../controllers/xlsxController.js';
 
 const router = express.Router();
 

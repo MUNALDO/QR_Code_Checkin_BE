@@ -12,27 +12,53 @@ const GenerateQR = () => {
 
   if (!user) {
     navigate("/loginEmployee");
-  } 
+  }
 
   const [isAttendanceChecked, setAttendanceChecked] = useState(false);
   const [isScanning, setScanning] = useState(false);
+  const [qrData, setQRData] = useState(`qr code for employee - ${Date.now()}`);
+
+  useEffect(() => {
+    // Function to update QR code data
+    const updateQRCode = () => {
+      const timestamp = new Date().toISOString();
+      setQRData(`qr code for employee - ${timestamp}`);
+    };
+
+    // Manually update QR code on initial render
+    updateQRCode();
+
+    // Automatically refresh QR code every 20 seconds
+    const intervalId = setInterval(updateQRCode, 20000);
+
+    return () => {
+      // Cleanup interval on component unmount
+      clearInterval(intervalId);
+    };
+  }, []);
 
   const handleScan = async (data) => {
     if (data && !isAttendanceChecked) {
+      // console.log(data.text);
+
       try {
         setAttendanceChecked(true);
 
-        const res = await axios.post("/employee/check-attendance", {
-          employeeID: user.id,
-        });
+        if (data.text === qrData) {
+          const res = await axios.post("/employee/check-attendance", {
+            employeeID: user.id,
+          });
 
-        console.log(res);
+          // console.log(res);
 
-        if (res.data.success) {
-          alert("Attendance checked successfully!");
-          // You can navigate to another page or show a success message here
+          if (res.data.success) {
+            alert("Attendance checked successfully!");
+            // You can navigate to another page or show a success message here
+          } else {
+            alert("Expired QR code. Please generate a new QR code.");
+          }
         } else {
-          alert("Failed to check attendance. Please try again.");
+          alert("Invalid QR code format.");
         }
       } catch (error) {
         console.error("Error checking attendance:", error);
@@ -48,16 +74,6 @@ const GenerateQR = () => {
     console.error("QR code scanning error:", error);
   };
 
-  const [qrData, setQRData] = useState("");
-
-  useEffect(() => {
-    if (user) {
-      const data = `User: ${user.name}, ID: ${user.id}`;
-      setQRData(data);
-      setAttendanceChecked(false);
-    }
-  }, [user]);
-
   const startScan = () => {
     // Manually start the scanning process
     setScanning(true);
@@ -66,10 +82,21 @@ const GenerateQR = () => {
   return (
     <div className="generate-qr-container">
       <h2>Your QR Code</h2>
-      {qrData && <QRCode value={qrData} className="qr-code" />}
+      {qrData && (
+        <QRCode
+          value={qrData}
+          className={isScanning ? "qr-code scanning" : "qr-code"}
+        />
+      )}
 
       {/* Conditionally render QR Code scanner component */}
-      {isScanning && <QrScanner onScan={handleScan} onError={handleError} style={{ width: "100%" }} />}
+      {isScanning && (
+        <QrScanner
+          onScan={handleScan}
+          onError={handleError}
+          style={{ width: "100%" }}
+        />
+      )}
 
       {/* Scan button */}
       {!isScanning && <button onClick={startScan}>Scan QR Code</button>}

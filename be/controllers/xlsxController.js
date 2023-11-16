@@ -1,6 +1,26 @@
 import { NOT_FOUND, SYSTEM_ERROR } from "../constant/HttpStatus.js";
 import ExcelJS from 'exceljs';
 import fs from 'fs';
+import AttendanceSchema from "../models/AttendanceSchema.js";
+
+async function getAttendance(year, month) {
+
+    try {
+        const query = {
+            date: {
+                $gte: new Date(year, month ? month - 1 : 0, 1, 0, 0, 0, 0),
+                $lt: new Date(year, month ? month : 12, 1, 0, 0, 0, 0),
+            },
+        };
+
+        const attendanceList = await AttendanceSchema.find(query);
+
+        return attendanceList;
+    } catch (err) {
+        console.error('Error fetching attendance data:', err);
+        throw err;
+    }
+}
 
 const columnMapping = {
     'Month': { header: 'Month', key: 'month', width: 15 },

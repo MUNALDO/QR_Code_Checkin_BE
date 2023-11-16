@@ -182,25 +182,6 @@ export const getAttendanceByTime = async (req, res, next) => {
     }
 }
 
-async function getAttendance(year, month) {
-
-    try {
-        const query = {
-            date: {
-                $gte: new Date(year, month ? month - 1 : 0, 1, 0, 0, 0, 0),
-                $lt: new Date(year, month ? month : 12, 1, 0, 0, 0, 0),
-            },
-        };
-
-        const attendanceList = await AttendanceSchema.find(query);
-
-        return attendanceList;
-    } catch (err) {
-        console.error('Error fetching attendance data:', err);
-        throw err;
-    }
-}
-
 export const scanAndUpdateAttendance = async (req, res, next) => {
     const checkInEndTime = 11;
     const checkOutEndTime = 21;

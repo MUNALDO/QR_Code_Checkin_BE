@@ -1,18 +1,11 @@
 import mongoose from "mongoose";
 
-const ScheduleSchema = new mongoose.Schema({
-    date: {
-        type: Date,
-        required: true,
-    },
-});
-
 const employeeSchema = new mongoose.Schema(
     {
         id: {
-            type: Number,
+            type: String,
             required: true,
-            // unique: true
+            unique: true
         },
         name: {
             type: String,
@@ -22,27 +15,57 @@ const employeeSchema = new mongoose.Schema(
             type: String,
             required: true,
         },
+        email: {
+            type: String,
+            required: true,
+        },
+        phone: {
+            type: String,
+            required: true,
+        },
         gender: {
             type: String,
         },
         role: {
             type: String,
+            // Nhân viên, Trưởng phòng, Trợ lý, Phó phòng, Giám đốc, Phó giám đốc,
+            // Tổng giám đốc, Phó tổng giám đốc
+            enum: ['employee', 'leader', 'assistant', 'deputy', 'manager', 'vice president',
+                'general manager', 'deputy general manager'],
             default: 'employee',
         },
-        level: {
+        department_code: {
             type: String,
-            enum: ['L1', 'L2', 'L3', 'L4', 'L5'],
-            required: true
+            // required: true
         },
-        basic_salary_per_month: {
-            type: Number,
+        department_name: {
+            type: String,
+            // required: true
+        },
+        salary_service_code: {
+            type: String,
             // required: true,
         },
-        employee_schedules: {
-            type: [ScheduleSchema]
+        grouped_work_code: {
+            type: String,
         },
-        work_days: {
-            type: Number,
+        day_off_code: {
+            type: String,
+        },
+        schedules: [
+            {
+                work_schedules: {
+                    type: String,
+                },
+                dayOff_schedules: {
+                    type: String,
+                }
+            },
+        ],
+        status: {
+            type: String,
+            enum: ['active', 'inactive'],
+            default: 'active',
         }
     },
     { timestamps: true }

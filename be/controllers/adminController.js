@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 import AdminSchema from "../models/AdminSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
+import GroupSchema from "../models/GroupSchema.js";
+import DayOffSchema from "../models/DayOffSchema.js";
 
 dotenv.config();
 
@@ -26,16 +28,60 @@ export const registerAdmin = async (req, res, next) => {
 
 export const registerEmployee = async (req, res, next) => {
     try {
-        const salt = bcrypt.genSaltSync(10)
-        const hash = bcrypt.hashSync(req.body.password, salt)
+        const salt = bcrypt.genSaltSync(10);
+        const hash = bcrypt.hashSync(req.body.password, salt);
+
+        // Validate grouped_work_code
+        if (req.body.grouped_work_code) {
+            const group = await GroupSchema.findOne({ code: req.body.grouped_work_code });
+            if (!group) {
+                res.status(BAD_REQUEST).json('Invalid grouped_work_code');
+                return;
+            }
+        }
+
+        // Validate day_off_code
+        if (req.body.day_off_code) {
+            const dayOff = await DayOffSchema.findOne({ code: req.body.day_off_code });
+            if (!dayOff) {
+                res.status(BAD_REQUEST).json('Invalid day_off_code');
+                return;
+            }
+        }
+
+        let workSchedules = '';
+        if (req.body.grouped_work_code) {
+            const group = await GroupSchema.findOne({ code: req.body.grouped_work_code });
+            if (group) {
+                workSchedules = group.shift_design
+                    .map(day => `${day.date}/${day.shift_code} `)
+                    .join('');
+            }
+        }
+
+        let dayOffSchedules = '';
+        if (req.body.day_off_code) {
+            const dayOff = await DayOffSchema.findOne({ code: req.body.day_off_code });
+            if (dayOff) {
+                dayOffSchedules = dayOff.dayOff_schedule
+                    .map(day => `${day.date}/${req.body.day_off_code}/${day.type} `)
+                    .join('');
+            }
+        }
+
         const newEmployee = new EmployeeSchema({
             ...req.body,
             password: hash,
-        })
-        await newEmployee.save()
-        res.status(CREATED).json("Employee has been created")
+            schedules: [
+                { work_schedules: workSchedules.trim() }, 
+                { dayOff_schedules: dayOffSchedules.trim() }, 
+            ],
+        });
+
+        await newEmployee.save();
+        res.status(CREATED).json(newEmployee);
     } catch (err) {
-        next(err)
+        next(err);
     }
 };
 

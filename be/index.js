@@ -2,7 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import cookieParser from 'cookie-parser';
-import { FORBIDDEN, OK, SYSTEM_ERROR } from './constant/HttpStatus.js';
+import { SYSTEM_ERROR } from './constant/HttpStatus.js';
 // import myLogger from './winstonLog/winston.js';
 import cors from 'cors';
 import adminRoute from "./routes/admin.js";
@@ -14,9 +14,6 @@ import employeeRoute from "./routes/employee.js";
 const app = express();
 dotenv.config();
 mongoose.set('strictQuery', false);
-
-// const localIpAddress = process.env.IP_ADDRESS; 
-// console.log(localIpAddress);
 
 // const wifiName = process.env.WIFI_NAME;
 

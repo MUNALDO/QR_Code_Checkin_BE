@@ -1,23 +1,23 @@
-import { CREATED, FORBIDDEN, NOT_FOUND, OK } from "../constant/HttpStatus.js";
+import { CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import DepartmentSchema from "../models/DepartmentSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
+import { createError } from "../utils/error.js";
 
 export const createDepartment = async (req, res, next) => {
     const department_code = req.body.code;
 
     try {
-        const department = await DepartmentSchema.findOne({ code: department_code });
-        if (department) {
-            res.status(FORBIDDEN).json("Department already exists", department);
-        }
-
         const newDepartment = new DepartmentSchema({
             code: department_code,
             ...req.body,
         });
 
         await newDepartment.save();
-        res.status(CREATED).json(newDepartment);
+        res.status(CREATED).json({
+            success: true,
+            status: CREATED,
+            message: newDepartment,
+        });
     } catch (err) {
         next(err);
     }
@@ -26,9 +26,7 @@ export const createDepartment = async (req, res, next) => {
 export const getAllDepartments = async (req, res, next) => {
     try {
         const departments = await DepartmentSchema.find();
-        if (!departments) {
-            res.status(NOT_FOUND).json("Not Found any department");
-        }
+        if (!departments) return next(createError(NOT_FOUND, "Department not found!"))
 
         res.status(OK).json(departments)
     } catch (err) {
@@ -40,11 +38,13 @@ export const getDepartmentByCode = async (req, res, next) => {
     const department_code = req.query.code;
     try {
         const department = await DepartmentSchema.findOne({ code: department_code });
-        if (!department) {
-            res.status(NOT_FOUND).json("Not Found any department");
-        }
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"))
 
-        res.status(OK).json(department)
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: department,
+        });
     } catch (err) {
         next(err);
     }
@@ -54,11 +54,13 @@ export const getDepartmentByName = async (req, res, next) => {
     const department_name = req.query.name;
     try {
         const department = await DepartmentSchema.findOne({ name: department_name });
-        if (!department) {
-            res.status(NOT_FOUND).json("Not Found any department");
-        }
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"))
 
-        res.status(OK).json(department)
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: department,
+        });
     } catch (err) {
         next(err);
     }
@@ -69,9 +71,7 @@ export const updateDepartment = async (req, res, next) => {
 
     try {
         const department = await DepartmentSchema.findOne({ code: department_code });
-        if (!department) {
-            res.status(NOT_FOUND).json("Not Found any department");
-        }
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"))
 
         const updateDepartment = await DepartmentSchema.findOneAndUpdate(
             department_code,
@@ -80,7 +80,11 @@ export const updateDepartment = async (req, res, next) => {
         )
 
         await updateDepartment.save();
-        res.status(OK).json(updateDepartment);
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: updateDepartment,
+        });
     } catch (err) {
         next(err);
     }
@@ -91,12 +95,14 @@ export const deleteDepartmentByCode = async (req, res, next) => {
 
     try {
         const department = await DepartmentSchema.findOne({ code: department_code });
-        if (!department) {
-            res.status(NOT_FOUND).json("Not Found any department");
-        }
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"))
 
         await DepartmentSchema.findOneAndDelete({ code: department_code });
-        res.status(OK).json("Department deleted successfully");
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: "Department was deleted successfully",
+        });
     } catch (err) {
         next(err);
     }
@@ -109,22 +115,22 @@ export const addMemberDepartment = async (req, res, next) => {
     try {
         const department = await DepartmentSchema.findOne({ code: department_code });
 
-        if (!department) {
-            res.status(NOT_FOUND).json("Not Found any department");
-        }
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"))
 
         const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) {
-            res.status(NOT_FOUND).json("Not Found any employee");
-        }
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
 
         // Add the employee ID to the members array
         department.members.push(employeeID);
 
         // Save the updated department
-        const updatedDepartment = await department.save();
+        const updateDepartment = await department.save();
 
-        res.status(OK).json(updatedDepartment);
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: updateDepartment,
+        });
     } catch (err) {
         next(err);
     }

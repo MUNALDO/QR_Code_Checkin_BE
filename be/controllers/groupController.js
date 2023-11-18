@@ -1,19 +1,14 @@
-import { CREATED, FORBIDDEN, NOT_FOUND, OK } from "../constant/HttpStatus.js";
+import { CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import GroupSchema from "../models/GroupSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";
+import { createError } from "../utils/error.js";
 
 export const createGroup = async (req, res, next) => {
-    const group_code = req.body.code; 
+    const group_code = req.body.code;
     const shift_design = req.body.shift_design;
 
     try {
-        const group = await GroupSchema.findOne({ code: group_code });
-        if (group) {
-            res.status(FORBIDDEN).json("Group already exists");
-            return;
-        }
-
         const newGroup = new GroupSchema({
             code: group_code,
             name: req.body.name,
@@ -21,19 +16,23 @@ export const createGroup = async (req, res, next) => {
             shift_design: shift_design.map(day => ({
                 date: day.date,
                 shift_code: day.shift_code,
-                time_range: [] 
+                time_slot: []
             })),
         });
 
         for (const day of newGroup.shift_design) {
             const shift = await ShiftSchema.findOne({ code: day.shift_code });
             if (shift) {
-                day.time_range = shift.time_range;
+                day.time_slot = shift.time_slot;
             }
         }
 
         await newGroup.save();
-        res.status(CREATED).json(newGroup);
+        res.status(CREATED).json({
+            success: true,
+            status: CREATED,
+            message: newGroup,
+        });
     } catch (err) {
         next(err);
     }
@@ -42,11 +41,13 @@ export const createGroup = async (req, res, next) => {
 export const getAllGroups = async (req, res, next) => {
     try {
         const groups = await GroupSchema.find();
-        if (!groups) {
-            res.status(NOT_FOUND).json("Not Found any group");
-        }
+        if (!groups) return next(createError(NOT_FOUND, "Group not found!"))
 
-        res.status(OK).json(groups)
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: groups,
+        });
     } catch (err) {
         next(err);
     }
@@ -56,11 +57,13 @@ export const getGroupByCode = async (req, res, next) => {
     const group_code = req.query.code;
     try {
         const group = await GroupSchema.findOne({ code: group_code });
-        if (!group) {
-            res.status(NOT_FOUND).json("Not Found any group");
-        }
+        if (!group) return next(createError(NOT_FOUND, "Group not found!"))
 
-        res.status(OK).json(group)
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: group,
+        });
     } catch (err) {
         next(err);
     }
@@ -70,11 +73,13 @@ export const getGroupByName = async (req, res, next) => {
     const group_name = req.query.name;
     try {
         const group = await GroupSchema.findOne({ name: group_name });
-        if (!group) {
-            res.status(NOT_FOUND).json("Not Found any group");
-        }
+        if (!group) return next(createError(NOT_FOUND, "Group not found!"))
 
-        res.status(OK).json(group)
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: group,
+        });
     } catch (err) {
         next(err);
     }
@@ -85,9 +90,7 @@ export const updateGroup = async (req, res, next) => {
 
     try {
         const group = await GroupSchema.findOne({ code: group_code });
-        if (!group) {
-            res.status(NOT_FOUND).json("Not Found any group");
-        }
+        if (!group) return next(createError(NOT_FOUND, "Group not found!"))
 
         const updateGroup = await GroupSchema.findOneAndUpdate(
             group_code,
@@ -96,7 +99,11 @@ export const updateGroup = async (req, res, next) => {
         )
 
         await updateGroup.save();
-        res.status(OK).json(updateGroup);
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: updateGroup,
+        });
     } catch (err) {
         next(err);
     }
@@ -107,12 +114,14 @@ export const deleteGroupByCode = async (req, res, next) => {
 
     try {
         const group = await GroupSchema.findOne({ code: group_code });
-        if (!group) {
-            res.status(NOT_FOUND).json("Not Found any group");
-        }
+        if (!group) return next(createError(NOT_FOUND, "Group not found!"))
 
         await GroupSchema.findOneAndDelete({ code: group_code });
-        res.status(OK).json("Group deleted successfully");
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: "Group deleted successfully",
+        });
     } catch (err) {
         next(err);
     }
@@ -124,23 +133,22 @@ export const addMemberGroup = async (req, res, next) => {
 
     try {
         const group = await GroupSchema.findOne({ code: group_code });
-
-        if (!group) {
-            res.status(NOT_FOUND).json("Not Found any group");
-        }
+        if (!group) return next(createError(NOT_FOUND, "Group not found!"))
 
         const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) {
-            res.status(NOT_FOUND).json("Not Found any employee");
-        }
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
 
         // Add the employee ID to the members array
         group.members.push(employeeID);
 
         // Save the updated group
-        const updatedGroup = await group.save();
+        const updateGroup = await group.save();
 
-        res.status(OK).json(updatedGroup);
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: updateGroup,
+        });
     } catch (err) {
         next(err);
     }

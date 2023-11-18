@@ -12,7 +12,30 @@ const shiftSchema = new mongoose.Schema(
             unique: true,
             required: true
         },
-        time_range: [String],
+        time_slot: {
+            total_number: {
+                type: Number,
+            },
+            time_check: {
+                type: Number,
+            },
+            detail: [
+                {
+                    number: {
+                        type: Number,
+                    },
+                    start_time: {
+                        type: String,
+                    },
+                    end_time: {
+                        type: String,
+                    },
+                    value: {
+                        type: Number,
+                    }
+                }
+            ]
+        },
         shift_type: {
             type: String,
             enum: ['default', 'custom'],

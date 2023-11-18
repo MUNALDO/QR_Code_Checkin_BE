@@ -28,7 +28,9 @@ const groupSchema = new mongoose.Schema(
                     type: String,
                     required: true
                 },
-                time_range: [String]
+                time_slot: {
+                    type: String,
+                }
             }
         ],
         members: [],

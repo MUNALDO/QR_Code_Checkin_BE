@@ -20,68 +20,13 @@ export const registerAdmin = async (req, res, next) => {
             password: hash,
         })
         await newAdmin.save()
-        res.status(CREATED).json("Admin has been created")
+        res.status(CREATED).json({
+            success: true,
+            status: CREATED,
+            message: newAdmin,
+        });
     } catch (err) {
         next(err)
-    }
-};
-
-export const registerEmployee = async (req, res, next) => {
-    try {
-        const salt = bcrypt.genSaltSync(10);
-        const hash = bcrypt.hashSync(req.body.password, salt);
-
-        // Validate grouped_work_code
-        if (req.body.grouped_work_code) {
-            const group = await GroupSchema.findOne({ code: req.body.grouped_work_code });
-            if (!group) {
-                res.status(BAD_REQUEST).json('Invalid grouped_work_code');
-                return;
-            }
-        }
-
-        // Validate day_off_code
-        if (req.body.day_off_code) {
-            const dayOff = await DayOffSchema.findOne({ code: req.body.day_off_code });
-            if (!dayOff) {
-                res.status(BAD_REQUEST).json('Invalid day_off_code');
-                return;
-            }
-        }
-
-        let workSchedules = '';
-        if (req.body.grouped_work_code) {
-            const group = await GroupSchema.findOne({ code: req.body.grouped_work_code });
-            if (group) {
-                workSchedules = group.shift_design
-                    .map(day => `${day.date}/${day.shift_code} `)
-                    .join('');
-            }
-        }
-
-        let dayOffSchedules = '';
-        if (req.body.day_off_code) {
-            const dayOff = await DayOffSchema.findOne({ code: req.body.day_off_code });
-            if (dayOff) {
-                dayOffSchedules = dayOff.dayOff_schedule
-                    .map(day => `${day.date}/${req.body.day_off_code}/${day.type} `)
-                    .join('');
-            }
-        }
-
-        const newEmployee = new EmployeeSchema({
-            ...req.body,
-            password: hash,
-            schedules: [
-                { work_schedules: workSchedules.trim() }, 
-                { dayOff_schedules: dayOffSchedules.trim() }, 
-            ],
-        });
-
-        await newEmployee.save();
-        res.status(CREATED).json(newEmployee);
-    } catch (err) {
-        next(err);
     }
 };
 
@@ -112,14 +57,145 @@ export const loginAdmin = async (req, res, next) => {
 
 export const logoutAdmin = (req, res, next) => {
     res.clearCookie("access_token_admin")
-        .status(OK).
-        json("Admin has been successfully logged out.");
+        .status(OK)
+        .json("Admin has been successfully logged out.");
+};
+
+export const registerEmployee = async (req, res, next) => {
+    try {
+        const salt = bcrypt.genSaltSync(10);
+        const hash = bcrypt.hashSync(req.body.password, salt);
+
+        // Validate grouped_work_code
+        if (req.body.grouped_work_code) {
+            const group = await GroupSchema.findOne({ code: req.body.grouped_work_code });
+            if (!group) return next(createError(BAD_REQUEST, "Invalid grouped work code"))
+        }
+
+        // Validate day_off_code
+        if (req.body.day_off_code) {
+            const dayOff = await DayOffSchema.findOne({ code: req.body.day_off_code });
+            if (!dayOff) return next(createError(BAD_REQUEST, "Invalid day off code"))
+        }
+
+        const group = await GroupSchema.findOne({ code: req.body.grouped_work_code });
+        const dayOff = await DayOffSchema.findOne({ code: req.body.day_off_code });
+
+        let workSchedules = '';
+        if (req.body.grouped_work_code) {
+            const group = await GroupSchema.findOne({ code: req.body.grouped_work_code });
+            if (group) {
+                workSchedules = group.shift_design
+                    .map(day => `${day.date}/${day.shift_code} `)
+                    .join('');
+            }
+        }
+
+        let dayOffSchedules = '';
+        if (req.body.day_off_code) {
+            const dayOff = await DayOffSchema.findOne({ code: req.body.day_off_code });
+            if (dayOff) {
+                dayOffSchedules = dayOff.dayOff_schedule
+                    .map(day => `${day.date}/${req.body.day_off_code}/${day.type} `)
+                    .join('');
+            }
+        }
+
+        const newEmployee = new EmployeeSchema({
+            ...req.body,
+            password: hash,
+            schedules: [
+                { work_schedules: workSchedules.trim() },
+                { dayOff_schedules: dayOffSchedules.trim() },
+            ],
+        });
+
+        group.members.push(newEmployee.id);
+        dayOff.members.push(newEmployee.id);
+        await group.save();
+        await dayOff.save();
+        await newEmployee.save();
+        res.status(CREATED).json({
+            success: true,
+            status: CREATED,
+            message: newEmployee,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const updateEmployee = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+
+    try {
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+
+        const updateEmployee = await EmployeeSchema.findOneAndUpdate(
+            employeeID,
+            { $set: req.body },
+            { $new: true },
+        )
+
+        await updateEmployee.save();
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: updateEmployee,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const deleteEmployeeById = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+
+    try {
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+
+        await GroupSchema.updateOne({
+            code: employee.grouped_work_code
+        },
+            {
+                $pull: {
+                    "members": employeeID,
+                }
+            }
+        );
+
+        await DayOffSchema.updateOne({
+            code: employee.day_off_code
+        },
+            {
+                $pull: {
+                    "members": employeeID,
+                }
+            }
+        );
+
+        await EmployeeSchema.findOneAndDelete({ id: employeeID });
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: "Employee deleted successfully",
+        });
+    } catch (err) {
+        next(err);
+    }
 };
 
 export const getAllEmployees = async (req, res, next) => {
     try {
         const employee = await EmployeeSchema.find();
-        res.status(OK).json(employee);
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: employee,
+        });
     } catch (err) {
         next(err);
     }
@@ -130,7 +206,11 @@ export const getEmployeeById = async (req, res, next) => {
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
-        res.status(OK).json(employee);
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: employee,
+        });
     } catch (err) {
         next(err);
     }
@@ -141,7 +221,11 @@ export const getEmployeeByName = async (req, res, next) => {
     try {
         const employee = await EmployeeSchema.find({ name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
-        res.status(OK).json(employee);
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: employee,
+        });
     } catch (err) {
         next(err);
     }
@@ -198,7 +282,11 @@ export const getEmployeeSchedule = async (req, res, next) => {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
 
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
-        res.status(OK).json(employee.schedules);
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: employee.schedules,
+        });
     } catch (err) {
         next(err);
     }

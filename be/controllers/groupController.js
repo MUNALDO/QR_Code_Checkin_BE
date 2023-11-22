@@ -16,13 +16,15 @@ export const createGroup = async (req, res, next) => {
             shift_design: shift_design.map(day => ({
                 date: day.date,
                 shift_code: day.shift_code,
-                time_slot: []
+                // time_slot
             })),
         });
 
-        for (const day of newGroup.shift_design) {
+         // Populate time_slot based on the shift_code
+         for (const day of newGroup.shift_design) {
             const shift = await ShiftSchema.findOne({ code: day.shift_code });
             if (shift) {
+                // console.log(shift.time_slot);
                 day.time_slot = shift.time_slot;
             }
         }

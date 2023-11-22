@@ -21,6 +21,9 @@ const dayOffSchema = new mongoose.Schema(
                     type: String,
                     enum: ['day-off', 'holiday'],
                     default: 'day-off'
+                },
+                name: {
+                    type: String,
                 }
             }
         ],

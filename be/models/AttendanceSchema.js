@@ -6,33 +6,9 @@ const attendanceSchema = new mongoose.Schema(
             type: Date,
             required: true,
         },
-        isChecked: {
-            check_in: {
-                type: Boolean,
-                default: false,
-            },
-            check_out: {
-                type: Boolean,
-                default: false,
-            },
-            check_in_time: {
-                type: String,
-                default: null,
-            },
-            check_out_time: {
-                type: String,
-                default: null,
-            },
-            check_in_status: {
-                type: String,
-                enum: ['on time', 'late', 'missing'],
-                default: null,
-            },
-            check_out_status: {
-                type: String,
-                enum: ['on time', 'late', 'missing'],
-                default: null,
-            },
+        weekday: {
+            type: String,
+            enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
         },
         employee_id: {
             type: Number,
@@ -41,6 +17,48 @@ const attendanceSchema = new mongoose.Schema(
         employee_name: {
             type: String,
             required: true,
+        },
+        role: {
+            type: String,
+        },
+        department_code: {
+            type: String,
+        },
+        department_name: {
+            type: String,
+        },
+        grouped_work_code: {
+            type: String,
+        },
+        day_off_code: {
+            type: String,
+        },
+        shift_info: {
+            shift_code: {
+                type: String,
+            },
+            time_slot: {
+                check_in: {
+                    type: Boolean,
+                },
+                check_in_time: {
+                    type: String,
+                },
+                check_in_status: {
+                    type: String,
+                    enum: ['on time', 'missing']
+                },
+                check_out: {
+                    type: Boolean,
+                },
+                check_out_time: {
+                    type: String,
+                },
+                check_out_status: {
+                    type: String,
+                    enum: ['on time', 'missing']
+                },
+            }
         },
         note: {
             type: String,

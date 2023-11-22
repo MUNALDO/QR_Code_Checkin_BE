@@ -81,32 +81,12 @@ export const registerEmployee = async (req, res, next) => {
         const group = await GroupSchema.findOne({ code: req.body.grouped_work_code });
         const dayOff = await DayOffSchema.findOne({ code: req.body.day_off_code });
 
-        let workSchedules = '';
-        if (req.body.grouped_work_code) {
-            const group = await GroupSchema.findOne({ code: req.body.grouped_work_code });
-            if (group) {
-                workSchedules = group.shift_design
-                    .map(day => `${day.date}/${day.shift_code} `)
-                    .join('');
-            }
-        }
-
-        let dayOffSchedules = '';
-        if (req.body.day_off_code) {
-            const dayOff = await DayOffSchema.findOne({ code: req.body.day_off_code });
-            if (dayOff) {
-                dayOffSchedules = dayOff.dayOff_schedule
-                    .map(day => `${day.date}/${req.body.day_off_code}/${day.type} `)
-                    .join('');
-            }
-        }
-
         const newEmployee = new EmployeeSchema({
             ...req.body,
             password: hash,
             schedules: [
-                { work_schedules: workSchedules.trim() },
-                { dayOff_schedules: dayOffSchedules.trim() },
+                { work_schedules: group.shift_design },
+                { dayOff_schedules: dayOff.dayOff_schedule },
             ],
         });
 
@@ -226,50 +206,6 @@ export const getEmployeeByName = async (req, res, next) => {
             status: OK,
             message: employee,
         });
-    } catch (err) {
-        next(err);
-    }
-};
-
-export const createSchedule = async (req, res, next) => {
-    const employeeID = req.query.employeeID;
-    const newSchedule = req.body.newSchedule;
-
-    try {
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
-
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
-
-        const currentTime = new Date();
-        const scheduleDate = new Date(newSchedule.date);
-
-        if (scheduleDate <= currentTime) {
-            res
-                .status(BAD_REQUEST)
-                .json("Cannot create a past time schedule");
-            return;
-        }
-
-        const existingSchedule = employee.employee_schedules.find(
-            (schedule) =>
-                schedule.date.toISOString() === scheduleDate.toISOString()
-        );
-
-        if (existingSchedule) {
-            res
-                .status(BAD_REQUEST)
-                .json(`Schedule already exists for ${newSchedule.date}`);
-            return;
-        }
-
-        const newScheduleEntry = {
-            date: scheduleDate,
-        };
-
-        employee.employee_schedules.push(newScheduleEntry);
-
-        const updatedEmployee = await employee.save();
-        res.status(OK).json(updatedEmployee);
     } catch (err) {
         next(err);
     }

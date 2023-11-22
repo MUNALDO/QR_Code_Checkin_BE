@@ -29,7 +29,7 @@ const groupSchema = new mongoose.Schema(
                     required: true
                 },
                 time_slot: {
-                    type: String,
+                    type: Object,
                 }
             }
         ],

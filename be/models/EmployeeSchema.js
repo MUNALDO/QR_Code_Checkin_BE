@@ -55,10 +55,10 @@ const employeeSchema = new mongoose.Schema(
         schedules: [
             {
                 work_schedules: {
-                    type: String,
+                    type: Object,
                 },
                 dayOff_schedules: {
-                    type: String,
+                    type: Array,
                 }
             },
         ],

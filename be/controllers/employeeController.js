@@ -1,10 +1,12 @@
-import { BAD_REQUEST, NOT_FOUND, OK } from "../constant/HttpStatus.js";
+import { BAD_REQUEST, CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import dotenv from 'dotenv';
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
 import { createError } from "../utils/error.js";
+import GroupSchema from "../models/GroupSchema.js";
+import DayOffSchema from "../models/DayOffSchema.js";
 
 dotenv.config();
 
@@ -39,74 +41,51 @@ export const logoutEmployee = (req, res, next) => {
         json("Employee has been successfully logged out.");
 };
 
-export const createSchedule = async (req, res, next) => {
-    const employeeID = req.query.employeeID;
-    const newSchedule = req.body.newSchedule;
-
-    try {
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
-
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
-
-        const currentTime = new Date();
-        const scheduleDate = new Date(newSchedule.date);
-
-        if (scheduleDate <= currentTime) {
-            res
-                .status(BAD_REQUEST)
-                .json("Cannot create a past time schedule");
-            return;
-        }
-
-        const existingSchedule = employee.employee_schedules.find(
-            (schedule) =>
-                schedule.date.toISOString() === scheduleDate.toISOString()
-        );
-
-        if (existingSchedule) {
-            res
-                .status(BAD_REQUEST)
-                .json(`Schedule already exists for ${newSchedule.date}`);
-            return;
-        }
-
-        const newScheduleEntry = {
-            date: scheduleDate,
-        };
-
-        employee.employee_schedules.push(newScheduleEntry);
-
-        const updatedEmployee = await employee.save();
-        res.status(OK).json(updatedEmployee);
-    } catch (err) {
-        next(err);
-    }
-};
-
 export const checkAttendance = async (req, res, next) => {
     const { employeeID } = req.body;
 
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
-
         if (!employee) return next(createError(NOT_FOUND, "Employee not found"))
 
         const currentTime = new Date();
         const date = currentTime.toLocaleDateString();
-        const hour = currentTime.getHours();
-        const minutes = currentTime.getMinutes();
+        const weekday = currentTime.getDay();
+        const day = currentTime.getDate();
+        const month = currentTime.getMonth() + 1;
 
-        // Determine whether it's check-in or check-out based on the current time
-        let shift = '';
-        if (hour >= 8 && hour <= 15) {
-            shift = 'check_in';
-        } else if (hour >= 17 && hour <= 22) {
-            shift = 'check_out';
-        } else {
-            return next(createError(BAD_REQUEST, "Not within shift hour!"))
+        // Format day and month as two-digit strings
+        const formattedDay = day < 10 ? `0${day}` : day.toString();
+        const formattedMonth = month < 10 ? `0${month}` : month.toString();
+
+        const dayAndMonth = `${formattedDay}/${formattedMonth}`;
+        console.log(dayAndMonth);
+
+        const getDayString = (weekday) => {
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            return days[weekday];
+        };
+
+        // check day off
+        const dayOff_code = employee.day_off_code;
+        const dayOff_schedules = await DayOffSchema.findOne({ code: dayOff_code });
+        const dayOffByDate = dayOff_schedules.dayOff_schedule.map(day_off => day_off.date === dayAndMonth);
+        const dayOffByWeekDay = dayOff_schedules.dayOff_schedule.map(day_off => day_off.date === getDayString(weekday));
+        if (dayOffByDate || dayOffByWeekDay) {
+            return res.status(BAD_REQUEST).json({
+                success: true,
+                status: BAD_REQUEST,
+                message: "You can not check in or check out in day off",
+            });
         }
 
-        // console.log(shift);
+        const group_code = employee.grouped_work_code;
+        const group = await GroupSchema.findOne({ code: group_code });
+        const dayShift = group.shift_design.find(day => day.date === getDayString(weekday));
+        if (!dayShift) return next(createError(NOT_FOUND, 'Shift not found for the current day'));
+
+        const shift_code = dayShift.shift_code;
+        const time_slot = dayShift.time_slot;
 
         const existingAttendance = await AttendanceSchema.findOne({
             employee_id: employee.id,
@@ -116,99 +95,147 @@ export const checkAttendance = async (req, res, next) => {
             },
         });
 
-        // console.log(existingAttendance);
-
         if (!existingAttendance) {
-            if (shift == 'check_out') {
-                res.status(BAD_REQUEST).json({ error: 'You need to check in before checking out' });
-                return;
-            }
-            if ((hour >= 8 && hour < 9) || hour == 9) {
-                // const totalSalary = employee.salary_per_hour * 5;
-                const status = 'on time';
-                // console.log(status);
-                const attendanceRecord = new AttendanceSchema({
-                    date: date,
-                    isChecked: {
-                        [shift]: true,
-                        [`${shift}_time`]: `${hour}:${minutes < 10 ? '0' : ''}${minutes}`,
-                        [`${shift}_status`]: status,
-                    },
-                    employee_id: employee.id,
-                    employee_name: employee.name,
-                    // total_salary: totalSalary,
-                });
-                const saveAttend = await attendanceRecord.save();
-                return res.status(OK).json({ success: `${shift} recorded successfully`, saveAttend });
-            } else if ((hour > 10 && hour < 12) || hour == 12) {
-                const status = 'missing';
-                // console.log(status);
-                const attendanceRecord = new AttendanceSchema({
-                    date: date,
-                    isChecked: {
-                        [shift]: false,
-                        [`${shift}_time`]: `${hour}:${minutes < 10 ? '0' : ''}${minutes}`,
-                        [`${shift}_status`]: status,
-                    },
-                    employee_id: employee.id,
-                    employee_name: employee.name,
-                    // total_salary,
-                });
-                const saveAttend = await attendanceRecord.save();
-                return res.status(OK).json({ success: `${shift} recorded successfully`, saveAttend });
-            } else if ((hour > 9 && hour < 10) || hour == 10) {
-                // const totalSalary = employee.salary_per_hour * 5;
-                const status = 'late';
-                // console.log(status);
-                const attendanceRecord = new AttendanceSchema({
-                    date: date,
-                    isChecked: {
-                        [shift]: true,
-                        [`${shift}_time`]: `${hour}:${minutes < 10 ? '0' : ''}${minutes}`,
-                        [`${shift}_status`]: status,
-                    },
-                    employee_id: employee.id,
-                    employee_name: employee.name,
-                    // total_salary: totalSalary,
-                });
-                const saveAttend = await attendanceRecord.save();
-                return res.status(OK).json({ success: `${shift} recorded successfully`, saveAttend });
-            }
-        }
+            // only check in
+            const newAttendance = new AttendanceSchema({
+                date: date,
+                weekday: getDayString(weekday),
+                employee_id: employeeID,
+                employee_name: employee.name,
+                role: employee.role,
+                department_code: employee.department_code,
+                department_name: employee.department_name,
+                grouped_work_code: employee.grouped_work_code,
+                day_off_code: employee.day_off_code,
+                shift_info: {
+                    shift_code: shift_code
+                }
+            });
+            const [startHours, startMinutes] = time_slot.detail[0].start_time.split(':').map(Number);
+            const startTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), startHours, startMinutes);
+            // Calculate startTime - 30 minutes
+            const startTimeMinus30 = new Date(startTime);
+            startTimeMinus30.setMinutes(startTime.getMinutes() - 30);
 
-        if (existingAttendance) {
-            if (existingAttendance.isChecked[shift]) {
-                // Trying to check in or check out twice on the same shift
-                res.status(BAD_REQUEST).json({ error: `${shift} already recorded today` });
-                return;
+            // Calculate startTime + 30 minutes
+            const startTimePlus30 = new Date(startTime);
+            startTimePlus30.setMinutes(startTime.getMinutes() + 30);
+            if (currentTime > startTimeMinus30 && currentTime < startTimePlus30) {
+                // check in on time
+                newAttendance.shift_info.time_slot.check_in = true;
+                newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
+                newAttendance.shift_info.time_slot.check_in_status = 'on time';
+                await newAttendance.save();
+                return res.status(CREATED).json({
+                    success: true,
+                    status: CREATED,
+                    message: newAttendance,
+                });
+            } else if (currentTime > startTimePlus30) {
+                // check in late
+                newAttendance.shift_info.time_slot.check_in = false;
+                newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
+                newAttendance.shift_info.time_slot.check_in_status = 'missing';
+                await newAttendance.save();
+                return res.status(CREATED).json({
+                    success: true,
+                    status: CREATED,
+                    message: newAttendance,
+                });
+            } else if (currentTime < startTimeMinus30) {
+                // check in too soon
+                return res.status(BAD_REQUEST).json({
+                    success: false,
+                    status: BAD_REQUEST,
+                    message: "You can not check in at this time",
+                });
             }
+        } else {
+            // only check out
+            if (existingAttendance.shift_info.time_slot.check_in != true) {
+                return res.status(BAD_REQUEST).json({
+                    success: false,
+                    status: BAD_REQUEST,
+                    message: "You haven't check in yet",
+                });
+            } else {
+                if (time_slot.total_number == 1) {
+                    const [endHours, endMinutes] = time_slot.detail[0].end_time.split(':').map(Number);
+                    const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
 
-            // Check-out logic
-            if (hour > 20 && hour < 21 || (hour == 20)) {
-                // Late check-out
-                existingAttendance.isChecked.check_out = true;
-                // existingAttendance.total_salary += employee.salary_per_hour * 5;
-                existingAttendance.isChecked.check_out_status = 'late';
-                existingAttendance.isChecked.check_out_time = `${hour}:${minutes < 10 ? '0' : ''}${minutes}`;
-                const updateCheckOut = await existingAttendance.save();
-                return res.status(OK).json({ success: `${shift} update successfully`, updateCheckOut });
-            } else if ((hour > 17 && hour < 20) || (hour == 17)) {
-                // On-time check-out
-                existingAttendance.isChecked.check_out = true;
-                // existingAttendance.total_salary += employee.salary_per_hour * 5;
-                existingAttendance.isChecked.check_out_status = 'on time';
-                existingAttendance.isChecked.check_out_time = `${hour}:${minutes < 10 ? '0' : ''}${minutes}`;
-                const updateCheckOut = await existingAttendance.save();
-                return res.status(OK).json({ success: `${shift} update successfully`, updateCheckOut });
-            } else if (hour > 21 || hour == 21) {
-                // Missing check-out
-                existingAttendance.isChecked.check_out = false;
-                existingAttendance.isChecked.check_out_status = 'missing';
-                existingAttendance.isChecked.check_out_time = `${hour}:${minutes < 10 ? '0' : ''}${minutes}`;
-                const updateCheckOut = await existingAttendance.save();
-                return res.status(OK).json({ success: `${shift} update successfully`, updateCheckOut });
+                    // Calculate endTime + 2 hours
+                    const endTimePlus2 = new Date(endTime);
+                    endTimePlus2.setHours(endTime.getHours() + 2);
+                    if (currentTime > endTime && currentTime < endTimePlus2) {
+                        // check out on time
+                        existingAttendance.shift_info.time_slot.check_out = true;
+                        existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
+                        existingAttendance.shift_info.time_slot.check_out_status = 'on time';
+                        await existingAttendance.save();
+                        return res.status(OK).json({
+                            success: true,
+                            status: OK,
+                            message: existingAttendance,
+                        });
+                    } else if (currentTime > endTimePlus2) {
+                        // check out late
+                        existingAttendance.shift_info.time_slot.check_out = false;
+                        existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
+                        existingAttendance.shift_info.time_slot.check_out_status = 'missing';
+                        await existingAttendance.save();
+                        return res.status(OK).json({
+                            success: true,
+                            status: OK,
+                            message: existingAttendance,
+                        });
+                    } else if (currentTime < endTime) {
+                        // check out too soon
+                        return res.status(BAD_REQUEST).json({
+                            success: false,
+                            status: BAD_REQUEST,
+                            message: "You can not check out at this time",
+                        });
+                    }
+                } else if (time_slot.total_number == 2) {
+                    const [endHours, endMinutes] = time_slot.detail[1].end_time.split(':').map(Number);
+                    const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
+
+                    // Calculate endTime + 2 hours
+                    const endTimePlus2 = new Date(endTime);
+                    endTimePlus2.setMinutes(endTime.getHours() + 2);
+                    if (currentTime > endTime && currentTime < endTimePlus2) {
+                        // check out on time
+                        existingAttendance.shift_info.time_slot.check_out = true;
+                        existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
+                        existingAttendance.shift_info.time_slot.check_out_status = 'on time';
+                        await existingAttendance.save();
+                        return res.status(OK).json({
+                            success: true,
+                            status: OK,
+                            message: existingAttendance,
+                        });
+                    } else if (currentTime > endTimePlus2) {
+                        // check out late
+                        existingAttendance.shift_info.time_slot.check_out = false;
+                        existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
+                        existingAttendance.shift_info.time_slot.check_out_status = 'missing';
+                        await existingAttendance.save();
+                        return res.status(OK).json({
+                            success: true,
+                            status: OK,
+                            message: existingAttendance,
+                        });
+                    } else if (currentTime < endTime) {
+                        // check out too soon
+                        return res.status(BAD_REQUEST).json({
+                            success: false,
+                            status: BAD_REQUEST,
+                            message: "You can not check out at this time",
+                        });
+                    }
+                }
             }
-        }
+        };
     } catch (err) {
         next(err);
     }

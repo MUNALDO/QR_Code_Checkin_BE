@@ -25,15 +25,16 @@ async function getAttendance(year, month) {
 const columnMapping = {
     'Month': { header: 'Month', key: 'month', width: 15 },
     'Date': { header: 'Date', key: 'date', width: 15 },
+    'Weekday': { header: 'Weekday', key: 'weekday', width: 15 },
     'Employee ID': { header: 'Employee ID', key: 'employee_id', width: 15 },
     'Employee Name': { header: 'Employee Name', key: 'employee_name', width: 20 },
+    'Shift Code': { header: 'Shift Code', key: 'shift_code', width: 15 },
     'Check In': { header: 'Check In', key: 'check_in', width: 15 },
     'Check In Status': { header: 'Check In Status', key: 'check_in_status', width: 15 },
     'Check In Time': { header: 'Check In Time', key: 'check_in_time', width: 15 },
     'Check Out': { header: 'Check Out', key: 'check_out', width: 15 },
     'Check Out Status': { header: 'Check Out Status', key: 'check_out_status', width: 15 },
     'Check Out Time': { header: 'Check Out Time', key: 'check_out_time', width: 15 },
-    // 'Total Salary': { header: 'Total Salary', key: 'total_salary', width: 15 },
 };
 
 export const exportAttendanceToExcel = async (req, res, next) => {
@@ -66,15 +67,16 @@ export const exportAttendanceToExcel = async (req, res, next) => {
         const defaultColumns = [
             { header: 'Month', key: 'month', width: 15 },
             { header: 'Date', key: 'date', width: 15 },
+            { header: 'Weekday', key: 'weekday', width: 15 },
             { header: 'Employee ID', key: 'employee_id', width: 15 },
             { header: 'Employee Name', key: 'employee_name', width: 20 },
+            { header: 'Shift Code', key: 'shift_code', width: 15 },
             { header: 'Check In', key: 'check_in', width: 15 },
             { header: 'Check In Status', key: 'check_in_status', width: 15 },
             { header: 'Check In Time', key: 'check_in_time', width: 15 },
             { header: 'Check Out', key: 'check_out', width: 15 },
             { header: 'Check Out Status', key: 'check_out_status', width: 15 },
             { header: 'Check Out Time', key: 'check_out_time', width: 15 },
-            // { header: 'Total Salary', key: 'total_salary', width: 15 },
         ];
 
         // Determine the columns to export based on user input or use default columns
@@ -91,20 +93,22 @@ export const exportAttendanceToExcel = async (req, res, next) => {
                 try {
                     dateData.attendanceList.forEach((attendance, index) => {
                         const date = new Date(attendance.date);
-                        const checkIn = attendance.isChecked.check_in ? 'Yes' : 'No';
-                        const checkOut = attendance.isChecked.check_out ? 'Yes' : 'No';
+                        const shiftCode = attendance.shift_info.shift_cpde;
+                        const checkIn = attendance.shift_info.time_slot.check_in ? 'Yes' : 'No';
+                        const checkOut = attendance.shift_info.time_slot.check_out ? 'Yes' : 'No';
                         const rowData = {
                             month: index === 0 ? date.getUTCMonth() + 1 : null,
                             date: index === 0 ? date.toLocaleDateString().split('T')[0] : null,
+                            weekday: attendance.weekday,
                             employee_id: attendance.employee_id,
                             employee_name: attendance.employee_name,
+                            shift_code: shiftCode,
                             check_in: checkIn,
-                            check_in_status: attendance.isChecked.check_in_status,
-                            check_in_time: attendance.isChecked.check_in_time || 'N/A',
+                            check_in_status: attendance.shift_info.time_slot.check_in_status,
+                            check_in_time: attendance.shift_info.time_slot.check_in_time || 'N/A',
                             check_out: checkOut,
-                            check_out_status: attendance.isChecked.check_out_status || 'N/A',
-                            check_out_time: attendance.isChecked.check_out_time || 'N/A',
-                            // total_salary: attendance.total_salary,
+                            check_out_status: attendance.shift_info.time_slot.check_out_status || 'N/A',
+                            check_out_time: attendance.shift_info.time_slot.check_out_time || 'N/A',
                         };
                         worksheet.addRow(rowData);
                     });

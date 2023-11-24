@@ -41,6 +41,7 @@ router.get('/manage-employee/get-employee-byId', verifyTokenAdmin, getEmployeeBy
 router.get('/manage-employee/get-employee-byName', verifyTokenAdmin, getEmployeeByName);
 router.get('/manage-employee/get-employee-byRole', verifyTokenAdmin, getEmployeeByRole);
 router.get('/manage-employee/get-schedule', verifyTokenAdmin, getEmployeeSchedule);
+router.get('/manage-employee/export-attendance', verifyTokenAdmin, exportAttendanceToExcel);
 
 // department
 router.post('/department/create-department', verifyTokenAdmin, createDepartment);
@@ -82,7 +83,6 @@ router.put('/day-off/update', verifyTokenAdmin, updateDayOff);
 router.put('/day-off/add-member', verifyTokenAdmin, addMemberDayOff);
 
 router.get('/get-attendance', verifyTokenAdmin, getAttendanceByTime);
-router.get('/export-attendance', verifyTokenAdmin, exportAttendanceToExcel);
 router.post('/scan-attendance', verifyTokenAdmin, scanAndUpdateAttendance);
 
 router.post('/salary-calculate', verifyTokenAdmin, salaryCalculate);

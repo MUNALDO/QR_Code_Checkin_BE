@@ -1,4 +1,4 @@
-import { CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
+import { CONFLICT, CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import DayOffSchema from "../models/DayOffSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import { createError } from "../utils/error.js";
@@ -118,22 +118,26 @@ export const addMemberDayOff = async (req, res, next) => {
 
     try {
         const day_off = await DayOffSchema.findOne({ code: dayOff_code });
-
         if (!day_off) return next(createError(NOT_FOUND, "Day off not found!"))
 
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
 
+        if (day_off.members.includes(employeeID)) return next(createError(CONFLICT, "Employee already exists in the day off!"));
+
         // Add the employee ID to the members array
         day_off.members.push(employeeID);
+        employee.day_off_code = dayOff_code;
+        employee.schedules.map(schedule => schedule.dayOff_schedules) = day_off.dayOff_schedule;
 
         // Save the updated day_off
         const updateDayOff = await day_off.save();
+        const updateEmployee = await day_off.save();
 
         res.status(OK).json({
             success: true,
             status: OK,
-            message: updateDayOff,
+            message: updateDayOff, updateEmployee
         });
     } catch (err) {
         next(err);

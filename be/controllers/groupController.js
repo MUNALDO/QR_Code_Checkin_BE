@@ -1,4 +1,4 @@
-import { CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
+import { CONFLICT, CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import GroupSchema from "../models/GroupSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";
@@ -140,16 +140,21 @@ export const addMemberGroup = async (req, res, next) => {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
 
+        if (group.members.includes(employeeID)) return next(createError(CONFLICT, "Employee already exists in the group!"));
+
         // Add the employee ID to the members array
         group.members.push(employeeID);
+        employee.grouped_work_code = group_code;
+        employee.schedules.map(schedule => schedule.work_schedules) = group.shift_design;
 
         // Save the updated group
         const updateGroup = await group.save();
+        const updateEmployee = await employee.save();
 
         res.status(OK).json({
             success: true,
             status: OK,
-            message: updateGroup,
+            message: updateGroup, updateEmployee
         });
     } catch (err) {
         next(err);

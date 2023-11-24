@@ -59,18 +59,22 @@ export const checkAttendance = async (req, res, next) => {
         const formattedMonth = month < 10 ? `0${month}` : month.toString();
 
         const dayAndMonth = `${formattedDay}/${formattedMonth}`;
-        console.log(dayAndMonth);
+        // console.log(dayAndMonth);
 
         const getDayString = (weekday) => {
             const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
             return days[weekday];
         };
 
+        // console.log(getDayString(weekday));
         // check day off
         const dayOff_code = employee.day_off_code;
         const dayOff_schedules = await DayOffSchema.findOne({ code: dayOff_code });
-        const dayOffByDate = dayOff_schedules.dayOff_schedule.map(day_off => day_off.date === dayAndMonth);
-        const dayOffByWeekDay = dayOff_schedules.dayOff_schedule.map(day_off => day_off.date === getDayString(weekday));
+        const dayOffByDate = dayOff_schedules.dayOff_schedule.map(day_off => day_off.date) === dayAndMonth;
+        const dayOffByWeekDay = dayOff_schedules.dayOff_schedule.map(day_off => day_off.date) === getDayString(weekday);
+        // console.log(dayOff_schedules.dayOff_schedule.map(day_off => day_off.date));
+        // console.log(dayOffByWeekDay);
+
         if (dayOffByDate || dayOffByWeekDay) {
             return res.status(BAD_REQUEST).json({
                 success: true,

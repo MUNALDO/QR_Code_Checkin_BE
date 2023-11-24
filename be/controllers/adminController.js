@@ -211,6 +211,21 @@ export const getEmployeeByName = async (req, res, next) => {
     }
 };
 
+export const getEmployeeByRole = async (req, res, next) => {
+    const employeeRole = req.query.employeeRole;
+    try {
+        const employee = await EmployeeSchema.find({ role: employeeRole });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: employee,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const getEmployeeSchedule = async (req, res, next) => {
     const employeeID = req.query.employeeID;
 

@@ -2,6 +2,7 @@ import express from 'express';
 import {
     getAllEmployees, getAttendanceByTime,
     getEmployeeById, getEmployeeByName,
+    getEmployeeByRole,
     getEmployeeSchedule,
     loginAdmin, logoutAdmin, registerAdmin,
     registerEmployee, scanAndUpdateAttendance
@@ -38,6 +39,7 @@ router.post('/manage-employee/add-employee', verifyTokenAdmin, registerEmployee)
 router.get('/manage-employee/get-all-employees', verifyTokenAdmin, getAllEmployees);
 router.get('/manage-employee/get-employee-byId', verifyTokenAdmin, getEmployeeById);
 router.get('/manage-employee/get-employee-byName', verifyTokenAdmin, getEmployeeByName);
+router.get('/manage-employee/get-employee-byRole', verifyTokenAdmin, getEmployeeByRole);
 router.get('/manage-employee/get-schedule', verifyTokenAdmin, getEmployeeSchedule);
 
 // department
@@ -78,8 +80,6 @@ router.get('/day-off/get-by-name', verifyTokenAdmin, getDayOffByName);
 
 router.put('/day-off/update', verifyTokenAdmin, updateDayOff);
 router.put('/day-off/add-member', verifyTokenAdmin, addMemberDayOff);
-
-// router.post('/create-schedule', verifyTokenAdmin, createSchedule);
 
 router.get('/get-attendance', verifyTokenAdmin, getAttendanceByTime);
 router.get('/export-attendance', verifyTokenAdmin, exportAttendanceToExcel);

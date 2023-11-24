@@ -1,4 +1,4 @@
-import { CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
+import { CONFLICT, CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import DepartmentSchema from "../models/DepartmentSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import { createError } from "../utils/error.js";
@@ -114,22 +114,26 @@ export const addMemberDepartment = async (req, res, next) => {
 
     try {
         const department = await DepartmentSchema.findOne({ code: department_code });
-
         if (!department) return next(createError(NOT_FOUND, "Department not found!"))
 
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
 
+        if (department.members.includes(employeeID)) return next(createError(CONFLICT, "Employee already exists in the department!"));
+
         // Add the employee ID to the members array
         department.members.push(employeeID);
+        employee.department_code = department_code;
+        employee.department_name = department.name;
 
         // Save the updated department
         const updateDepartment = await department.save();
+        const updateEmployee = await employee.save();
 
         res.status(OK).json({
             success: true,
             status: OK,
-            message: updateDepartment,
+            message: updateDepartment, updateEmployee
         });
     } catch (err) {
         next(err);

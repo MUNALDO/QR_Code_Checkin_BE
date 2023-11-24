@@ -14,19 +14,18 @@ const departmentSchema = new mongoose.Schema(
         },
         sub_department: [
             {
-                code: {
+                sub_code: {
                     type: String,
-                    unique: false,
-                    required: false,
-                    sparse: true,
+                    unique: false, 
+                    default: null
                 },
-                name: {
+                sub_name: {
                     type: String,
                     unique: false,
-                    required: false,
                 },
             },
-        ]
+        ],
+        members: []
     },
     { timestamps: true }
 );

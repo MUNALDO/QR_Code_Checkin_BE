@@ -27,7 +27,7 @@ const Login = () => {
       console.log(res);
       if (res?.data?.details?.name) {
         dispatch({ type: "LOGIN_SUCCESS", payload: res.data.details });
-        navigate("/generate-qr");
+        navigate("/scan-qr");
       }
     } catch (err) {
       console.log(err);

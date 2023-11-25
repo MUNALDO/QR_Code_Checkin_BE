@@ -1,33 +1,51 @@
-import React, { useEffect } from "react";
-import { useParams, useHistory } from "react-router-dom";
+// ScanQR.js
+import React, { useContext, useState } from "react";
+import QrScanner from "react-qr-scanner";
 import axios from "axios";
+import { AuthContext } from "../context/AuthContext";
+// import { useNavigate } from "react-router-dom";
 
-const ScanAttendance = () => {
-  const { employeeID } = useParams();
-  const history = useHistory();
+const ScanQR = () => {
+  const { user } = useContext(AuthContext);
+  // const navigate = useNavigate();
+  const [isAttendanceChecked, setAttendanceChecked] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const handleScan = async (data) => {
+    if (data && !isAttendanceChecked) {
       try {
-        // Call an intermediate endpoint to fetch employeeID and call the check attendance API
-        await axios.post("/employee/scan-attendance", { employeeID });
-        // Redirect back to the main page after processing
-        history.push("/");
-      } catch (error) {
-        console.error("Error scanning attendance:", error);
-        // Handle error, you might want to redirect or show an error message
-      }
-    };
+        setAttendanceChecked(true);
 
-    fetchData();
-  }, [employeeID, history]);
+        // Assume you have the checkAttendance function defined in your API
+        const res = await axios.post("https://qr-code-checkin.vercel.app/api/employee/check-attendance", {
+          employeeID: user.id,
+        });
+
+        if (res.data.success) {
+          alert("Attendance checked successfully!");
+          // You can navigate to another page or show a success message here
+        } else {
+          alert("Expired QR code. Please generate a new QR code.");
+        }
+      } catch (error) {
+        console.error("Error checking attendance:", error);
+        alert("An error occurred while checking attendance.");
+      } finally {
+        // Reset the state after the API call
+        setAttendanceChecked(false);
+      }
+    }
+  };
+
+  const handleError = (error) => {
+    console.error("QR code scanning error:", error);
+  };
 
   return (
-    <div>
-      <h2>Scanning Attendance...</h2>
-      {/* You can add a loader or some indication that attendance is being processed */}
+    <div className="scan-qr-container">
+      <h2>Scan QR Code</h2>
+      <QrScanner onScan={handleScan} onError={handleError} style={{ width: "100%" }} />
     </div>
   );
 };
 
-export default ScanAttendance;
+export default ScanQR;

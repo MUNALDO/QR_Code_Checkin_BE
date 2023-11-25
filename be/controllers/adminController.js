@@ -196,6 +196,56 @@ export const getEmployeeById = async (req, res, next) => {
     }
 };
 
+export const getEmployeeSpecific = async (req, res, next) => {
+    const query = req.query.query;
+    // console.log(query);
+    try {
+        if (!query) {
+            const employee = await EmployeeSchema.find();
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: employee,
+            });
+        }
+        const regex = new RegExp(query, 'i');
+        const employeeName = await EmployeeSchema.find({ name: regex });
+        const employeeID = await EmployeeSchema.find({ id: query });
+        const employeeRole = await EmployeeSchema.find({ role: query });
+        // console.log(employeeRole);
+        // console.log(employeeName);
+        // console.log(employeeID);
+
+        if (employeeName.length !== 0) {
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: employeeName,
+            });
+        } else if (employeeID.length !== 0) {
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: employeeID,
+            });
+        } else if (employeeRole.length !== 0) {
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: employeeRole,
+            });
+        } else {
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: [],
+            });
+        }
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const getEmployeeByName = async (req, res, next) => {
     const employeeName = req.query.employeeName;
     try {

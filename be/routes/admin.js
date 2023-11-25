@@ -4,6 +4,7 @@ import {
     getEmployeeById, getEmployeeByName,
     getEmployeeByRole,
     getEmployeeSchedule,
+    getEmployeeSpecific,
     loginAdmin, logoutAdmin, registerAdmin,
     registerEmployee, scanAndUpdateAttendance
 } from '../controllers/adminController.js';
@@ -37,6 +38,7 @@ router.post('/logoutAdmin', logoutAdmin);
 // employee
 router.post('/manage-employee/add-employee', registerEmployee);
 router.get('/manage-employee/get-all-employees', getAllEmployees);
+router.get('/manage-employee/get-employee-specific', getEmployeeSpecific);
 router.get('/manage-employee/get-employee-byId', getEmployeeById);
 router.get('/manage-employee/get-employee-byName', getEmployeeByName);
 router.get('/manage-employee/get-employee-byRole', getEmployeeByRole);

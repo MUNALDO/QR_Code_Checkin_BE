@@ -30,60 +30,54 @@ import {
 const router = express.Router();
 
 // authenticate
-router.post('/registerAdmin', verifyTokenAdmin, registerAdmin);
+router.post('/registerAdmin', registerAdmin);
 router.post('/loginAdmin', loginAdmin);
-router.post('/logoutAdmin', verifyTokenAdmin, logoutAdmin);
+router.post('/logoutAdmin', logoutAdmin);
 
 // employee
-router.post('/manage-employee/add-employee', verifyTokenAdmin, registerEmployee);
-router.get('/manage-employee/get-all-employees', verifyTokenAdmin, getAllEmployees);
-router.get('/manage-employee/get-employee-byId', verifyTokenAdmin, getEmployeeById);
-router.get('/manage-employee/get-employee-byName', verifyTokenAdmin, getEmployeeByName);
-router.get('/manage-employee/get-employee-byRole', verifyTokenAdmin, getEmployeeByRole);
-router.get('/manage-employee/get-schedule', verifyTokenAdmin, getEmployeeSchedule);
-router.get('/manage-employee/export-attendance', verifyTokenAdmin, exportAttendanceToExcel);
+router.post('/manage-employee/add-employee', registerEmployee);
+router.get('/manage-employee/get-all-employees', getAllEmployees);
+router.get('/manage-employee/get-employee-byId', getEmployeeById);
+router.get('/manage-employee/get-employee-byName', getEmployeeByName);
+router.get('/manage-employee/get-employee-byRole', getEmployeeByRole);
+router.get('/manage-employee/get-schedule', getEmployeeSchedule);
+router.get('/manage-employee/export-attendance', exportAttendanceToExcel);
 
 // department
-router.post('/department/create-department', verifyTokenAdmin, createDepartment);
+router.post('/department/create-department', createDepartment);
+router.get('/department/get-all', getAllDepartments);
+router.get('/department/get-by-code', getDepartmentByCode);
+router.get('/department/get-by-name', getDepartmentByName);
 
-router.get('/department/get-all', verifyTokenAdmin, getAllDepartments);
-router.get('/department/get-by-code', verifyTokenAdmin, getDepartmentByCode);
-router.get('/department/get-by-name', verifyTokenAdmin, getDepartmentByName);
-
-router.put('/department/update', verifyTokenAdmin, updateDepartment);
-router.put('/department/add-member', verifyTokenAdmin, addMemberDepartment);
+router.put('/department/update', updateDepartment);
+router.put('/department/add-member', addMemberDepartment);
 
 // shift
-router.post('/shift/create-shift', verifyTokenAdmin, createShift);
-
-router.get('/shift/get-all', verifyTokenAdmin, getAllShifts);
-router.get('/shift/get-by-code', verifyTokenAdmin, getShiftByCode);
-router.get('/shift/get-by-name', verifyTokenAdmin, getShiftByName);
-
-router.put('/shift/update', verifyTokenAdmin, updateShift);
+router.post('/shift/create-shift', createShift);
+router.get('/shift/get-all', getAllShifts);
+router.get('/shift/get-by-code', getShiftByCode);
+router.get('/shift/get-by-name', getShiftByName);
+router.put('/shift/update', updateShift);
 
 // group
-router.post('/group/create-group', verifyTokenAdmin, createGroup);
+router.post('/group/create-group', createGroup);
+router.get('/group/get-all', getAllGroups);
+router.get('/group/get-by-code', getGroupByCode);
+router.get('/group/get-by-name', getGroupByName);
 
-router.get('/group/get-all', verifyTokenAdmin, getAllGroups);
-router.get('/group/get-by-code', verifyTokenAdmin, getGroupByCode);
-router.get('/group/get-by-name', verifyTokenAdmin, getGroupByName);
-
-router.put('/group/update', verifyTokenAdmin, updateGroup);
-router.put('/group/add-member', verifyTokenAdmin, addMemberGroup);
+router.put('/group/update', updateGroup);
+router.put('/group/add-member', addMemberGroup);
 
 // day off
-router.post('/day-off/create-dayOff', verifyTokenAdmin, createDayOff);
+router.post('/day-off/create-dayOff', createDayOff);
+router.get('/day-off/get-all', getAllDaysOff);
+router.get('/day-off/get-by-code', getDayOffByCode);
+router.get('/day-off/get-by-name', getDayOffByName);
+router.put('/day-off/update', updateDayOff);
+router.put('/day-off/add-member', addMemberDayOff);
 
-router.get('/day-off/get-all', verifyTokenAdmin, getAllDaysOff);
-router.get('/day-off/get-by-code', verifyTokenAdmin, getDayOffByCode);
-router.get('/day-off/get-by-name', verifyTokenAdmin, getDayOffByName);
-
-router.put('/day-off/update', verifyTokenAdmin, updateDayOff);
-router.put('/day-off/add-member', verifyTokenAdmin, addMemberDayOff);
-
-router.get('/get-attendance', verifyTokenAdmin, getAttendanceByTime);
-router.post('/scan-attendance', verifyTokenAdmin, scanAndUpdateAttendance);
+router.get('/get-attendance', getAttendanceByTime);
+router.post('/scan-attendance', scanAndUpdateAttendance);
 
 router.post('/salary-calculate', verifyTokenAdmin, salaryCalculate);
 export default router;

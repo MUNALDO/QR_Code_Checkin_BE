@@ -22,7 +22,7 @@ const GenerateQR = () => {
     // Function to update QR code data
     const updateQRCode = () => {
       const timestamp = new Date().toISOString();
-      setQRData(`qr code for employee - ${timestamp}`);
+      setQRData(`qr code for employee - ${timestamp}, https://qr-code-checkin.vercel.app/`);
     };
 
     // Manually update QR code on initial render
@@ -45,7 +45,7 @@ const GenerateQR = () => {
         setAttendanceChecked(true);
 
         if (data.text === qrData) {
-          const res = await axios.post("/employee/check-attendance", {
+          const res = await axios.post("https://qr-code-checkin.vercel.app/api/employee/check-attendance", {
             employeeID: user.id,
           });
 

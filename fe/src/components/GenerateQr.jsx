@@ -22,7 +22,7 @@ const GenerateQR = () => {
     // Function to update QR code data
     const updateQRCode = () => {
       const timestamp = new Date().toISOString();
-      setQRData(`qr code for employee - ${timestamp}, https://qr-code-checkin.vercel.app/`);
+      setQRData(`QR code for employee - ${timestamp}, https://qr-code-checkin-be.vercel.app/generate-qr`);
     };
 
     // Manually update QR code on initial render
@@ -89,7 +89,6 @@ const GenerateQR = () => {
         />
       )}
 
-      {/* Conditionally render QR Code scanner component */}
       {isScanning && (
         <QrScanner
           onScan={handleScan}
@@ -98,7 +97,6 @@ const GenerateQR = () => {
         />
       )}
 
-      {/* Scan button */}
       {!isScanning && <button onClick={startScan}>Scan QR Code</button>}
     </div>
   );

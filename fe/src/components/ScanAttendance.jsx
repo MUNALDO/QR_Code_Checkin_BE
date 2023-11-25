@@ -16,9 +16,12 @@ const ScanQR = () => {
         setAttendanceChecked(true);
 
         // Assume you have the checkAttendance function defined in your API
-        const res = await axios.post("https://qr-code-checkin.vercel.app/api/employee/check-attendance", {
-          employeeID: user.id,
-        });
+        const res = await axios.post(
+          "https://qr-code-checkin.vercel.app/api/employee/check-attendance",
+          {
+            employeeID: user.id,
+          }
+        );
 
         if (res.data.success) {
           alert("Attendance checked successfully!");
@@ -43,7 +46,12 @@ const ScanQR = () => {
   return (
     <div className="scan-qr-container">
       <h2>Scan QR Code</h2>
-      <QrScanner onScan={handleScan} onError={handleError} style={{ width: "100%" }} />
+      <QrScanner
+        onScan={handleScan}
+        onError={handleError}
+        style={{ width: "100%" }}
+        facingMode="environment"
+      />
     </div>
   );
 };

@@ -10,10 +10,10 @@ import { verifyTokenEmployee } from '../utils/verifyToken.js';
 const router = express.Router();
 
 router.post('/loginEmployee', loginEmployee);
-router.post('/logoutEmployee', verifyTokenEmployee, logoutEmployee);
+router.post('/logoutEmployee', logoutEmployee);
 
-router.post('/check-attendance', verifyTokenEmployee, checkAttendance);
-router.post('/signal-qr-scan', verifyTokenEmployee, signalQRScan);
-router.get('/get-attendance/:employeeID', verifyTokenEmployee, getAttendanceHistory);
+router.post('/check-attendance', checkAttendance);
+router.post('/signal-qr-scan', signalQRScan);
+router.get('/get-attendance/:employeeID', getAttendanceHistory);
 
 export default router;

@@ -3,11 +3,11 @@ import React, { useContext, useState } from "react";
 import QrScanner from "react-qr-scanner";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
-// import { useNavigate } from "react-router-dom";
 
 const ScanQR = () => {
-  const { user } = useContext(AuthContext);
-  // const navigate = useNavigate();
+  const {
+    user: { id: userID },
+  } = useContext(AuthContext);
   const [isAttendanceChecked, setAttendanceChecked] = useState(false);
 
   const handleScan = async (data) => {
@@ -15,11 +15,10 @@ const ScanQR = () => {
       try {
         setAttendanceChecked(true);
 
-        // Assume you have the checkAttendance function defined in your API
         const res = await axios.post(
           "https://qr-code-checkin.vercel.app/api/employee/check-attendance",
           {
-            employeeID: user.id,
+            employeeID: userID,
           }
         );
 

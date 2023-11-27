@@ -197,7 +197,7 @@ export const checkAttendance = async (req, res, next) => {
                         return res.status(BAD_REQUEST).json({
                             success: false,
                             status: BAD_REQUEST,
-                            message: "You can not check out at this time",
+                            message: `You can not check out at this time ${currentTime.toLocaleTimeString()}`,
                         });
                     }
                 } else if (time_slot.total_number == 2) {
@@ -234,7 +234,7 @@ export const checkAttendance = async (req, res, next) => {
                         return res.status(BAD_REQUEST).json({
                             success: false,
                             status: BAD_REQUEST,
-                            message: "You can not check out at this time",
+                            message: `You can not check out at this time ${currentTime.toLocaleTimeString()}`,
                         });
                     }
                 }

@@ -1,4 +1,3 @@
-// ScanQR.js
 import React, { useContext, useState } from "react";
 import QrScanner from "react-qr-scanner";
 import axios from "axios";
@@ -21,7 +20,6 @@ const ScanQR = () => {
             employeeID: userID,
           }
         );
-
         if (res.data.success) {
           alert("Attendance checked successfully!");
           // You can navigate to another page or show a success message here

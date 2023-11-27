@@ -1,4 +1,3 @@
-// GenerateQR.js
 import React, { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 

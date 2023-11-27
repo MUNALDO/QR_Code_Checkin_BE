@@ -133,7 +133,8 @@ export const checkAttendance = async (req, res, next) => {
                 return res.status(CREATED).json({
                     success: true,
                     status: CREATED,
-                    message: newAttendance,
+                    message: newAttendance, 
+                    log: `${currentTime}, ${startTimeMinus30}, ${startTimePlus30}`,
                 });
             } else if (currentTime > startTimePlus30) {
                 // check in late

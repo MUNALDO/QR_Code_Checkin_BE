@@ -115,6 +115,13 @@ export const checkAttendance = async (req, res, next) => {
                     shift_code: shift_code
                 }
             });
+            const timeString = currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", });
+            // const today = new Date();
+            const timestampString = `${currentTime.toISOString().split('T')[0]}T${timeString}.000Z`;
+            const timestamp = new Date(timestampString);
+
+            // console.log(timestamp);
+
             const [startHours, startMinutes] = time_slot.detail[0].start_time.split(':').map(Number);
             const startTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), startHours, startMinutes);
             // Calculate startTime - 30 minutes
@@ -124,7 +131,7 @@ export const checkAttendance = async (req, res, next) => {
             // Calculate startTime + 30 minutes
             const startTimePlus30 = new Date(startTime);
             startTimePlus30.setMinutes(startTime.getMinutes() + 30);
-            if (currentTime > startTimeMinus30 && currentTime < startTimePlus30) {
+            if (timestamp > startTimeMinus30 && timestamp < startTimePlus30) {
                 // check in on time
                 newAttendance.shift_info.time_slot.check_in = true;
                 newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
@@ -133,10 +140,10 @@ export const checkAttendance = async (req, res, next) => {
                 return res.status(CREATED).json({
                     success: true,
                     status: CREATED,
-                    message: newAttendance, 
-                    log: `${currentTime}, ${startTimeMinus30}, ${startTimePlus30}`,
+                    message: newAttendance,
+                    log: `${currentTime}, ${timestamp}`,
                 });
-            } else if (currentTime > startTimePlus30) {
+            } else if (timestamp > startTimePlus30) {
                 // check in late
                 newAttendance.shift_info.time_slot.check_in = false;
                 newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
@@ -147,7 +154,7 @@ export const checkAttendance = async (req, res, next) => {
                     status: CREATED,
                     message: newAttendance,
                 });
-            } else if (currentTime < startTimeMinus30) {
+            } else if (timestamp < startTimeMinus30) {
                 // check in too soon
                 return res.status(BAD_REQUEST).json({
                     success: false,
@@ -171,7 +178,7 @@ export const checkAttendance = async (req, res, next) => {
                     // Calculate endTime + 2 hours
                     const endTimePlus2 = new Date(endTime);
                     endTimePlus2.setHours(endTime.getHours() + 2);
-                    if (currentTime > endTime && currentTime < endTimePlus2) {
+                    if (timestamp > endTime && timestamp < endTimePlus2) {
                         // check out on time
                         existingAttendance.shift_info.time_slot.check_out = true;
                         existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
@@ -182,7 +189,7 @@ export const checkAttendance = async (req, res, next) => {
                             status: OK,
                             message: existingAttendance,
                         });
-                    } else if (currentTime > endTimePlus2) {
+                    } else if (timestamp > endTimePlus2) {
                         // check out late
                         existingAttendance.shift_info.time_slot.check_out = false;
                         existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
@@ -193,7 +200,7 @@ export const checkAttendance = async (req, res, next) => {
                             status: OK,
                             message: existingAttendance,
                         });
-                    } else if (currentTime < endTime) {
+                    } else if (timestamp < endTime) {
                         // check out too soon
                         return res.status(BAD_REQUEST).json({
                             success: false,
@@ -208,7 +215,7 @@ export const checkAttendance = async (req, res, next) => {
                     // Calculate endTime + 2 hours
                     const endTimePlus2 = new Date(endTime);
                     endTimePlus2.setMinutes(endTime.getHours() + 2);
-                    if (currentTime > endTime && currentTime < endTimePlus2) {
+                    if (timestamp > endTime && timestamp < endTimePlus2) {
                         // check out on time
                         existingAttendance.shift_info.time_slot.check_out = true;
                         existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
@@ -219,7 +226,7 @@ export const checkAttendance = async (req, res, next) => {
                             status: OK,
                             message: existingAttendance,
                         });
-                    } else if (currentTime > endTimePlus2) {
+                    } else if (timestamp > endTimePlus2) {
                         // check out late
                         existingAttendance.shift_info.time_slot.check_out = false;
                         existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
@@ -230,7 +237,7 @@ export const checkAttendance = async (req, res, next) => {
                             status: OK,
                             message: existingAttendance,
                         });
-                    } else if (currentTime < endTime) {
+                    } else if (timestamp < endTime) {
                         // check out too soon
                         return res.status(BAD_REQUEST).json({
                             success: false,

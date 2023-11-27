@@ -153,6 +153,7 @@ export const checkAttendance = async (req, res, next) => {
                     success: true,
                     status: CREATED,
                     message: newAttendance,
+                    log: `${currentTime}, ${timestamp}`,
                 });
             } else if (timestamp < startTimeMinus30) {
                 // check in too soon

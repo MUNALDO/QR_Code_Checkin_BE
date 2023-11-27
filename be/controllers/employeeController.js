@@ -151,7 +151,7 @@ export const checkAttendance = async (req, res, next) => {
                 return res.status(BAD_REQUEST).json({
                     success: false,
                     status: BAD_REQUEST,
-                    message: "You can not check in at this time",
+                    message: "You can not check in at this time"-currentTime,
                 });
             }
         } else {

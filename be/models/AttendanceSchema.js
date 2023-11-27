@@ -58,6 +58,9 @@ const attendanceSchema = new mongoose.Schema(
                     type: String,
                     enum: ['on time', 'missing']
                 },
+                value: {
+                    type: Number
+                }
             }
         },
         note: {

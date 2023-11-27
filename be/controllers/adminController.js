@@ -318,17 +318,26 @@ export const getAttendanceByTime = async (req, res, next) => {
 }
 
 export const scanAndUpdateAttendance = async (req, res, next) => {
-    const checkInEndTime = 11;
-    const checkOutEndTime = 21;
+    const checkInEndTime = 8;
+    const checkOutEndTime = 19;
 
     try {
         const employees = await EmployeeSchema.find();
-
         if (!employees) return next(createError(NOT_FOUND, "Employees not found!"))
 
         for (const employee of employees) {
             const employeeID = employee.id;
             // console.log(employeeID);
+            const getDayString = (weekday) => {
+                const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                return days[weekday];
+            };
+
+            const dayShift = group.shift_design.find(day => day.date === getDayString(weekday));
+            if (!dayShift) return next(createError(NOT_FOUND, 'Shift not found for the current day'));
+
+            const shift_code = dayShift.shift_code;
+            const time_slot = dayShift.time_slot;
 
             const existingAttendance = await AttendanceSchema.findOne({
                 employee_id: employeeID,
@@ -344,24 +353,32 @@ export const scanAndUpdateAttendance = async (req, res, next) => {
 
                 const newAttendance = new AttendanceSchema({
                     date: date,
-                    isChecked: {
-                        check_in: currentHour > checkInEndTime ? false : true,
-                        check_out: currentHour > checkOutEndTime ? false : true,
-                        check_in_time: 'N/A',
-                        check_out_time: 'N/A',
-                        check_in_status: currentHour > checkInEndTime ? 'missing' : null,
-                        check_out_status: currentHour > checkOutEndTime ? 'missing' : null,
-                    },
+                    weekday: getDayString(weekday),
                     employee_id: employeeID,
                     employee_name: employee.name,
-                    // total_salary: 0,
+                    role: employee.role,
+                    department_code: employee.department_code,
+                    department_name: employee.department_name,
+                    grouped_work_code: employee.grouped_work_code,
+                    day_off_code: employee.day_off_code,
+                    shift_info: {
+                        shift_code: shift_code,
+                        time_slot: {
+                            check_in: currentHour > checkInEndTime ? false : true,
+                            check_out: currentHour > checkOutEndTime ? false : true,
+                            check_in_time: 'N/A',
+                            check_out_time: 'N/A',
+                            check_in_status: currentHour > checkInEndTime ? 'missing' : null,
+                            check_out_status: currentHour > checkOutEndTime ? 'missing' : null,
+                        }
+                    },
                 });
 
                 const attendanceRecord = await newAttendance.save();
                 // console.log('New Attendance Record:', attendanceRecord);
                 res.status(CREATED).json(attendanceRecord);
             } else {
-                const attendance = existingAttendance.isChecked;
+                const attendance = existingAttendance.shift_info.time_slot;
                 const currentHour = new Date().getHours();
 
                 if (attendance.check_out_status === null && currentHour > checkOutEndTime) {

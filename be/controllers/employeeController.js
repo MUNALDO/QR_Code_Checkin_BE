@@ -368,7 +368,7 @@ export const checkAttendance = async (req, res, next) => {
 
                         // Calculate endTime + 2 hours
                         const endTimePlus2 = new Date(endTime);
-                        endTimePlus2.setMinutes(endTime.getHours() + 2);
+                        endTimePlus2.setHours(endTime.getHours() + 2);
                         if (timestamp > endTime && timestamp < endTimePlus2) {
                             // check out on time
                             existingAttendance.shift_info.time_slot.check_out = true;

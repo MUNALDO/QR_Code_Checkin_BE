@@ -95,7 +95,7 @@ export const updateGroup = async (req, res, next) => {
         if (!group) return next(createError(NOT_FOUND, "Group not found!"))
 
         const updateGroup = await GroupSchema.findOneAndUpdate(
-            group_code,
+            { code: group_code },
             { $set: req.body },
             { $new: true },
         )

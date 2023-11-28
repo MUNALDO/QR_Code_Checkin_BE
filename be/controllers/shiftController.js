@@ -77,7 +77,7 @@ export const updateShift = async (req, res, next) => {
         if (!shift) return next(createError(NOT_FOUND, "Shift not found!"))
 
         const updateShift = await ShiftSchema.findOneAndUpdate(
-            shift_code,
+            { code: shift_code },
             { $set: req.body },
             { $new: true },
         )

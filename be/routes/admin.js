@@ -1,12 +1,13 @@
 import express from 'express';
 import {
+    deleteEmployeeById,
     getAllEmployees, getAttendanceByTime,
     getEmployeeById, getEmployeeByName,
     getEmployeeByRole,
     getEmployeeSchedule,
     getEmployeeSpecific,
     loginAdmin, logoutAdmin, registerAdmin,
-    registerEmployee, scanAndUpdateAttendance
+    registerEmployee, scanAndUpdateAttendance, updateEmployee
 } from '../controllers/adminController.js';
 import {
     addMemberDepartment, createDepartment, getAllDepartments,
@@ -44,6 +45,8 @@ router.get('/manage-employee/get-employee-byName', getEmployeeByName);
 router.get('/manage-employee/get-employee-byRole', getEmployeeByRole);
 router.get('/manage-employee/get-schedule', getEmployeeSchedule);
 router.get('/manage-employee/export-attendance', exportAttendanceToExcel);
+router.delete('/manage-employee/delete-employee-byId', deleteEmployeeById);
+router.put('/manage-employee/update', updateEmployee);
 
 // department
 router.post('/department/create-department', createDepartment);
@@ -51,7 +54,6 @@ router.get('/department/get-all', getAllDepartments);
 router.get('/department/get-by-code', getDepartmentByCode);
 router.get('/department/get-by-name', getDepartmentByName);
 router.get('/department/get-department-specific', getDepartmentSpecific);
-
 router.put('/department/update', updateDepartment);
 router.put('/department/add-member', addMemberDepartment);
 
@@ -67,7 +69,6 @@ router.post('/group/create-group', createGroup);
 router.get('/group/get-all', getAllGroups);
 router.get('/group/get-by-code', getGroupByCode);
 router.get('/group/get-by-name', getGroupByName);
-
 router.put('/group/update', updateGroup);
 router.put('/group/add-member', addMemberGroup);
 
@@ -78,7 +79,6 @@ router.get('/day-off/get-by-code', getDayOffByCode);
 router.get('/day-off/get-by-name', getDayOffByName);
 router.put('/day-off/update', updateDayOff);
 router.put('/day-off/add-member', addMemberDayOff);
-
 router.get('/get-attendance', getAttendanceByTime);
 router.post('/scan-attendance', scanAndUpdateAttendance);
 

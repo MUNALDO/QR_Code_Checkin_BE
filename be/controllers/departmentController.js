@@ -114,7 +114,7 @@ export const updateDepartment = async (req, res, next) => {
         if (!department) return next(createError(NOT_FOUND, "Department not found!"))
 
         const updateDepartment = await DepartmentSchema.findOneAndUpdate(
-            department_code,
+            { code: department_code },
             { $set: req.body },
             { $new: true },
         )

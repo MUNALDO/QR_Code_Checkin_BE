@@ -116,7 +116,7 @@ export const updateEmployee = async (req, res, next) => {
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
 
         const updateEmployee = await EmployeeSchema.findOneAndUpdate(
-            employeeID,
+            { id: employeeID },
             { $set: req.body },
             { $new: true },
         )
@@ -139,32 +139,41 @@ export const deleteEmployeeById = async (req, res, next) => {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
 
-        await GroupSchema.updateOne({
-            code: employee.grouped_work_code
-        },
-            {
-                $pull: {
-                    "members": employeeID,
+        if (employee.grouped_work_code && employee.day_off_code) {
+            await GroupSchema.updateOne({
+                code: employee.grouped_work_code
+            },
+                {
+                    $pull: {
+                        "members": employeeID,
+                    }
                 }
-            }
-        );
+            );
 
-        await DayOffSchema.updateOne({
-            code: employee.day_off_code
-        },
-            {
-                $pull: {
-                    "members": employeeID,
+            await DayOffSchema.updateOne({
+                code: employee.day_off_code
+            },
+                {
+                    $pull: {
+                        "members": employeeID,
+                    }
                 }
-            }
-        );
+            );
 
-        await EmployeeSchema.findOneAndDelete({ id: employeeID });
-        res.status(OK).json({
-            success: true,
-            status: OK,
-            message: "Employee deleted successfully",
-        });
+            await EmployeeSchema.findOneAndDelete({ id: employeeID });
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: "Employee deleted successfully",
+            });
+        } else {
+            await EmployeeSchema.findOneAndDelete({ id: employeeID });
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: "Employee deleted successfully",
+            });
+        }
     } catch (err) {
         next(err);
     }

@@ -78,7 +78,7 @@ export const updateDayOff = async (req, res, next) => {
         if (!day_off) return next(createError(NOT_FOUND, "Day off not found!"))
 
         const updateDayOff = await DayOffSchema.findOneAndUpdate(
-            dayOff_code,
+            { code: dayOff_code },
             { $set: req.body },
             { $new: true },
         )

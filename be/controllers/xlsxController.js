@@ -93,7 +93,7 @@ export const exportAttendanceToExcel = async (req, res, next) => {
                 try {
                     dateData.attendanceList.forEach((attendance, index) => {
                         const date = new Date(attendance.date);
-                        const shiftCode = attendance.shift_info.shift_cpde;
+                        const shiftCode = attendance.shift_info.shift_code;
                         const checkIn = attendance.shift_info.time_slot.check_in ? 'Yes' : 'No';
                         const checkOut = attendance.shift_info.time_slot.check_out ? 'Yes' : 'No';
                         const rowData = {

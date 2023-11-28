@@ -11,28 +11,13 @@ export const salaryCalculate = async (req, res, next) => {
 
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
-
-        if (!employee) {
-            return next(createError(NOT_FOUND, "Employee not found!"));
-        }
-
-        // console.log(employee);
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
         // Find the relevant schedules for the given month and year
-        const schedules = employee.employee_schedules.filter(schedule => {
-            const scheduleDate = new Date(schedule.date);
-            const scheduleYear = scheduleDate.getFullYear();
-            const scheduleMonth = scheduleDate.getMonth() + 1;
-            // console.log(scheduleMonth);
-            // console.log(scheduleYear);
-
-            return (
-                scheduleYear === parseInt(year) &&
-                scheduleMonth === parseInt(month)
-            );
-        });
-
-        // console.log("Schedules:", schedules);
+        const workSchedules = employee.schedules
+            .filter((schedule) => schedule.work_schedules)
+            .map((schedule) => schedule.work_schedules)
+            .flat();
 
         // Find the relevant attendances for the given month and year
         const attendances = await AttendanceSchema.find({
@@ -43,38 +28,32 @@ export const salaryCalculate = async (req, res, next) => {
             },
         });
 
+        console.log(workSchedules);
+        console.log(attendances);
         // Calculate day_in_schedule and day_work_real
         let dayInSchedule = 0;
         let dayWorkReal = 0;
 
-        schedules.forEach(schedule => {
+        workSchedules.forEach((schedule) => {
             dayInSchedule += 1;
+
         });
 
-        attendances.forEach(attendance => {
-            const checkInStatus = attendance.isChecked.check_in_status;
-            const checkOutStatus = attendance.isChecked.check_out_status;
-
-            if (checkInStatus === 'on time' && checkOutStatus === 'on time') {
-                dayWorkReal += 1;
-            } else if (checkInStatus === 'late' && checkOutStatus === 'late') {
-                dayWorkReal += 0.5;
-            } else if (checkInStatus === 'missing' || checkOutStatus === 'missing') {
-                dayWorkReal += 0;
-            } else if (checkInStatus === 'on time' || checkOutStatus === 'late') {
-                dayWorkReal += 0.75;
-            } else if (checkInStatus === 'late' || checkOutStatus === 'on time') {
-                dayWorkReal += 0.75;
-            }
+        attendances.forEach((attendance) => {
+            dayWorkReal += attendance.shift_info.time_slot.value;
         });
 
-        // console.log(dayInSchedule);
-        // console.log(dayWorkReal);
+        console.log(dayInSchedule);
+        console.log(dayWorkReal);
 
         // Calculate total_salary
         const totalSalary = (employee.basic_salary_per_month + bonus) / (dayInSchedule * dayWorkReal);
 
-        res.status(OK).json({ totalSalary });
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: totalSalary,
+        });
     } catch (err) {
         next(err);
     }

@@ -410,25 +410,6 @@ export const checkAttendance = async (req, res, next) => {
     }
 }
 
-export const signalQRScan = async (req, res, next) => {
-    const { employeeID } = req.body;
-
-    try {
-        // You can add additional validation here if needed
-        if (!employeeID) {
-            return next(createError(BAD_REQUEST, "Invalid employee ID"));
-        }
-
-        // Call your existing checkAttendance function to handle the logic
-        await checkAttendance(req, res, next);
-
-        // If the checkAttendance function completes without errors, you can send a success response
-        res.status(OK).json({ success: "Signal received, checkAttendance completed successfully" });
-    } catch (err) {
-        next(err);
-    }
-};
-
 export const getAttendanceHistory = async (req, res, next) => {
     const employeeID = req.params.employeeID;
     const year = req.query.year;
@@ -436,7 +417,6 @@ export const getAttendanceHistory = async (req, res, next) => {
 
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
-
         if (!employee) return next(createError(NOT_FOUND, "Employee not found"))
 
         const query = {
@@ -448,7 +428,6 @@ export const getAttendanceHistory = async (req, res, next) => {
         };
 
         const attendanceList = await AttendanceSchema.find(query);
-
         if (Array.isArray(attendanceList) && attendanceList.length === 0) {
             return res.status(NOT_FOUND).json({ error: "Cannot find attendance history" });
         }

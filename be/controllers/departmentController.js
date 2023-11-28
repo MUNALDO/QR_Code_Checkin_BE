@@ -66,6 +66,46 @@ export const getDepartmentByName = async (req, res, next) => {
     }
 };
 
+export const getDepartmentSpecific = async (req, res, next) => {
+    const query = req.query.query;
+    // console.log(query);
+    try {
+        if (!query) {
+            const department = await DepartmentSchema.find();
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: department,
+            });
+        }
+        const regex = new RegExp(query, 'i');
+        const departmentName = await DepartmentSchema.find({ name: regex });
+        const departmentCode = await DepartmentSchema.find({ code: query });
+
+        if (departmentName.length !== 0) {
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: departmentName,
+            });
+        } else if (departmentCode.length !== 0) {
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: departmentCode,
+            });
+        } else {
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: [],
+            });
+        }
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const updateDepartment = async (req, res, next) => {
     const department_code = req.query.code;
 

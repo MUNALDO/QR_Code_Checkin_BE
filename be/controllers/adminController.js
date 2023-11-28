@@ -66,40 +66,44 @@ export const registerEmployee = async (req, res, next) => {
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
 
-        // Validate grouped_work_code
-        if (req.body.grouped_work_code) {
+        // Validate grouped_work_code && day_off_code
+        if (req.body.grouped_work_code && req.body.day_off_code) {
             const group = await GroupSchema.findOne({ code: req.body.grouped_work_code });
             if (!group) return next(createError(BAD_REQUEST, "Invalid grouped work code"))
-        }
-
-        // Validate day_off_code
-        if (req.body.day_off_code) {
             const dayOff = await DayOffSchema.findOne({ code: req.body.day_off_code });
             if (!dayOff) return next(createError(BAD_REQUEST, "Invalid day off code"))
+
+            const newEmployee = new EmployeeSchema({
+                ...req.body,
+                password: hash,
+                schedules: [
+                    { work_schedules: group.shift_design },
+                    { dayOff_schedules: dayOff.dayOff_schedule },
+                ],
+            });
+
+            group.members.push(newEmployee.id);
+            dayOff.members.push(newEmployee.id);
+            await group.save();
+            await dayOff.save();
+            await newEmployee.save();
+            res.status(CREATED).json({
+                success: true,
+                status: CREATED,
+                message: newEmployee,
+            });
+        } else {
+            const newEmployee = new EmployeeSchema({
+                ...req.body,
+                password: hash,
+            });
+            await newEmployee.save();
+            res.status(CREATED).json({
+                success: true,
+                status: CREATED,
+                message: newEmployee,
+            });
         }
-
-        const group = await GroupSchema.findOne({ code: req.body.grouped_work_code });
-        const dayOff = await DayOffSchema.findOne({ code: req.body.day_off_code });
-
-        const newEmployee = new EmployeeSchema({
-            ...req.body,
-            password: hash,
-            schedules: [
-                { work_schedules: group.shift_design },
-                { dayOff_schedules: dayOff.dayOff_schedule },
-            ],
-        });
-
-        group.members.push(newEmployee.id);
-        dayOff.members.push(newEmployee.id);
-        await group.save();
-        await dayOff.save();
-        await newEmployee.save();
-        res.status(CREATED).json({
-            success: true,
-            status: CREATED,
-            message: newEmployee,
-        });
     } catch (err) {
         next(err);
     }
@@ -107,7 +111,6 @@ export const registerEmployee = async (req, res, next) => {
 
 export const updateEmployee = async (req, res, next) => {
     const employeeID = req.query.employeeID;
-
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))

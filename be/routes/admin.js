@@ -10,7 +10,7 @@ import {
 } from '../controllers/adminController.js';
 import {
     addMemberDepartment, createDepartment, getAllDepartments,
-    getDepartmentByCode, getDepartmentByName, updateDepartment
+    getDepartmentByCode, getDepartmentByName, getDepartmentSpecific, updateDepartment
 } from '../controllers/departmentController.js';
 import {
     createShift, getAllShifts,
@@ -50,6 +50,7 @@ router.post('/department/create-department', createDepartment);
 router.get('/department/get-all', getAllDepartments);
 router.get('/department/get-by-code', getDepartmentByCode);
 router.get('/department/get-by-name', getDepartmentByName);
+router.get('/department/get-department-specific', getDepartmentSpecific);
 
 router.put('/department/update', updateDepartment);
 router.put('/department/add-member', addMemberDepartment);

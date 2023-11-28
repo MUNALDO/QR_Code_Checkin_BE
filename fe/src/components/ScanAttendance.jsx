@@ -47,7 +47,8 @@ const ScanQR = () => {
         onScan={handleScan}
         onError={handleError}
         style={{ width: "100%" }}
-        facingMode="rear"
+        key="environment"
+        constraints={{ audio: false, video: { facingMode: "environment" } }}
       />
     </div>
   );

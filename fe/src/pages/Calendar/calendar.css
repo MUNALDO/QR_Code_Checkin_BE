@@ -43,6 +43,10 @@ h2 {
 }
 /* Add this CSS to highlight work days in blue */
 .work-day {
-    background-color: lightblue;
-  }
-  
+  background-color: lightblue;
+}
+
+.day-off {
+  background-color: #FFA07A;
+  text-color: #FFFFE0;
+}

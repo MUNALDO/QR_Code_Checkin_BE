@@ -13,7 +13,7 @@ const ScheduleTable = () => {
   const {
     user: { id: userID },
   } = useContext(AuthContext);
-//   console.log(employeeData.message);
+  // console.log(employeeData.message);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,14 +39,37 @@ const ScheduleTable = () => {
     const day = date.getDate();
 
     const workSchedules = [];
+    let hasDayOff = false;
+    const dayOffSchedules = [];
 
     employeeData.message.schedules.forEach((schedule) => {
+      if (schedule.dayOff_schedules) {
+        schedule.dayOff_schedules.forEach((dayOffSchedule) => {
+          const dayOffWeekday = new Date(year, month, day);
+          const dayOffDate = new Date(
+            dayOffSchedule.date.includes("/")
+              ? `${year}/${dayOffSchedule.date}`
+              : dayOffSchedule.date
+          );
+
+          if (
+            dayOffSchedule.date.toLowerCase() ===
+              dayOffWeekday.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase() ||
+            dayOffDate.toDateString() === date.toDateString()
+          ) {
+            hasDayOff = true;
+            dayOffSchedules.push(dayOffSchedule.type);
+          }
+        });
+      }
+
       if (schedule.work_schedules) {
         schedule.work_schedules.forEach((workSchedule) => {
           const workDate = new Date(year, month, day);
           if (
             workSchedule.date.toLowerCase() ===
-            workDate.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase()
+              workDate.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase() &&
+            !hasDayOff
           ) {
             workSchedules.push(workSchedule.shift_code);
           }
@@ -55,12 +78,22 @@ const ScheduleTable = () => {
     });
 
     return (
-      <div className="calendar-tile">
-        {workSchedules.map((shiftCode, index) => (
-          <div key={index} className={`work-day ${shiftCode}`}>
-            {shiftCode}
-          </div>
-        ))}
+      <div
+        className={`calendar-tile ${hasDayOff ? "day-off" : ""}`}
+      >
+        {hasDayOff ? (
+          dayOffSchedules.map((dayOffType, index) => (
+            <div key={index} className="day-off">
+              {dayOffType}
+            </div>
+          ))
+        ) : (
+          workSchedules.map((shiftCode, index) => (
+            <div key={index} className={`work-day ${shiftCode}`}>
+              {shiftCode}
+            </div>
+          ))
+        )}
       </div>
     );
   };
@@ -72,7 +105,6 @@ const ScheduleTable = () => {
   return (
     <div>
       <h2>Schedule Calendar</h2>
-      <div className="calendar-dropdowns">
         {selectedYear && (
           <Calendar
             onChange={handleMonthChange}
@@ -82,7 +114,6 @@ const ScheduleTable = () => {
             tileContent={renderTileContent}
           />
         )}
-      </div>
     </div>
   );
 };

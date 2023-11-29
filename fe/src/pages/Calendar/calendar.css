@@ -41,3 +41,8 @@
 h2 {
   text-align: center;
 }
+/* Add this CSS to highlight work days in blue */
+.work-day {
+    background-color: lightblue;
+  }
+  

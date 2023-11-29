@@ -27,8 +27,11 @@ const ScheduleTable = () => {
         onChange={handleDateChange}
         value={selectedDate}
         tileContent={renderTileContent}
-        view="year"
         showNeighboringMonth={false}
+        calendarType="ISO 8601"
+        view="year"
+        minDetail="year"
+        maxDetail="decade"
       />
     </div>
   );

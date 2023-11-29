@@ -1,0 +1,55 @@
+/* Add this CSS to your stylesheets */
+
+body {
+  font-family: "Arial", sans-serif;
+  background-color: #f4f4f4;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+
+.container {
+  background-color: #fff;
+  padding: 20px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  text-align: center;
+}
+
+h2 {
+  color: #333;
+}
+
+.react-calendar {
+  max-width: 400px;
+  margin: 20px auto;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.react-calendar__tile {
+  background-color: #fff;
+  border: 1px solid #ccc;
+}
+
+.react-calendar__tile--now {
+  background-color: #eaf0ff;
+}
+
+.react-calendar__tile--active {
+  background-color: #4d90fe;
+  color: #fff;
+}
+
+.react-calendar__tile--hasActive {
+  background-color: #4d90fe;
+  color: #fff;
+}
+
+.react-calendar__tile--hover {
+  background-color: #eaf0ff;
+  cursor: pointer;
+}

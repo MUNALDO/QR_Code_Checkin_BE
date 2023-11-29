@@ -5,6 +5,7 @@ import { AuthContextProvider } from "./context/AuthContext";
 import GenerateQR from "./components/GenerateQr.jsx";
 import ScanQR from "./components/ScanAttendance.jsx";
 import React from "react";
+import ScheduleTable from "./pages/Calendar/Calendar.jsx";
 
 function App() {
   const [qrData, setQRData] = React.useState("");
@@ -13,9 +14,10 @@ function App() {
     <BrowserRouter>
       <AuthContextProvider>
         <Routes>
-          <Route path="/loginEmployee" element={<Login />} />
-          <Route path="/generate-qr" element={<GenerateQR setQRData={setQRData}/>} />
-          <Route path="/scan-qr" element={<ScanQR qrData={qrData}/>} />
+          <Route path="/login-employee" element={<Login />} />
+          <Route path="/generate-qr" element={<GenerateQR setQRData={setQRData} />} />
+          <Route path="/scan-qr" element={<ScanQR qrData={qrData} />} />
+          <Route path="/employee-calendar" element={<ScheduleTable />} />
         </Routes>
       </AuthContextProvider>
     </BrowserRouter>

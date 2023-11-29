@@ -3,16 +3,14 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 
 const ScheduleTable = () => {
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedMonth, setSelectedMonth] = useState(null);
 
-  const handleDateChange = (date) => {
-    setSelectedDate(date);
+  const handleMonthChange = (date) => {
+    setSelectedMonth(date);
   };
 
   const renderTileContent = ({ date, view }) => {
     if (view === 'year') {
-      // Customize the content for each month
-      // You can replace this logic with your schedule data
       const month = date.getMonth() + 1;
       return <div>{`Month ${month}`}</div>;
     }
@@ -24,15 +22,23 @@ const ScheduleTable = () => {
       <h2>Schedule Calendar</h2>
 
       <Calendar
-        onChange={handleDateChange}
-        value={selectedDate}
+        onChange={handleMonthChange}
+        value={selectedMonth}
         tileContent={renderTileContent}
-        showNeighboringMonth={false}
-        calendarType="ISO 8601"
         view="year"
-        minDetail="year"
-        maxDetail="decade"
+        showNeighboringMonth={false}
       />
+
+      {selectedMonth && (
+        <Calendar
+          value={selectedMonth}
+          view="month"
+          showNeighboringMonth={false}
+          tileContent={({ date, view }) =>
+            view === 'month' ? <div>{date.getDate()}</div> : null
+          }
+        />
+      )}
     </div>
   );
 };

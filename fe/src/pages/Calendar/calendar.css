@@ -1,55 +1,43 @@
-/* Add this CSS to your stylesheets */
-
-body {
-  font-family: "Arial", sans-serif;
-  background-color: #f4f4f4;
+.calendar-dropdowns {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  margin: 0;
+  justify-content: space-between;
+  margin-bottom: 20px;
 }
 
-.container {
-  background-color: #fff;
-  padding: 20px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
+.days-of-week {
+  display: flex;
+}
+
+.day-header {
+  flex: 1;
   text-align: center;
+  font-weight: bold;
+}
+
+.calendar-days {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.empty-day {
+  flex: 1;
+  height: 20px;
+}
+
+.calendar-day {
+  flex: 1;
+  text-align: center;
+  padding: 10px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+}
+
+.calendar-container {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #ddd;
 }
 
 h2 {
-  color: #333;
-}
-
-.react-calendar {
-  max-width: 400px;
-  margin: 20px auto;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.react-calendar__tile {
-  background-color: #fff;
-  border: 1px solid #ccc;
-}
-
-.react-calendar__tile--now {
-  background-color: #eaf0ff;
-}
-
-.react-calendar__tile--active {
-  background-color: #4d90fe;
-  color: #fff;
-}
-
-.react-calendar__tile--hasActive {
-  background-color: #4d90fe;
-  color: #fff;
-}
-
-.react-calendar__tile--hover {
-  background-color: #eaf0ff;
-  cursor: pointer;
+  text-align: center;
 }

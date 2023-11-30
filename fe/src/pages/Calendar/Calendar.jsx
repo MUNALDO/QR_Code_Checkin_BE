@@ -42,15 +42,17 @@ const ScheduleTable = () => {
     let hasDayOff = false;
     const dayOffSchedules = [];
 
+    const parseDate = (dateString) => {
+      const [day, month] = dateString.split('/');
+      return new Date(`${month}/${day}/${new Date().getFullYear()}`);
+    };
+
     employeeData.message.schedules.forEach((schedule) => {
+      if (hasDayOff) return;
       if (schedule.dayOff_schedules) {
         schedule.dayOff_schedules.forEach((dayOffSchedule) => {
           const dayOffWeekday = new Date(year, month, day);
-          const dayOffDate = new Date(
-            dayOffSchedule.date.includes("/")
-              ? `${year}/${dayOffSchedule.date}`
-              : dayOffSchedule.date
-          );
+          const dayOffDate = parseDate(dayOffSchedule.date);
 
           if (
             dayOffSchedule.date.toLowerCase() ===

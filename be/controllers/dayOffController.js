@@ -47,7 +47,7 @@ export const getDayOffByCode = async (req, res, next) => {
         res.status(OK).json({
             success: true,
             status: OK,
-            message: days_off,
+            message: day_off,
         });
     } catch (err) {
         next(err);
@@ -77,11 +77,22 @@ export const updateDayOff = async (req, res, next) => {
         const day_off = await DayOffSchema.findOne({ code: dayOff_code });
         if (!day_off) return next(createError(NOT_FOUND, "Day off not found!"))
 
+        const employees = await EmployeeSchema.find({ day_off_code: dayOff_code });
+        if (!employees) return next(createError(NOT_FOUND, "Employee not found!"))
+
         const updateDayOff = await DayOffSchema.findOneAndUpdate(
             { code: dayOff_code },
             { $set: req.body },
             { $new: true },
         )
+
+        for (const employee of employees) {
+            employee.day_off_code = updateDayOff.code;
+            employee.schedules.forEach((schedule) => {
+                schedule.dayOff_schedules = updateDayOff.dayOff_schedule;
+            }); 
+            await employee.save();
+        }
 
         await updateDayOff.save();
         res.status(OK).json({
@@ -144,3 +155,76 @@ export const addMemberDayOff = async (req, res, next) => {
     }
 };
 
+export const addDayOffSchedule = async (req, res, next) => {
+    const dayOffCode = req.query.code;
+    const { date, type, name } = req.body;
+
+    try {
+        const dayOff = await DayOffSchema.findOne({ code: dayOffCode });
+        if (!dayOff) return next(createError(NOT_FOUND, "Day off not found!"));
+
+        const existingDate = dayOff.dayOff_schedule.find((schedule) => schedule.date === date);
+        if (existingDate) return next(createError(CONFLICT, "Date already exists in day-off schedule!"));
+
+        const employees = await EmployeeSchema.find({ day_off_code: dayOffCode });
+        if (!employees) return next(createError(NOT_FOUND, "Employee not found!"));
+
+        // Add the new schedule
+        dayOff.dayOff_schedule.push({ date, type, name });
+        const updatedDayOff = await dayOff.save();
+
+        // Update each employee's schedules with the new day-off schedule
+        for (const employee of employees) {
+            employee.schedules.forEach((schedule) => {
+                schedule.dayOff_schedules = updatedDayOff.dayOff_schedule;
+            });
+            await employee.save();
+        }
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: updatedDayOff,
+            log: employees
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const removeDayOffSchedule = async (req, res, next) => {
+    const dayOffCode = req.query.code;
+    const { date } = req.body;
+
+    try {
+        const dayOff = await DayOffSchema.findOne({ code: dayOffCode });
+        if (!dayOff) return next(createError(NOT_FOUND, "Day off not found!"));
+
+        const existingDate = dayOff.dayOff_schedule.find((schedule) => schedule.date === date);
+        if (!existingDate) return next(createError(NOT_FOUND, "Date not exists in day-off schedule!"));
+
+        const employees = await EmployeeSchema.find({ day_off_code: dayOffCode });
+        if (!employees) return next(createError(NOT_FOUND, "Employee not found!"));
+
+        // Add the new schedule
+        dayOff.dayOff_schedule.pop(existingDate);
+        const updatedDayOff = await dayOff.save();
+
+        // Update each employee's schedules with the new day-off schedule
+        for (const employee of employees) {
+            employee.schedules.forEach((schedule) => {
+                schedule.dayOff_schedules = updatedDayOff.dayOff_schedule;
+            });
+            await employee.save();
+        }
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: updatedDayOff,
+            log: employees
+        });
+    } catch (err) {
+        next(err);
+    }
+};

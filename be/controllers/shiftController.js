@@ -1,4 +1,5 @@
 import { CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
+import GroupSchema from "../models/GroupSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";
 import { createError } from "../utils/error.js";
 
@@ -75,6 +76,9 @@ export const updateShift = async (req, res, next) => {
     try {
         const shift = await ShiftSchema.findOne({ code: shift_code });
         if (!shift) return next(createError(NOT_FOUND, "Shift not found!"))
+
+        const group = await GroupSchema.find({ shift_design: shift_code });
+        if (!group) return next(createError(NOT_FOUND, "Group not found!"))
 
         const updateShift = await ShiftSchema.findOneAndUpdate(
             { code: shift_code },

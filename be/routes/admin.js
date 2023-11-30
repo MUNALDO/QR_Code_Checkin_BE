@@ -25,8 +25,9 @@ import { verifyTokenAdmin } from '../utils/verifyToken.js';
 import { salaryCalculate } from '../controllers/salaryController.js';
 import { exportAttendanceToExcel } from '../controllers/xlsxController.js';
 import {
+    addDayOffSchedule,
     addMemberDayOff, createDayOff, getAllDaysOff,
-    getDayOffByCode, getDayOffByName, updateDayOff
+    getDayOffByCode, getDayOffByName, removeDayOffSchedule, updateDayOff
 } from '../controllers/dayOffController.js';
 
 const router = express.Router();
@@ -79,6 +80,9 @@ router.get('/day-off/get-by-code', getDayOffByCode);
 router.get('/day-off/get-by-name', getDayOffByName);
 router.put('/day-off/update', updateDayOff);
 router.put('/day-off/add-member', addMemberDayOff);
+router.put('/day-off/add-dayOff', addDayOffSchedule);
+router.put('/day-off/remove-dayOff', removeDayOffSchedule);
+
 router.get('/get-attendance', getAttendanceByTime);
 router.post('/scan-attendance', scanAndUpdateAttendance);
 

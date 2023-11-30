@@ -113,12 +113,21 @@ export const updateDepartment = async (req, res, next) => {
         const department = await DepartmentSchema.findOne({ code: department_code });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"))
 
+        const employees = await EmployeeSchema.find({ department_code: department_code });
+        if (!employees) return next(createError(NOT_FOUND, "Employee not found!"))
+
         const updateDepartment = await DepartmentSchema.findOneAndUpdate(
             { code: department_code },
             { $set: req.body },
             { $new: true },
         )
 
+        for (const employee of employees) {
+            employee.department_code = updateDepartment.code;
+            employee.department_name = updateDepartment.name;
+            await employee.save();
+        }
+        
         await updateDepartment.save();
         res.status(OK).json({
             success: true,

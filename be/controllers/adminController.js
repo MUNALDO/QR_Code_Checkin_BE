@@ -70,6 +70,7 @@ export const registerEmployee = async (req, res, next) => {
         if (req.body.grouped_work_code && req.body.day_off_code) {
             const group = await GroupSchema.findOne({ code: req.body.grouped_work_code });
             if (!group) return next(createError(BAD_REQUEST, "Invalid grouped work code"))
+
             const dayOff = await DayOffSchema.findOne({ code: req.body.day_off_code });
             if (!dayOff) return next(createError(BAD_REQUEST, "Invalid day off code"))
 
@@ -115,18 +116,50 @@ export const updateEmployee = async (req, res, next) => {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
 
-        const updateEmployee = await EmployeeSchema.findOneAndUpdate(
-            { id: employeeID },
-            { $set: req.body },
-            { $new: true },
-        )
+        if (req.body.grouped_work_code && req.body.day_off_code) {
+            const group = await GroupSchema.findOne({ code: req.body.grouped_work_code });
+            if (!group) return next(createError(BAD_REQUEST, "Invalid grouped work code"))
 
-        await updateEmployee.save();
-        res.status(OK).json({
-            success: true,
-            status: OK,
-            message: updateEmployee,
-        });
+            const dayOff = await DayOffSchema.findOne({ code: req.body.day_off_code });
+            if (!dayOff) return next(createError(BAD_REQUEST, "Invalid day off code"))
+
+            if (dayOff.members.includes(employeeID)) return next(createError(CONFLICT, "Employee already exists in the day off!"));
+
+            const updateEmployee = await EmployeeSchema.findOneAndUpdate(
+                { id: employeeID },
+                {
+                    $set: {
+                        ...req.body,
+                        schedules: [
+                            { work_schedules: group.shift_design },
+                            { dayOff_schedules: dayOff.dayOff_schedule },
+                        ],
+                    }
+                },
+                { $new: true },
+            )
+            dayOff.members.push(employeeID);
+            await dayOff.save();
+            await updateEmployee.save();
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: updateEmployee,
+            });
+        } else {
+            const updateEmployee = await EmployeeSchema.findOneAndUpdate(
+                { id: employeeID },
+                { $set: req.body },
+                { $new: true },
+            )
+
+            await updateEmployee.save();
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: updateEmployee,
+            });
+        }
     } catch (err) {
         next(err);
     }

@@ -156,7 +156,8 @@ export const addMemberGroup = async (req, res, next) => {
         // Add the employee ID to the members array
         group.members.push(employeeID);
         employee.grouped_work_code = group_code;
-        employee.schedules.map(schedule => schedule.work_schedules) = group.shift_design;
+        // console.log(employee.schedules);
+        employee.schedules.push({ work_schedules: group.shift_design });
 
         // Save the updated group
         const updateGroup = await group.save();

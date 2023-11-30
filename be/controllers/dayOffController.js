@@ -139,11 +139,11 @@ export const addMemberDayOff = async (req, res, next) => {
         // Add the employee ID to the members array
         day_off.members.push(employeeID);
         employee.day_off_code = dayOff_code;
-        employee.schedules.map(schedule => schedule.dayOff_schedules) = day_off.dayOff_schedule;
+        employee.schedules.push({ dayOff_schedules: day_off.dayOff_schedule })
 
         // Save the updated day_off
         const updateDayOff = await day_off.save();
-        const updateEmployee = await day_off.save();
+        const updateEmployee = await employee.save();
 
         res.status(OK).json({
             success: true,

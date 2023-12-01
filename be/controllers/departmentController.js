@@ -4,11 +4,9 @@ import EmployeeSchema from "../models/EmployeeSchema.js";
 import { createError } from "../utils/error.js";
 
 export const createDepartment = async (req, res, next) => {
-    const department_code = req.body.code;
 
     try {
         const newDepartment = new DepartmentSchema({
-            code: department_code,
             ...req.body,
         });
 
@@ -29,22 +27,6 @@ export const getAllDepartments = async (req, res, next) => {
         if (!departments) return next(createError(NOT_FOUND, "Department not found!"))
 
         res.status(OK).json(departments)
-    } catch (err) {
-        next(err);
-    }
-};
-
-export const getDepartmentByCode = async (req, res, next) => {
-    const department_code = req.query.code;
-    try {
-        const department = await DepartmentSchema.findOne({ code: department_code });
-        if (!department) return next(createError(NOT_FOUND, "Department not found!"))
-
-        res.status(OK).json({
-            success: true,
-            status: OK,
-            message: department,
-        });
     } catch (err) {
         next(err);
     }
@@ -80,19 +62,12 @@ export const getDepartmentSpecific = async (req, res, next) => {
         }
         const regex = new RegExp(query, 'i');
         const departmentName = await DepartmentSchema.find({ name: regex });
-        const departmentCode = await DepartmentSchema.find({ code: query });
 
         if (departmentName.length !== 0) {
             res.status(OK).json({
                 success: true,
                 status: OK,
                 message: departmentName,
-            });
-        } else if (departmentCode.length !== 0) {
-            res.status(OK).json({
-                success: true,
-                status: OK,
-                message: departmentCode,
             });
         } else {
             res.status(OK).json({
@@ -107,23 +82,22 @@ export const getDepartmentSpecific = async (req, res, next) => {
 };
 
 export const updateDepartment = async (req, res, next) => {
-    const department_code = req.query.code;
+    const department_name = req.query.name;
 
     try {
-        const department = await DepartmentSchema.findOne({ code: department_code });
+        const department = await DepartmentSchema.findOne({ name: department_name });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"))
 
-        const employees = await EmployeeSchema.find({ department_code: department_code });
+        const employees = await EmployeeSchema.find({ department_name: department_name });
         if (!employees) return next(createError(NOT_FOUND, "Employee not found!"))
 
         const updateDepartment = await DepartmentSchema.findOneAndUpdate(
-            { code: department_code },
+            { name: department_name },
             { $set: req.body },
             { $new: true },
         )
 
         for (const employee of employees) {
-            employee.department_code = updateDepartment.code;
             employee.department_name = updateDepartment.name;
             await employee.save();
         }
@@ -139,14 +113,14 @@ export const updateDepartment = async (req, res, next) => {
     }
 };
 
-export const deleteDepartmentByCode = async (req, res, next) => {
-    const department_code = req.query.code;
+export const deleteDepartmentByName = async (req, res, next) => {
+    const department_name = req.query.name;
 
     try {
-        const department = await DepartmentSchema.findOne({ code: department_code });
+        const department = await DepartmentSchema.findOne({ name: department_name });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"))
 
-        await DepartmentSchema.findOneAndDelete({ code: department_code });
+        await DepartmentSchema.findOneAndDelete({ name: department_name });
         res.status(OK).json({
             success: true,
             status: OK,
@@ -158,21 +132,20 @@ export const deleteDepartmentByCode = async (req, res, next) => {
 };
 
 export const addMemberDepartment = async (req, res, next) => {
-    const department_code = req.query.code;
+    const department_name = req.query.name;
     const employeeID = req.body.employeeID;
 
     try {
-        const department = await DepartmentSchema.findOne({ code: department_code });
+        const department = await DepartmentSchema.findOne({ name: department_name });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"))
 
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
 
-        if (department.members.includes(employeeID)) return next(createError(CONFLICT, "Employee already exists in the department!"));
+        if (department.members.includes(employee)) return next(createError(CONFLICT, "Employee already exists in the department!"));
 
         // Add the employee ID to the members array
-        department.members.push(employeeID);
-        employee.department_code = department_code;
+        department.members.push(employee);
         employee.department_name = department.name;
 
         // Save the updated department

@@ -16,9 +16,39 @@ export const verifyTokenAdmin = (req, res, next) => {
     });
 };
 
+export const verifyUserAdmin = (req, res, next) => {
+    verifyTokenAdmin(req, res, next, () => { 
+        if (req.user.role == "Admin") {
+            next();
+        } else {
+            return next(createError(UNAUTHORIZED, "You are not admin"));
+        }
+    });
+};
+
+export const verifyUserInhaber = (req, res, next) => {
+    verifyTokenAdmin(req, res, next, () => { 
+        if (req.user.role == "Inhaber") {
+            next();
+        } else {
+            return next(createError(UNAUTHORIZED, "You are not inhaber"));
+        }
+    });
+};
+
+export const verifyUserManager = (req, res, next) => {
+    verifyTokenAdmin(req, res, next, () => { 
+        if (req.user.role == "Manager") {
+            next();
+        } else {
+            return next(createError(UNAUTHORIZED, "You are not manager"));
+        }
+    });
+};
+
 export const verifyTokenEmployee = (req, res, next) => {
     const token_employee = req.cookies.access_token_employee;
-    if (!token_employee) return next(createError(UNAUTHORIZED, "You are not authenticated"));
+    if (!token_employee) return next(createError(UNAUTHORIZED, "You are not employee"));
 
     jwt.verify(token_employee, process.env.JWT_EMPLOYEE, (err, employee) => {
         if (err) {

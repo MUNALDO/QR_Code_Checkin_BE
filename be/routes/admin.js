@@ -1,62 +1,50 @@
 import express from 'express';
 import {
-    deleteEmployeeById,
-    getAllEmployees, getAttendanceByTime,
-    getEmployeeById, getEmployeeByName,
-    getEmployeeByRole,
-    getEmployeeSchedule,
-    getEmployeeSpecific,
-    loginAdmin, logoutAdmin, registerAdmin,
-    registerEmployee, scanAndUpdateAttendance, updateEmployee
+    deleteEmployeeById, getAllEmployees, getAttendanceByTime,
+    getEmployeeById, getEmployeeByName, getEmployeeByRole,
+    getEmployeeSchedule, getEmployeeSpecific, updateEmployee
 } from '../controllers/adminController.js';
 import {
-    addMemberDepartment, createDepartment, getAllDepartments,
-    getDepartmentByCode, getDepartmentByName, getDepartmentSpecific, updateDepartment
+    addMemberDepartment, createDepartment, deleteDepartmentByName, getAllDepartments,
+    getDepartmentByName, getDepartmentSpecific, updateDepartment
 } from '../controllers/departmentController.js';
 import {
     createShift, getAllShifts,
     getShiftByCode, getShiftByName, updateShift
 } from '../controllers/shiftController.js';
-import {
-    addMemberGroup, createGroup, getAllGroups,
-    getGroupByCode, getGroupByName, updateGroup
-} from '../controllers/groupController.js';
 import { verifyTokenAdmin } from '../utils/verifyToken.js';
 import { salaryCalculate } from '../controllers/salaryController.js';
 import { exportAttendanceToExcel } from '../controllers/xlsxController.js';
 import {
-    addDayOffSchedule,
-    addMemberDayOff, createDayOff, getAllDaysOff,
+    addDayOffSchedule, addMemberDayOff, createDayOff, getAllDaysOff,
     getDayOffByCode, getDayOffByName, removeDayOffSchedule, updateDayOff
 } from '../controllers/dayOffController.js';
+import {
+    addMemberDate, createDateDesign,
+    getAllDates, getDateById, updateDate
+} from '../controllers/dateDesignController.js';
 
 const router = express.Router();
 
-// authenticate
-router.post('/registerAdmin', registerAdmin);
-router.post('/loginAdmin', loginAdmin);
-router.post('/logoutAdmin', logoutAdmin);
-
 // employee
-router.post('/manage-employee/add-employee', registerEmployee);
-router.get('/manage-employee/get-all-employees', getAllEmployees);
+router.get('/manage-employee/get-all', getAllEmployees);
 router.get('/manage-employee/get-employee-specific', getEmployeeSpecific);
-router.get('/manage-employee/get-employee-byId', getEmployeeById);
-router.get('/manage-employee/get-employee-byName', getEmployeeByName);
-router.get('/manage-employee/get-employee-byRole', getEmployeeByRole);
+router.get('/manage-employee/get-byId', getEmployeeById);
+router.get('/manage-employee/get-byName', getEmployeeByName);
+router.get('/manage-employee/get-byRole', getEmployeeByRole);
 router.get('/manage-employee/get-schedule', getEmployeeSchedule);
 router.get('/manage-employee/export-attendance', exportAttendanceToExcel);
-router.delete('/manage-employee/delete-employee-byId', deleteEmployeeById);
+router.delete('/manage-employee/delete-byId', deleteEmployeeById);
 router.put('/manage-employee/update', updateEmployee);
 
 // department
-router.post('/department/create-department', createDepartment);
+router.post('/department/create', createDepartment);
 router.get('/department/get-all', getAllDepartments);
-router.get('/department/get-by-code', getDepartmentByCode);
 router.get('/department/get-by-name', getDepartmentByName);
 router.get('/department/get-department-specific', getDepartmentSpecific);
 router.put('/department/update', updateDepartment);
 router.put('/department/add-member', addMemberDepartment);
+router.delete('/department/delete', deleteDepartmentByName);
 
 // shift
 router.post('/shift/create-shift', createShift);
@@ -65,13 +53,12 @@ router.get('/shift/get-by-code', getShiftByCode);
 router.get('/shift/get-by-name', getShiftByName);
 router.put('/shift/update', updateShift);
 
-// group
-router.post('/group/create-group', createGroup);
-router.get('/group/get-all', getAllGroups);
-router.get('/group/get-by-code', getGroupByCode);
-router.get('/group/get-by-name', getGroupByName);
-router.put('/group/update', updateGroup);
-router.put('/group/add-member', addMemberGroup);
+// date design
+router.post('/date-design/create', createDateDesign);
+router.get('/date-design/get-all', getAllDates);
+router.get('/date-design/get-by-id', getDateById);
+router.put('/date-design/update', updateDate);
+router.put('/date-design/add-member', addMemberDate);
 
 // day off
 router.post('/day-off/create-dayOff', createDayOff);
@@ -84,7 +71,7 @@ router.put('/day-off/add-dayOff', addDayOffSchedule);
 router.put('/day-off/remove-dayOff', removeDayOffSchedule);
 
 router.get('/get-attendance', getAttendanceByTime);
-router.post('/scan-attendance', scanAndUpdateAttendance);
+// router.post('/scan-attendance', scanAndUpdateAttendance);
 
 router.post('/salary-calculate', verifyTokenAdmin, salaryCalculate);
 export default router;

@@ -27,12 +27,6 @@ const attendanceSchema = new mongoose.Schema(
         department_name: {
             type: String,
         },
-        grouped_work_code: {
-            type: String,
-        },
-        day_off_code: {
-            type: String,
-        },
         shift_info: {
             shift_code: {
                 type: String,

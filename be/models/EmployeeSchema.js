@@ -19,10 +19,6 @@ const employeeSchema = new mongoose.Schema(
             type: String,
             required: true,
         },
-        phone: {
-            type: String,
-            required: true,
-        },
         address: {
             type: String,
         },
@@ -32,38 +28,32 @@ const employeeSchema = new mongoose.Schema(
         gender: {
             type: String,
         },
-        role: {
-            type: String,
-            // Nhân viên, Trưởng phòng, Trợ lý, Phó phòng, Giám đốc, Phó giám đốc,
-            // Tổng giám đốc, Phó tổng giám đốc
-            enum: ['employee', 'leader', 'assistant', 'deputy', 'manager', 'vice president',
-                'general manager', 'deputy general manager'],
-            default: 'employee',
-        },
-        department_code: {
-            type: String,
-            // required: true
-        },
         department_name: {
             type: String,
-            // required: true
+        },
+        role: {
+            type: String,
+            default: 'Employee',
+        },
+        position: {
+            type: String,
+            // dịch vụ, quán ba, Phòng bếp, delivery, tài xế
+            enum: ['Service', 'Bar', 'Küche', 'Lito', 'Autofahrer', 'Fahrradfahrer',
+                'Büro', 'Lehrgang für Azubi', 'FacTech GmbH'],
         },
         salary_service_code: {
             type: String,
-            // required: true,
         },
-        grouped_work_code: {
-            type: String,
-        },
-        day_off_code: {
-            type: String,
+        default_total_dayOff: {
+            type: Number,
+            default: 0
         },
         schedules: [
             {
                 work_schedules: {
                     type: Object,
                 },
-                dayOff_schedules: {
+                ot_schedules: {
                     type: Array,
                 }
             },

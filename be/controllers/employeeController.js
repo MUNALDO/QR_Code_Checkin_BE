@@ -1,45 +1,8 @@
 import { BAD_REQUEST, CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
-import dotenv from 'dotenv';
-import bcrypt from "bcrypt"
-import jwt from "jsonwebtoken"
 import { createError } from "../utils/error.js";
-import GroupSchema from "../models/GroupSchema.js";
-import DayOffSchema from "../models/DayOffSchema.js";
-
-dotenv.config();
-
-export const loginEmployee = async (req, res, next) => {
-    try {
-        const employee = await EmployeeSchema.findOne({ name: req.body.name })
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
-        const isPasswordCorrect = await bcrypt.compare(
-            req.body.password,
-            employee.password
-        )
-        if (!isPasswordCorrect) return next(createError(BAD_REQUEST, "Wrong password!"))
-        const token_employee = jwt.sign(
-            { id: employee.id, role: employee.role == "employee" },
-            process.env.JWT_EMPLOYEE,
-            { expiresIn: "24h" },
-        )
-        const { password, ...otherDetails } = employee._doc;
-        res.cookie("access_token_employee", token_employee, {
-            httpOnly: true,
-            sameSite: "none",
-            secure: true,
-        }).status(OK).json({ details: { ...otherDetails } })
-    } catch (err) {
-        next(err)
-    }
-};
-
-export const logoutEmployee = (req, res, next) => {
-    res.clearCookie("access_token_employee")
-        .status(OK).
-        json("Employee has been successfully logged out.");
-};
+import DateDesignSchema from "../models/DateDesignSchema.js";
 
 export const checkAttendance = async (req, res, next) => {
     const { employeeID } = req.body;
@@ -52,31 +15,13 @@ export const checkAttendance = async (req, res, next) => {
         const weekday = currentTime.getDay();
         const day = currentTime.getDate();
         const month = currentTime.getMonth() + 1;
-        const formattedDay = day < 10 ? `0${day}` : day.toString();
-        const formattedMonth = month < 10 ? `0${month}` : month.toString();
-        const dayAndMonth = `${formattedDay}/${formattedMonth}`;
 
         const getDayString = (weekday) => {
             const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
             return days[weekday];
         };
 
-        const dayOff_code = employee.day_off_code;
-        const dayOff_schedules = await DayOffSchema.findOne({ code: dayOff_code });
-        const dayOffByDate = dayOff_schedules.dayOff_schedule.map(day_off => day_off.date) === dayAndMonth;
-        const dayOffByWeekDay = dayOff_schedules.dayOff_schedule.map(day_off => day_off.date) === getDayString(weekday);
-
-        if (dayOffByDate || dayOffByWeekDay) {
-            return res.status(BAD_REQUEST).json({
-                success: true,
-                status: BAD_REQUEST,
-                message: "You can not check in or check out in day off",
-            });
-        }
-
-        const group_code = employee.grouped_work_code;
-        const group = await GroupSchema.findOne({ code: group_code });
-        const dayShift = group.shift_design.find(day => day.date === getDayString(weekday));
+        const dayShift = await DateDesignSchema.findOne({ date: getDayString(weekday) });
         if (!dayShift) return next(createError(NOT_FOUND, 'Shift not found for the current day'));
 
         const shift_code = dayShift.shift_code;
@@ -104,8 +49,6 @@ export const checkAttendance = async (req, res, next) => {
                     role: employee.role,
                     department_code: employee.department_code,
                     department_name: employee.department_name,
-                    grouped_work_code: employee.grouped_work_code,
-                    day_off_code: employee.day_off_code,
                     shift_info: {
                         shift_code: shift_code
                     }

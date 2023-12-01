@@ -1,8 +1,10 @@
 import { createError } from "../utils/error.js";
-import { FORBIDDEN, NOT_FOUND, OK } from "../constant/HttpStatus.js";
+import { CONFLICT, CREATED, FORBIDDEN, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import AdminSchema from "../models/AdminSchema.js";
+import DateDesignSchema from "../models/DateDesignSchema.js";
+import ShiftSchema from "../models/ShiftSchema.js";
 
 export const updateEmployee = async (req, res, next) => {
     const inhaber_name = req.body.inhaber_name;
@@ -15,7 +17,7 @@ export const updateEmployee = async (req, res, next) => {
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
 
         if (inhaber.department_name !== employee.department_name) {
-            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only update an employee in their department."));
+            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));
         }
 
         const updateEmployee = await EmployeeSchema.findOneAndUpdate(
@@ -46,7 +48,7 @@ export const deleteEmployeeById = async (req, res, next) => {
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
 
         if (inhaber.department_name !== employee.department_name) {
-            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only delete an employee in their department."));
+            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));
         }
 
         await EmployeeSchema.findOneAndDelete({ id: employeeID });
@@ -153,7 +155,7 @@ export const getEmployeeSchedule = async (req, res, next) => {
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
 
         if (inhaber.department_name !== employee.department_name) {
-            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only delete an employee in their department."));
+            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));
         }
 
         res.status(OK).json({
@@ -190,3 +192,194 @@ export const getAttendanceByTime = async (req, res, next) => {
     }
 }
 
+export const createDateDesign = async (req, res, next) => {
+    const inhaber_name = req.query.inhaber_name;
+    const shiftCode = req.body.shift_code;
+    const employeeID = req.body.employeeID;
+    try {
+        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        const shift = await ShiftSchema.findOne({ code: shiftCode });
+        if (!shift) return next(createError(NOT_FOUND, "Shift not found!"))
+
+        const date = await DateDesignSchema.findOne({ date: req.body.date });
+        if (!date) {
+            const employee = await EmployeeSchema.findOne({ id: employeeID });
+            if (employee) {
+                if (inhaber.department_name !== employee.department_name) {
+                    return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));
+                }
+                const newDesign = new DateDesignSchema({
+                    date: req.body.date,
+                    shift_design: [
+                        {
+                            shift_code: shift.code,
+                            time_slot: shift.time_slot
+                        }
+                    ]
+                });
+
+                // Add the employee to the members array
+                newDesign.members.push({
+                    id: employee.id,
+                    name: employee.name,
+                    email: employee.email,
+                    address: employee.address,
+                    dob: employee.dob,
+                    gender: employee.gender,
+                    department_name: employee.department_name,
+                    position: employee.position
+                });
+
+                // const filteredWorkSchedule = employee.schedules.work_schedules.map(schedule => schedule.date) === newDesign.date;
+                // if (filteredWorkSchedule) return next(createError(CONFLICT, "Date already in work schedule!"));
+
+                employee.schedules.work_schedules.push({
+                    date: newDesign.date,
+                    shift_design: newDesign.shift_design
+                });
+                await newDesign.save();
+                await employee.save();
+                res.status(CREATED).json({
+                    success: true,
+                    status: CREATED,
+                    message: newDesign,
+                });
+            } else {
+                const newDesign = new DateDesignSchema({
+                    date: req.body.date,
+                    shift_code: shiftCode,
+                    time_slot: shift.time_slot
+                });
+                await newDesign.save();
+                res.status(CREATED).json({
+                    success: true,
+                    status: CREATED,
+                    message: newDesign,
+                });
+            }
+        } else {
+            const employee = await EmployeeSchema.findOne({ id: employeeID });
+            if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+
+            if (inhaber.department_name !== employee.department_name) {
+                return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));
+            }
+
+            if (date.members.some(member => member.id === employeeID)) {
+                return next(createError(CONFLICT, "Employee already exists in the date!"));
+            }
+            date.members.push({
+                id: employee.id,
+                name: employee.name,
+                email: employee.email,
+                address: employee.address,
+                dob: employee.dob,
+                gender: employee.gender,
+                department_name: employee.department_name,
+                position: employee.position
+            });
+            employee.schedules.work_schedules.push({
+                date: date.date,
+                shift_design: date.shift_design
+            });
+            await date.save();
+            await employee.save();
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: date,
+            });
+        }
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const addMemberDate = async (req, res, next) => {
+    const inhaber_name = req.query.inhaber_name;
+    const employeeID = req.body.employeeID;
+    try {
+        const date = await DateDesignSchema.findOne({ date: req.query.date });
+        if (!date) return next(createError(NOT_FOUND, "Date not found!"));
+
+        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+
+        if (inhaber.department_name !== employee.department_name) {
+            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));
+        }
+
+        if (date.members.some(member => member.id === employeeID)) {
+            return next(createError(CONFLICT, "Employee already exists in the date!"));
+        }
+        date.members.push({
+            id: employee.id,
+            name: employee.name,
+            email: employee.email,
+            address: employee.address,
+            dob: employee.dob,
+            gender: employee.gender,
+            department_name: employee.department_name,
+            position: employee.position
+        });
+        employee.schedules.work_schedules.push({
+            date: date.date,
+            shift_design: date.shift_design
+        });
+        await date.save();
+        await employee.save();
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: date,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const removeMemberDate = async (req, res, next) => {
+    const inhaber_name = req.query.inhaber_name;
+    const employeeID = req.body.employeeID;
+    try {
+        const date = await DateDesignSchema.findOne({ date: req.query.date });
+        if (!date) return next(createError(NOT_FOUND, "Date not found!"));
+
+        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+
+        if (inhaber.department_name !== employee.department_name) {
+            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervene with an employee in their department."));
+        }
+
+        // Use $pull to remove the member with a specific ID from the array
+        await DateDesignSchema.updateOne(
+            { _id: date._id },
+            { $pull: { members: { id: employee.id } } }
+        );
+
+        // Remove the corresponding entry from employee's schedules
+        employee.schedules.work_schedules = employee.schedules.work_schedules.filter(
+            (schedule) => schedule.date.toString() !== date.date.toString()
+        );
+
+        await date.save();
+        await employee.save();
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: date,
+        });
+    } catch (err) {
+        next(err);
+    }
+};

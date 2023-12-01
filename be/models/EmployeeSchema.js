@@ -48,16 +48,14 @@ const employeeSchema = new mongoose.Schema(
             type: Number,
             default: 0
         },
-        schedules: [
-            {
-                work_schedules: {
-                    type: Object,
-                },
-                ot_schedules: {
-                    type: Array,
-                }
+        schedules: {
+            work_schedules: {
+                type: Array,
             },
-        ],
+            ot_schedules: {
+                type: Array,
+            }
+        },
         status: {
             type: String,
             enum: ['active', 'inactive'],

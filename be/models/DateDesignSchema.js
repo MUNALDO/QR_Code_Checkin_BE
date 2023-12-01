@@ -4,15 +4,20 @@ const dateDesignSchema = new mongoose.Schema(
     {
         date: {
             type: Date,
+            unique: true,
             required: true
         },
-        shift_code: {
-            type: String,
-            required: true
-        },
-        time_slot: {
-            type: Object,
-        },
+        shift_design: [
+            {
+                shift_code: {
+                    type: String,
+                    required: true
+                },
+                time_slot: {
+                    type: Object,
+                },
+            }
+        ],
         members: [],
     },
     { timestamps: true }

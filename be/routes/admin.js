@@ -12,7 +12,7 @@ import {
     createShift, getAllShifts,
     getShiftByCode, getShiftByName, updateShift
 } from '../controllers/shiftController.js';
-import { verifyTokenAdmin } from '../utils/verifyToken.js';
+import { verifyTokenAdmin, verifyUserAdmin } from '../utils/verifyToken.js';
 import { salaryCalculate } from '../controllers/salaryController.js';
 import { exportAttendanceToExcel } from '../controllers/xlsxController.js';
 import {
@@ -20,45 +20,46 @@ import {
     getDayOffByCode, getDayOffByName, removeDayOffSchedule, updateDayOff
 } from '../controllers/dayOffController.js';
 import {
-    addMemberDate, createDateDesign,
-    getAllDates, getDateById, updateDate
+    addMemberDate, createDateDesign, deleteDateSpecific,
+    getAllDates, getDateSpecific, removeMemberDate
 } from '../controllers/dateDesignController.js';
 
 const router = express.Router();
 
 // employee
-router.get('/manage-employee/get-all', getAllEmployees);
-router.get('/manage-employee/get-employee-specific', getEmployeeSpecific);
-router.get('/manage-employee/get-byId', getEmployeeById);
-router.get('/manage-employee/get-byName', getEmployeeByName);
-router.get('/manage-employee/get-byRole', getEmployeeByRole);
-router.get('/manage-employee/get-schedule', getEmployeeSchedule);
-router.get('/manage-employee/export-attendance', exportAttendanceToExcel);
-router.delete('/manage-employee/delete-byId', deleteEmployeeById);
-router.put('/manage-employee/update', updateEmployee);
+router.get('/manage-employee/get-all', verifyUserAdmin, getAllEmployees);
+router.get('/manage-employee/get-specific', verifyUserAdmin, getEmployeeSpecific);
+router.get('/manage-employee/get-byId', verifyUserAdmin, getEmployeeById);
+router.get('/manage-employee/get-byName', verifyUserAdmin, getEmployeeByName);
+router.get('/manage-employee/get-byRole', verifyUserAdmin, getEmployeeByRole);
+router.get('/manage-employee/get-schedule', verifyUserAdmin, getEmployeeSchedule);
+router.get('/manage-employee/export-attendance', verifyUserAdmin, exportAttendanceToExcel);
+router.delete('/manage-employee/delete-byId', verifyUserAdmin, deleteEmployeeById);
+router.put('/manage-employee/update', verifyUserAdmin, updateEmployee);
 
 // department
-router.post('/department/create', createDepartment);
-router.get('/department/get-all', getAllDepartments);
-router.get('/department/get-by-name', getDepartmentByName);
-router.get('/department/get-department-specific', getDepartmentSpecific);
-router.put('/department/update', updateDepartment);
-router.put('/department/add-member', addMemberDepartment);
-router.delete('/department/delete', deleteDepartmentByName);
+router.post('/manage-department/create', verifyUserAdmin, createDepartment);
+router.get('/manage-department/get-all', verifyUserAdmin, getAllDepartments);
+router.get('/manage-department/get-by-name', verifyUserAdmin, getDepartmentByName);
+router.get('/manage-department/get-specific', verifyUserAdmin, getDepartmentSpecific);
+router.put('/manage-department/update', verifyUserAdmin, updateDepartment);
+router.put('/manage-department/add-member', verifyUserAdmin, addMemberDepartment);
+router.delete('/manage-department/delete', verifyUserAdmin, deleteDepartmentByName);
 
 // shift
-router.post('/shift/create-shift', createShift);
-router.get('/shift/get-all', getAllShifts);
-router.get('/shift/get-by-code', getShiftByCode);
-router.get('/shift/get-by-name', getShiftByName);
-router.put('/shift/update', updateShift);
+router.post('/manage-shift/create', verifyUserAdmin, createShift);
+router.get('/manage-shift/get-all', verifyUserAdmin, getAllShifts);
+router.get('/manage-shift/get-by-code', verifyUserAdmin, getShiftByCode);
+router.get('/manage-shift/get-by-name', verifyUserAdmin, getShiftByName);
+router.put('/manage-shift/update', verifyUserAdmin, updateShift);
 
 // date design
-router.post('/date-design/create', createDateDesign);
-router.get('/date-design/get-all', getAllDates);
-router.get('/date-design/get-by-id', getDateById);
-router.put('/date-design/update', updateDate);
-router.put('/date-design/add-member', addMemberDate);
+router.post('/manage-date-design/create', verifyUserAdmin, createDateDesign);
+router.get('/manage-date-design/get-all', verifyUserAdmin, getAllDates);
+router.get('/manage-date-design/get-specific', verifyUserAdmin, getDateSpecific);
+router.put('/manage-date-design/delete', verifyUserAdmin, deleteDateSpecific);
+router.put('/manage-date-design/add-member', verifyUserAdmin, addMemberDate);
+router.put('/manage-date-design/remove-member', verifyUserAdmin, removeMemberDate);
 
 // day off
 router.post('/day-off/create-dayOff', createDayOff);

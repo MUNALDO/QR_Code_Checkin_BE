@@ -150,7 +150,7 @@ export const registerManagerByInhaber = async (req, res, next) => {
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
         if (inhaber.department_name !== manager_department_name) {
-            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only create an manager in their department."));
+            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an manager in their department."));
         }
 
         const salt = bcrypt.genSaltSync(10);
@@ -241,7 +241,7 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
         if (inhaber.department_name !== employee_department_name) {
-            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only create an employee in their department."));
+            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));
         }
 
         const salt = bcrypt.genSaltSync(10);
@@ -273,7 +273,7 @@ export const registerEmployeeByManager = async (req, res, next) => {
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
 
         if (manager.department_name !== employee_department_name) {
-            return next(createError(FORBIDDEN, "Permission denied. Manager can only create an employee in their department."));
+            return next(createError(FORBIDDEN, "Permission denied. Manager can only intervention an employee in their department."));
         }
 
         const salt = bcrypt.genSaltSync(10);

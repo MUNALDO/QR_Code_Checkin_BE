@@ -6,10 +6,6 @@ const attendanceSchema = new mongoose.Schema(
             type: Date,
             required: true,
         },
-        weekday: {
-            type: String,
-            enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-        },
         employee_id: {
             type: Number,
             required: true,
@@ -18,13 +14,13 @@ const attendanceSchema = new mongoose.Schema(
             type: String,
             required: true,
         },
+        department_name: {
+            type: String,
+        },
         role: {
             type: String,
         },
-        department_code: {
-            type: String,
-        },
-        department_name: {
+        position: {
             type: String,
         },
         shift_info: {

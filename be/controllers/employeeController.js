@@ -5,27 +5,26 @@ import { createError } from "../utils/error.js";
 import DateDesignSchema from "../models/DateDesignSchema.js";
 
 export const checkAttendance = async (req, res, next) => {
-    const { employeeID } = req.body;
+    const employeeID = req.body;
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found"))
 
         const currentTime = new Date();
-        const date = currentTime.toLocaleDateString();
+        const current_date = currentTime.toLocaleDateString();
         const weekday = currentTime.getDay();
         const day = currentTime.getDate();
         const month = currentTime.getMonth() + 1;
 
-        const getDayString = (weekday) => {
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            return days[weekday];
-        };
+        const date = await DateDesignSchema.findOne({ date: currentTime });
+        if (!date) return next(createError(NOT_FOUND, 'Design not found for the current day'));
 
-        const dayShift = await DateDesignSchema.findOne({ date: getDayString(weekday) });
-        if (!dayShift) return next(createError(NOT_FOUND, 'Shift not found for the current day'));
+        if (date.members.some(member => member.id !== employeeID)) {
+            return next(createError(CONFLICT, "Employee not exists in the date!"));
+        }
 
-        const shift_code = dayShift.shift_code;
-        const time_slot = dayShift.time_slot;
+        const shift_code = date.shift;
+        const time_slot = date.time_slot;
 
         const existingAttendance = await AttendanceSchema.findOne({
             employee_id: employee.id,
@@ -43,12 +42,11 @@ export const checkAttendance = async (req, res, next) => {
                 // only check in
                 const newAttendance = new AttendanceSchema({
                     date: date,
-                    weekday: getDayString(weekday),
                     employee_id: employeeID,
                     employee_name: employee.name,
-                    role: employee.role,
-                    department_code: employee.department_code,
                     department_name: employee.department_name,
+                    role: employee.role,
+                    position: employee.position,
                     shift_info: {
                         shift_code: shift_code
                     }

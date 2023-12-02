@@ -11,18 +11,18 @@ export const createDateDesign = async (req, res, next) => {
         const shift = await ShiftSchema.findOne({ code: shiftCode });
         if (!shift) return next(createError(NOT_FOUND, "Shift not found!"))
 
+        // console.log(shift);
+
         const date = await DateDesignSchema.findOne({ date: req.body.date });
         if (!date) {
             const employee = await EmployeeSchema.findOne({ id: employeeID });
             if (employee) {
                 const newDesign = new DateDesignSchema({
                     date: req.body.date,
-                    shift_design: [
-                        {
-                            shift_code: shift.code,
-                            time_slot: shift.time_slot
-                        }
-                    ]
+                    shift_design: {
+                        shift_code: shift.code,
+                        time_slot: shift.time_slot
+                    }
                 });
 
                 // Add the employee to the members array

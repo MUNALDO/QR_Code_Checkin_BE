@@ -4,7 +4,6 @@ const dateDesignSchema = new mongoose.Schema(
     {
         date: {
             type: Date,
-            unique: true,
             required: true
         },
         shift_design: [
@@ -16,9 +15,9 @@ const dateDesignSchema = new mongoose.Schema(
                 time_slot: {
                     type: Object,
                 },
+                members: [],
             }
         ],
-        members: [],
     },
     { timestamps: true }
 );

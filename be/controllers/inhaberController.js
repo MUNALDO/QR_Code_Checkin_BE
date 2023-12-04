@@ -167,7 +167,49 @@ export const getAttendanceByTime = async (req, res, next) => {
     }
 }
 
-export const findEmployeesByDateAndShiftByInhaber = async (req, res, next) => {
+export const getEmployeesByDateByInhaber = async (req, res, next) => {
+    try {
+        const targetDate = new Date(req.body.date);
+        const inhaberName = req.query.inhaber_name;
+
+        // Find the inhaber
+        const inhaber = await AdminSchema.findOne({ name: inhaberName });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        // Find all employees
+        const employees = await EmployeeSchema.find();
+
+        // Filter employees based on the target date, shift code, and department
+        const matchedEmployees = employees.filter(employee => {
+            const matchedSchedules = employee.schedules.filter(schedule => {
+                return schedule.date.getTime() === targetDate.getTime();
+            });
+
+            return (
+                matchedSchedules.length > 0 &&
+                inhaber.department_name === employee.department_name
+            );
+        });
+
+        if (matchedEmployees.length === 0) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: "No employees found for the specified criteria.",
+            });
+        }
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: matchedEmployees,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getEmployeesByDateAndShiftByInhaber = async (req, res, next) => {
     try {
         const targetDate = new Date(req.body.date);
         const targetShiftCode = req.body.shift_code;
@@ -192,14 +234,19 @@ export const findEmployeesByDateAndShiftByInhaber = async (req, res, next) => {
                 );
             });
 
-            // console.log(inhaber.department_name);
-            // console.log(employee.department_name);
-
             return (
                 matchedSchedules.length > 0 &&
                 inhaber.department_name === employee.department_name
             );
         });
+
+        if (matchedEmployees.length === 0) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: "No employees found for the specified criteria.",
+            });
+        }
 
         res.status(OK).json({
             success: true,
@@ -304,6 +351,45 @@ export const getAllDatesByInhaber = async (req, res, next) => {
     }
 };
 
+export const getDateDesignInMonthByInhaber = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+    const inhaber_name = req.query.inhaber_name;
+    const targetMonth = req.body.month;
+
+    try {
+        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+
+        if (inhaber.department_name !== employee.department_name) {
+            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervene with an employee in their department."));
+        }
+
+        // Filter schedules for the target month
+        const schedulesInMonth = employee.schedules.filter(schedule => {
+            const scheduleMonth = schedule.date.getMonth() + 1;
+            return scheduleMonth === targetMonth;
+        });
+
+        if (schedulesInMonth.length === 0) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: `No schedules found for the employee in the specified month.`,
+            });
+        }
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: schedulesInMonth,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
 
 export const getDateSpecificByInhaber = async (req, res, next) => {
     const employeeID = req.query.employeeID;

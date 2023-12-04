@@ -89,21 +89,6 @@ export const getAllEmployees = async (req, res, next) => {
     }
 };
 
-export const getEmployeeById = async (req, res, next) => {
-    const employeeID = req.query.employeeID;
-    try {
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
-        res.status(OK).json({
-            success: true,
-            status: OK,
-            message: employee,
-        });
-    } catch (err) {
-        next(err);
-    }
-};
-
 export const getEmployeeSpecific = async (req, res, next) => {
     const query = req.query.query;
     // console.log(query);
@@ -151,40 +136,39 @@ export const getEmployeeSpecific = async (req, res, next) => {
     }
 };
 
-export const getEmployeeByName = async (req, res, next) => {
-    const employeeName = req.query.employeeName;
+export const getEmployeesByDate = async (req, res, next) => {
     try {
-        const employee = await EmployeeSchema.find({ name: employeeName });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+        const targetDate = new Date(req.body.date);
+
+        // Find all employees
+        const employees = await EmployeeSchema.find();
+
+        // Filter employees based on the target date and shift code
+        const matchedEmployees = employees.filter(employee => {
+            const matchedSchedules = employee.schedules.filter(schedule => {
+                return schedule.date.getTime() === targetDate.getTime();
+            });
+
+            return matchedSchedules.length > 0;
+        });
+
         res.status(OK).json({
             success: true,
             status: OK,
-            message: employee,
+            message: matchedEmployees,
         });
     } catch (err) {
         next(err);
     }
 };
 
-export const getEmployeeByRole = async (req, res, next) => {
-    const employeeRole = req.query.employeeRole;
-    try {
-        const employee = await EmployeeSchema.find({ role: employeeRole });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
-        res.status(OK).json({
-            success: true,
-            status: OK,
-            message: employee,
-        });
-    } catch (err) {
-        next(err);
-    }
-};
-
-export const findEmployeesByDateAndShift = async (req, res, next) => {
+export const getEmployeesByDateAndShift = async (req, res, next) => {
     try {
         const targetDate = new Date(req.body.date);
         const targetShiftCode = req.body.shift_code;
+
+        const shift = await ShiftSchema.findOne({ code: targetShiftCode });
+        if (!shift) return next(createError(NOT_FOUND, "Shift not found!"))
 
         // Find all employees
         const employees = await EmployeeSchema.find();

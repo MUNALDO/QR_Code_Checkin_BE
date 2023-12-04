@@ -310,6 +310,7 @@ export const loginEmployee = async (req, res, next) => {
             process.env.JWT_EMPLOYEE,
             { expiresIn: "24h" },
         )
+        // console.log(token_employee);
         const { password, ...otherDetails } = employee._doc;
         res.cookie("access_token_employee", token_employee, {
             httpOnly: true,

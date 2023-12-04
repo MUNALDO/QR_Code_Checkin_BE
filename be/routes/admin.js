@@ -1,8 +1,7 @@
 import express from 'express';
 import {
     deleteEmployeeById, getAllEmployees, getAttendanceByTime,
-    getEmployeeById, getEmployeeByName, getEmployeeByRole,
-    getEmployeeSpecific, updateEmployee
+    getEmployeeSpecific, getEmployeesByDate, getEmployeesByDateAndShift, updateEmployee
 } from '../controllers/adminController.js';
 import {
     addMemberDepartment, createDepartment, deleteDepartmentByName, getAllDepartments,
@@ -29,9 +28,8 @@ const router = express.Router();
 // employee
 router.get('/manage-employee/get-all', verifyUserAdmin, getAllEmployees);
 router.get('/manage-employee/get-specific', verifyUserAdmin, getEmployeeSpecific);
-router.get('/manage-employee/get-byId', verifyUserAdmin, getEmployeeById);
-router.get('/manage-employee/get-byName', verifyUserAdmin, getEmployeeByName);
-router.get('/manage-employee/get-byRole', verifyUserAdmin, getEmployeeByRole);
+router.get('/manage-employee/get-by-date', verifyUserAdmin, getEmployeesByDate);
+router.get('/manage-employee/get-by-date&shift', verifyUserAdmin, getEmployeesByDateAndShift);
 router.get('/manage-employee/export-attendance', verifyUserAdmin, exportAttendanceToExcel);
 router.delete('/manage-employee/delete-byId', verifyUserAdmin, deleteEmployeeById);
 router.put('/manage-employee/update', verifyUserAdmin, updateEmployee);

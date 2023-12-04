@@ -120,9 +120,6 @@ export const getEmployeeSpecific = async (req, res, next) => {
         const employeeName = await EmployeeSchema.find({ name: regex });
         const employeeID = await EmployeeSchema.find({ id: query });
         const employeeRole = await EmployeeSchema.find({ role: query });
-        // console.log(employeeRole);
-        // console.log(employeeName);
-        // console.log(employeeID);
 
         if (employeeName.length !== 0) {
             res.status(OK).json({
@@ -184,17 +181,30 @@ export const getEmployeeByRole = async (req, res, next) => {
     }
 };
 
-export const getEmployeeSchedule = async (req, res, next) => {
-    const employeeID = req.query.employeeID;
-
+export const findEmployeesByDateAndShift = async (req, res, next) => {
     try {
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const targetDate = new Date(req.body.date);
+        const targetShiftCode = req.body.shift_code;
 
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+        // Find all employees
+        const employees = await EmployeeSchema.find();
+
+        // Filter employees based on the target date and shift code
+        const matchedEmployees = employees.filter(employee => {
+            const matchedSchedules = employee.schedules.filter(schedule => {
+                return (
+                    schedule.date.getTime() === targetDate.getTime() &&
+                    schedule.shift_design.some(shift => shift.shift_code === targetShiftCode)
+                );
+            });
+
+            return matchedSchedules.length > 0;
+        });
+
         res.status(OK).json({
             success: true,
             status: OK,
-            message: employee.schedules,
+            message: matchedEmployees,
         });
     } catch (err) {
         next(err);

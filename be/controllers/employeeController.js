@@ -2,29 +2,69 @@ import { BAD_REQUEST, CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import { createError } from "../utils/error.js";
-import DateDesignSchema from "../models/DateDesignSchema.js";
 
 export const checkAttendance = async (req, res, next) => {
-    const employeeID = req.body;
+    const employeeID = req.body.employeeID;
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found"))
 
         const currentTime = new Date();
         const current_date = currentTime.toLocaleDateString();
-        const weekday = currentTime.getDay();
         const day = currentTime.getDate();
-        const month = currentTime.getMonth() + 1;
 
-        const date = await DateDesignSchema.findOne({ date: currentTime });
+        const date = employee.schedules.find(schedule => {
+            return schedule.date.getDate() === day;
+        });
+        // console.log(date);
         if (!date) return next(createError(NOT_FOUND, 'Design not found for the current day'));
 
-        if (date.members.some(member => member.id !== employeeID)) {
-            return next(createError(CONFLICT, "Employee not exists in the date!"));
+        // Collect time ranges from shift_design
+        const timeRanges = date.shift_design.map(shift => {
+            const totalNumber = shift.time_slot.total_number;
+            const startTime = shift.time_slot.detail[0].start_time;
+            // console.log(startTime);
+            const endTime = totalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
+            // console.log(endTime);
+
+            return { startTime, endTime };
+        });
+
+        // console.log(timeRanges);
+
+        // Compare the current time with each time range
+        const currentTimestamp = currentTime.getTime();
+        let currentTimeRange = null;
+
+        for (const timeRange of timeRanges) {
+            const startTime = new Date(`${current_date} ${timeRange.startTime}`).getTime();
+            const endTime = new Date(`${current_date} ${timeRange.endTime}`).getTime();
+
+            if (currentTimestamp >= startTime && currentTimestamp <= endTime) {
+                currentTimeRange = timeRange;
+                break;
+            }
         }
 
-        const shift_code = date.shift;
-        const time_slot = date.time_slot;
+        // console.log(currentTimeRange);
+
+        // Find the corresponding shift_design based on currentTimeRange
+        const currentShiftDesign = date.shift_design.find(shift => {
+            const totalNumber = shift.time_slot.total_number;
+            const startTime = shift.time_slot.detail[0].start_time;
+            const endTime = totalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
+
+            return startTime === currentTimeRange.startTime && endTime === currentTimeRange.endTime;
+        });
+
+        if (!currentShiftDesign) {
+            return next(createError(NOT_FOUND, 'No matching shift design for the current time range'));
+        }
+
+        // console.log('Current Shift Design:', currentShiftDesign);
+
+        const shift_code = currentShiftDesign.shift_code;
+        const time_slot = currentShiftDesign.time_slot;
 
         const existingAttendance = await AttendanceSchema.findOne({
             employee_id: employee.id,
@@ -65,7 +105,6 @@ export const checkAttendance = async (req, res, next) => {
                     newAttendance.shift_info.time_slot.check_in = true;
                     newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
                     newAttendance.shift_info.time_slot.check_in_status = 'on time';
-                    newAttendance.shift_info.time_slot.value = time_slot.detail[0].value;
                     await newAttendance.save();
                     return res.status(CREATED).json({
                         success: true,
@@ -78,7 +117,6 @@ export const checkAttendance = async (req, res, next) => {
                     newAttendance.shift_info.time_slot.check_in = false;
                     newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
                     newAttendance.shift_info.time_slot.check_in_status = 'missing';
-                    newAttendance.shift_info.time_slot.value = 0;
                     await newAttendance.save();
                     return res.status(CREATED).json({
                         success: true,
@@ -103,19 +141,22 @@ export const checkAttendance = async (req, res, next) => {
                         message: "You haven't check in yet",
                     });
                 } else {
+                    const checkInTime = new Date(existingAttendance.shift_info.time_slot.check_in_time);
                     if (time_slot.total_number == 1) {
                         const [endHours, endMinutes] = time_slot.detail[0].end_time.split(':').map(Number);
                         const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
 
-                        // Calculate endTime + 2 hours
-                        const endTimePlus2 = new Date(endTime);
-                        endTimePlus2.setHours(endTime.getHours() + 2);
-                        if (currentTime > endTime && currentTime < endTimePlus2) {
+                        // Calculate endTime + 30 minutes
+                        const endTimePlus30 = new Date(endTime);
+                        endTimePlus30.setMinutes(endTime.getMinutes() + 30);
+                        if (currentTime > endTime && currentTime < endTimePlus30) {
                             // check out on time
                             existingAttendance.shift_info.time_slot.check_out = true;
                             existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
                             existingAttendance.shift_info.time_slot.check_out_status = 'on time';
-                            existingAttendance.shift_info.time_slot.value += time_slot.detail[0].value;
+                            const timeDifference = currentTime - checkInTime;
+                            const totalHours = timeDifference / (1000 * 60 * 60);
+                            existingAttendance.shift_info.total_hour = totalHours;
                             await existingAttendance.save();
                             return res.status(OK).json({
                                 success: true,
@@ -123,12 +164,14 @@ export const checkAttendance = async (req, res, next) => {
                                 message: existingAttendance,
                                 log: `${currentTime}`,
                             });
-                        } else if (currentTime > endTimePlus2) {
+                        } else if (currentTime > endTimePlus30) {
                             // check out late
-                            existingAttendance.shift_info.time_slot.check_out = false;
+                            existingAttendance.shift_info.time_slot.check_out = true;
                             existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
-                            existingAttendance.shift_info.time_slot.check_out_status = 'missing';
-                            existingAttendance.shift_info.time_slot.value += 0;
+                            existingAttendance.shift_info.time_slot.check_out_status = 'late';
+                            const timeDifference = currentTime - checkInTime;
+                            const totalHours = timeDifference / (1000 * 60 * 60);
+                            existingAttendance.shift_info.total_hour = totalHours;
                             await existingAttendance.save();
                             return res.status(OK).json({
                                 success: true,
@@ -147,15 +190,17 @@ export const checkAttendance = async (req, res, next) => {
                     } else if (time_slot.total_number == 2) {
                         const [endHours, endMinutes] = time_slot.detail[1].end_time.split(':').map(Number);
                         const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
-                        // Calculate endTime + 2 hours
-                        const endTimePlus2 = new Date(endTime);
-                        endTimePlus2.setHours(endTime.getHours() + 2);
-                        if (currentTime > endTime && currentTime < endTimePlus2) {
+                        // Calculate endTime + 30 minutes
+                        const endTimePlus30 = new Date(endTime);
+                        endTimePlus30.setMinutes(endTime.getMinutes() + 30);
+                        if (currentTime > endTime && currentTime < endTimePlus30) {
                             // check out on time
                             existingAttendance.shift_info.time_slot.check_out = true;
                             existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
                             existingAttendance.shift_info.time_slot.check_out_status = 'on time';
-                            existingAttendance.shift_info.time_slot.value += time_slot.detail[1].value;
+                            const timeDifference = currentTime - checkInTime;
+                            const totalHours = timeDifference / (1000 * 60 * 60);
+                            existingAttendance.shift_info.total_hour = totalHours;
                             await existingAttendance.save();
                             return res.status(OK).json({
                                 success: true,
@@ -163,12 +208,14 @@ export const checkAttendance = async (req, res, next) => {
                                 message: existingAttendance,
                                 log: `${currentTime}`,
                             });
-                        } else if (currentTime > endTimePlus2) {
+                        } else if (currentTime > endTimePlus30) {
                             // check out late
-                            existingAttendance.shift_info.time_slot.check_out = false;
+                            existingAttendance.shift_info.time_slot.check_out = true;
                             existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
-                            existingAttendance.shift_info.time_slot.check_out_status = 'missing';
-                            existingAttendance.shift_info.time_slot.value += 0;
+                            existingAttendance.shift_info.time_slot.check_out_status = 'late';
+                            const timeDifference = currentTime - checkInTime;
+                            const totalHours = timeDifference / (1000 * 60 * 60);
+                            existingAttendance.shift_info.total_hour = totalHours;
                             await existingAttendance.save();
                             return res.status(OK).json({
                                 success: true,
@@ -194,20 +241,17 @@ export const checkAttendance = async (req, res, next) => {
             const timestampString = `${currentTime.toISOString().split('T')[0]}T${timeString}.000Z`;
             const timestamp = new Date(timestampString);
 
-            console.log(timestamp);
+            // console.log(timestamp);
 
             if (!existingAttendance) {
                 // only check in
                 const newAttendance = new AttendanceSchema({
                     date: date,
-                    weekday: getDayString(weekday),
                     employee_id: employeeID,
                     employee_name: employee.name,
-                    role: employee.role,
-                    department_code: employee.department_code,
                     department_name: employee.department_name,
-                    grouped_work_code: employee.grouped_work_code,
-                    day_off_code: employee.day_off_code,
+                    role: employee.role,
+                    position: employee.position,
                     shift_info: {
                         shift_code: shift_code
                     }
@@ -226,7 +270,6 @@ export const checkAttendance = async (req, res, next) => {
                     newAttendance.shift_info.time_slot.check_in = true;
                     newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
                     newAttendance.shift_info.time_slot.check_in_status = 'on time';
-                    newAttendance.shift_info.time_slot.value = time_slot.detail[0].value;
                     await newAttendance.save();
                     return res.status(CREATED).json({
                         success: true,
@@ -239,7 +282,6 @@ export const checkAttendance = async (req, res, next) => {
                     newAttendance.shift_info.time_slot.check_in = false;
                     newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
                     newAttendance.shift_info.time_slot.check_in_status = 'missing';
-                    newAttendance.shift_info.time_slot.value = 0;
                     await newAttendance.save();
                     return res.status(CREATED).json({
                         success: true,
@@ -264,31 +306,36 @@ export const checkAttendance = async (req, res, next) => {
                         message: "You haven't check in yet",
                     });
                 } else {
+                    const checkInTime = new Date(existingAttendance.shift_info.time_slot.check_in_time);
                     if (time_slot.total_number == 1) {
                         const [endHours, endMinutes] = time_slot.detail[0].end_time.split(':').map(Number);
                         const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
 
-                        // Calculate endTime + 2 hours
-                        const endTimePlus2 = new Date(endTime);
-                        endTimePlus2.setHours(endTime.getHours() + 2);
-                        if (timestamp > endTime && timestamp < endTimePlus2) {
+                        // Calculate endTime + 30 minutes
+                        const endTimePlus30 = new Date(endTime);
+                        endTimePlus30.setMinutes(endTime.getMinutes() + 30);
+                        if (timestamp > endTime && timestamp < endTimePlus30) {
                             // check out on time
                             existingAttendance.shift_info.time_slot.check_out = true;
                             existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
                             existingAttendance.shift_info.time_slot.check_out_status = 'on time';
-                            existingAttendance.shift_info.time_slot.value += time_slot.detail[0].value;
+                            const timeDifference = currentTime - checkInTime;
+                            const totalHours = timeDifference / (1000 * 60 * 60);
+                            existingAttendance.shift_info.total_hour = totalHours;
                             await existingAttendance.save();
                             return res.status(OK).json({
                                 success: true,
                                 status: OK,
                                 message: existingAttendance,
                             });
-                        } else if (timestamp > endTimePlus2) {
+                        } else if (timestamp > endTimePlus30) {
                             // check out late
-                            existingAttendance.shift_info.time_slot.check_out = false;
+                            existingAttendance.shift_info.time_slot.check_out = true;
                             existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
-                            existingAttendance.shift_info.time_slot.check_out_status = 'missing';
-                            existingAttendance.shift_info.time_slot.value += 0;
+                            existingAttendance.shift_info.time_slot.check_out_status = 'late';
+                            const timeDifference = currentTime - checkInTime;
+                            const totalHours = timeDifference / (1000 * 60 * 60);
+                            existingAttendance.shift_info.total_hour = totalHours;
                             await existingAttendance.save();
                             return res.status(OK).json({
                                 success: true,
@@ -307,27 +354,31 @@ export const checkAttendance = async (req, res, next) => {
                         const [endHours, endMinutes] = time_slot.detail[1].end_time.split(':').map(Number);
                         const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
 
-                        // Calculate endTime + 2 hours
-                        const endTimePlus2 = new Date(endTime);
-                        endTimePlus2.setHours(endTime.getHours() + 2);
-                        if (timestamp > endTime && timestamp < endTimePlus2) {
+                        // Calculate endTime + 30 minutes
+                        const endTimePlus30 = new Date(endTime);
+                        endTimePlus30.setMinutes(endTime.getMinutes() + 30);
+                        if (timestamp > endTime && timestamp < endTimePlus30) {
                             // check out on time
                             existingAttendance.shift_info.time_slot.check_out = true;
                             existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
                             existingAttendance.shift_info.time_slot.check_out_status = 'on time';
-                            existingAttendance.shift_info.time_slot.value += time_slot.detail[1].value;
+                            const timeDifference = currentTime - checkInTime;
+                            const totalHours = timeDifference / (1000 * 60 * 60);
+                            existingAttendance.shift_info.total_hour = totalHours;
                             await existingAttendance.save();
                             return res.status(OK).json({
                                 success: true,
                                 status: OK,
                                 message: existingAttendance,
                             });
-                        } else if (timestamp > endTimePlus2) {
+                        } else if (timestamp > endTimePlus30) {
                             // check out late
-                            existingAttendance.shift_info.time_slot.check_out = false;
+                            existingAttendance.shift_info.time_slot.check_out = true;
                             existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
-                            existingAttendance.shift_info.time_slot.check_out_status = 'missing';
-                            existingAttendance.shift_info.time_slot.value += 0;
+                            existingAttendance.shift_info.time_slot.check_out_status = 'late';
+                            const timeDifference = currentTime - checkInTime;
+                            const totalHours = timeDifference / (1000 * 60 * 60);
+                            existingAttendance.shift_info.total_hour = totalHours;
                             await existingAttendance.save();
                             return res.status(OK).json({
                                 success: true,

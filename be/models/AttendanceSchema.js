@@ -36,7 +36,7 @@ const attendanceSchema = new mongoose.Schema(
                 },
                 check_in_status: {
                     type: String,
-                    enum: ['on time', 'missing']
+                    enum: ['on time', 'missing', 'late']
                 },
                 check_out: {
                     type: Boolean,
@@ -46,14 +46,14 @@ const attendanceSchema = new mongoose.Schema(
                 },
                 check_out_status: {
                     type: String,
-                    enum: ['on time', 'missing']
+                    enum: ['on time', 'missing', 'late']
                 },
-                value: {
+                total_hour: {
                     type: Number
                 }
             }
         },
-        note: {
+        image_upload: {
             type: String,
         },
     },

@@ -2,7 +2,7 @@ import express from 'express';
 import {
     deleteEmployeeById, getAllEmployees, getAttendanceByTime,
     getEmployeeById, getEmployeeByName, getEmployeeByRole,
-    getEmployeeSchedule, getEmployeeSpecific, updateEmployee
+    getEmployeeSpecific, updateEmployee
 } from '../controllers/adminController.js';
 import {
     addMemberDepartment, createDepartment, deleteDepartmentByName, getAllDepartments,
@@ -20,8 +20,8 @@ import {
     getDayOffByCode, getDayOffByName, removeDayOffSchedule, updateDayOff
 } from '../controllers/dayOffController.js';
 import {
-    addMemberDate, createDateDesign, deleteDateSpecific,
-    getAllDates, getDateSpecific, removeMemberDate
+    createDateDesign, deleteDateSpecific,
+    getAllDates, getDateSpecific
 } from '../controllers/dateDesignController.js';
 
 const router = express.Router();
@@ -32,7 +32,6 @@ router.get('/manage-employee/get-specific', verifyUserAdmin, getEmployeeSpecific
 router.get('/manage-employee/get-byId', verifyUserAdmin, getEmployeeById);
 router.get('/manage-employee/get-byName', verifyUserAdmin, getEmployeeByName);
 router.get('/manage-employee/get-byRole', verifyUserAdmin, getEmployeeByRole);
-router.get('/manage-employee/get-schedule', verifyUserAdmin, getEmployeeSchedule);
 router.get('/manage-employee/export-attendance', verifyUserAdmin, exportAttendanceToExcel);
 router.delete('/manage-employee/delete-byId', verifyUserAdmin, deleteEmployeeById);
 router.put('/manage-employee/update', verifyUserAdmin, updateEmployee);
@@ -58,8 +57,6 @@ router.post('/manage-date-design/create', verifyUserAdmin, createDateDesign);
 router.get('/manage-date-design/get-all', verifyUserAdmin, getAllDates);
 router.get('/manage-date-design/get-specific', verifyUserAdmin, getDateSpecific);
 router.put('/manage-date-design/delete', verifyUserAdmin, deleteDateSpecific);
-router.put('/manage-date-design/add-member', verifyUserAdmin, addMemberDate);
-router.put('/manage-date-design/remove-member', verifyUserAdmin, removeMemberDate);
 
 // day off
 router.post('/day-off/create-dayOff', createDayOff);

@@ -1,13 +1,12 @@
 import { createError } from "../utils/error.js";
-import { BAD_REQUEST, CONFLICT, CREATED, FORBIDDEN, NOT_FOUND, OK } from "../constant/HttpStatus.js";
+import { BAD_REQUEST, CREATED, FORBIDDEN, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import AdminSchema from "../models/AdminSchema.js";
-import DateDesignSchema from "../models/DateDesignSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";
 
 export const updateEmployee = async (req, res, next) => {
-    const inhaber_name = req.body.inhaber_name;
+    const inhaber_name = req.query.inhaber_name;
     const employeeID = req.query.employeeID;
     try {
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
@@ -38,7 +37,7 @@ export const updateEmployee = async (req, res, next) => {
 };
 
 export const deleteEmployeeById = async (req, res, next) => {
-    const inhaber_name = req.body.inhaber_name;
+    const inhaber_name = req.query.inhaber_name;
     const employeeID = req.query.employeeID;
     try {
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
@@ -63,7 +62,7 @@ export const deleteEmployeeById = async (req, res, next) => {
 };
 
 export const getAllEmployees = async (req, res, next) => {
-    const inhaber_name = req.body.inhaber_name;
+    const inhaber_name = req.query.inhaber_name;
     try {
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
@@ -83,7 +82,7 @@ export const getAllEmployees = async (req, res, next) => {
 
 export const getEmployeeSpecific = async (req, res, next) => {
     const query = req.query.query;
-    const inhaber_name = req.body.inhaber_name;
+    const inhaber_name = req.query.inhaber_name;
     try {
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
@@ -144,30 +143,6 @@ export const getEmployeeSpecific = async (req, res, next) => {
     }
 };
 
-export const getEmployeeSchedule = async (req, res, next) => {
-    const employeeID = req.query.employeeID;
-    const inhaber_name = req.body.inhaber_name;
-    try {
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
-        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
-
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
-
-        if (inhaber.department_name !== employee.department_name) {
-            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));
-        }
-
-        res.status(OK).json({
-            success: true,
-            status: OK,
-            message: employee.schedules,
-        });
-    } catch (err) {
-        next(err);
-    }
-};
-
 export const getAttendanceByTime = async (req, res, next) => {
     const year = req.query.year;
     const month = req.query.month;
@@ -192,10 +167,54 @@ export const getAttendanceByTime = async (req, res, next) => {
     }
 }
 
-export const createDateDesign = async (req, res, next) => {
+export const findEmployeesByDateAndShiftByInhaber = async (req, res, next) => {
+    try {
+        const targetDate = new Date(req.body.date);
+        const targetShiftCode = req.body.shift_code;
+        const inhaberName = req.query.inhaber_name;
+
+        // Find the inhaber
+        const inhaber = await AdminSchema.findOne({ name: inhaberName });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        const shift = await ShiftSchema.findOne({ code: targetShiftCode });
+        if (!shift) return next(createError(NOT_FOUND, "Shift not found!"))
+
+        // Find all employees
+        const employees = await EmployeeSchema.find();
+
+        // Filter employees based on the target date, shift code, and department
+        const matchedEmployees = employees.filter(employee => {
+            const matchedSchedules = employee.schedules.filter(schedule => {
+                return (
+                    schedule.date.getTime() === targetDate.getTime() &&
+                    schedule.shift_design.some(shift => shift.shift_code === targetShiftCode)
+                );
+            });
+
+            // console.log(inhaber.department_name);
+            // console.log(employee.department_name);
+
+            return (
+                matchedSchedules.length > 0 &&
+                inhaber.department_name === employee.department_name
+            );
+        });
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: matchedEmployees,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const createDateDesignByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
     const shiftCode = req.body.shift_code;
-    const employeeID = req.body.employeeID;
+    const employeeID = req.query.employeeID;
     try {
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
@@ -213,7 +232,6 @@ export const createDateDesign = async (req, res, next) => {
         const existingDateInSchedules = employee.schedules.find(schedule => {
             return schedule.date.getTime() === new Date(req.body.date).getTime();
         });
-        // console.log(existingDateInSchedules);
 
         if (!existingDateInSchedules) {
             // date not exists
@@ -262,13 +280,10 @@ export const createDateDesign = async (req, res, next) => {
     }
 };
 
-export const addMemberDate = async (req, res, next) => {
+export const getAllDatesByInhaber = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
     const inhaber_name = req.query.inhaber_name;
-    const employeeID = req.body.employeeID;
     try {
-        const date = await DateDesignSchema.findOne({ date: req.query.date });
-        if (!date) return next(createError(NOT_FOUND, "Date not found!"));
-
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
@@ -279,25 +294,36 @@ export const addMemberDate = async (req, res, next) => {
             return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));
         }
 
-        if (date.members.some(member => member.id === employeeID)) {
-            return next(createError(CONFLICT, "Employee already exists in the date!"));
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: employee.schedules,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+
+export const getDateSpecificByInhaber = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+    const inhaber_name = req.query.inhaber_name;
+    try {
+        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+
+        if (inhaber.department_name !== employee.department_name) {
+            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));
         }
-        date.members.push({
-            id: employee.id,
-            name: employee.name,
-            email: employee.email,
-            address: employee.address,
-            dob: employee.dob,
-            gender: employee.gender,
-            department_name: employee.department_name,
-            position: employee.position
+
+        const date = employee.schedules.find(schedule => {
+            return schedule.date.getTime() === new Date(req.body.date).getTime();
         });
-        employee.schedules.work_schedules.push({
-            date: date.date,
-            shift_design: date.shift_design
-        });
-        await date.save();
-        await employee.save();
+        if (!date) return next(createError(NOT_FOUND, "Date not found!"))
+
         res.status(OK).json({
             success: true,
             status: OK,
@@ -308,41 +334,38 @@ export const addMemberDate = async (req, res, next) => {
     }
 };
 
-export const removeMemberDate = async (req, res, next) => {
+export const deleteDateSpecificByInhaber = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+    const dateToDelete = new Date(req.body.date);
     const inhaber_name = req.query.inhaber_name;
-    const employeeID = req.body.employeeID;
     try {
-        const date = await DateDesignSchema.findOne({ date: req.query.date });
-        if (!date) return next(createError(NOT_FOUND, "Date not found!"));
-
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
         const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
 
         if (inhaber.department_name !== employee.department_name) {
-            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervene with an employee in their department."));
+            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));
         }
 
-        // Use $pull to remove the member with a specific ID from the array
-        await DateDesignSchema.updateOne(
-            { _id: date._id },
-            { $pull: { members: { id: employee.id } } }
-        );
+        const existingDateIndex = employee.schedules.findIndex(schedule => {
+            return schedule.date.getTime() === dateToDelete.getTime();
+        });
 
-        // Remove the corresponding entry from employee's schedules
-        employee.schedules.work_schedules = employee.schedules.work_schedules.filter(
-            (schedule) => schedule.date.toString() !== date.date.toString()
-        );
+        if (existingDateIndex === -1) {
+            return next(createError(NOT_FOUND, "Date design not found!"));
+        }
 
-        await date.save();
+        // Remove the date design
+        employee.schedules.splice(existingDateIndex, 1);
+
         await employee.save();
 
         res.status(OK).json({
             success: true,
             status: OK,
-            message: date,
+            message: employee,
         });
     } catch (err) {
         next(err);

@@ -6,22 +6,23 @@ import axios from "axios";
 import { AuthContext } from "../../context/AuthContext";
 
 const ScheduleTable = () => {
-  const [selectedYear, setSelectedYear] = useState(new Date());
-  const [selectedMonth, setSelectedMonth] = useState(null);
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [employeeData, setEmployeeData] = useState(null);
 
   const {
     user: { id: userID },
   } = useContext(AuthContext);
-  // console.log(employeeData.message);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await axios.get(
-          `https://qr-code-checkin.vercel.app/api/admin/manage-employee/get-employee-byId?employeeID=${userID}`
+          `https://qr-code-checkin.vercel.app/api/employee/get-schedules?employeeID=${userID}`,
+          {
+            // Include the current month in the request body
+            data: { month: selectedMonth.getMonth() + 1 },
+          }
         );
-
         setEmployeeData(res.data);
       } catch (error) {
         console.error("Error fetching employee data:", error);
@@ -29,93 +30,59 @@ const ScheduleTable = () => {
     };
 
     fetchData();
-  }, [userID]);
+  }, [userID, selectedMonth]);
 
   const renderTileContent = ({ date }) => {
-    if (!employeeData || !employeeData.message.schedules) return null;
+    if (!employeeData || !employeeData.message) return null;
 
     const year = date.getFullYear();
     const month = date.getMonth();
     const day = date.getDate();
 
-    const workSchedules = [];
-    let hasDayOff = false;
-    const dayOffSchedules = [];
+    const schedules = employeeData.message;
 
-    const parseDate = (dateString) => {
-      const [day, month] = dateString.split('/');
-      return new Date(`${month}/${day}/${new Date().getFullYear()}`);
-    };
-
-    employeeData.message.schedules.forEach((schedule) => {
-      if (hasDayOff) return;
-      if (schedule.dayOff_schedules) {
-        schedule.dayOff_schedules.forEach((dayOffSchedule) => {
-          const dayOffWeekday = new Date(year, month, day);
-          const dayOffDate = parseDate(dayOffSchedule.date);
-
-          if (
-            dayOffSchedule.date.toLowerCase() ===
-              dayOffWeekday.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase() ||
-            dayOffDate.toDateString() === date.toDateString()
-          ) {
-            hasDayOff = true;
-            dayOffSchedules.push(dayOffSchedule.type);
-          }
-        });
-      }
-
-      if (schedule.work_schedules) {
-        schedule.work_schedules.forEach((workSchedule) => {
-          const workDate = new Date(year, month, day);
-          if (
-            workSchedule.date.toLowerCase() ===
-              workDate.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase() &&
-            !hasDayOff
-          ) {
-            workSchedules.push(workSchedule.shift_code);
-          }
-        });
-      }
+    const scheduleOnDate = schedules.find((schedule) => {
+      const scheduleDate = new Date(schedule.date);
+      return scheduleDate.toDateString() === date.toDateString();
     });
 
+    if (!scheduleOnDate) return null;
+
+    const isDayOff = scheduleOnDate.shift_design.some(
+      (shift) => shift.time_slot && shift.time_slot.total_number === 0
+    );
+
     return (
-      <div
-        className={`calendar-tile ${hasDayOff ? "day-off" : ""}`}
-      >
-        {hasDayOff ? (
-          dayOffSchedules.map((dayOffType, index) => (
-            <div key={index} className="day-off">
-              {dayOffType}
-            </div>
-          ))
+      <div className={`calendar-tile ${isDayOff ? "day-off" : ""}`}>
+        {isDayOff ? (
+          <div className="day-off">{/* Render day-off content here */}</div>
         ) : (
-          workSchedules.map((shiftCode, index) => (
-            <div key={index} className={`work-day ${shiftCode}`}>
-              {shiftCode}
-            </div>
-          ))
+          <div
+            className={`work-day ${scheduleOnDate.shift_design[0].shift_code}`}
+          >
+            {/* Render work schedule content here */}
+          </div>
         )}
       </div>
     );
   };
 
-  const handleMonthChange = (date) => {
-    setSelectedMonth(date);
-  };
+  // const handleMonthChange = (date) => {
+  //   setSelectedMonth(date);
+  // };
 
   return (
     <div>
       <h2>Schedule Calendar</h2>
-        {selectedYear && (
-          <Calendar
-            onChange={handleMonthChange}
-            value={selectedMonth}
-            view="month"
-            showNeighboringMonth={false}
-            tileContent={renderTileContent}
-          />
-        )}
+      {selectedMonth && (
+        <Calendar
+          // Remove selectedYear state and handleMonthChange function
+          value={selectedMonth}
+          view="month"
+          showNeighboringMonth={false}
+          tileContent={renderTileContent}
+        />
+      )}
     </div>
   );
 };

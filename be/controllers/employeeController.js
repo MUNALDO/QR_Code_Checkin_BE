@@ -39,8 +39,6 @@ export const checkAttendance = async (req, res, next) => {
             }
         }
 
-        // console.log(currentTimeRange);
-
         // Find the corresponding shift_design based on currentTimeRange
         const currentShiftDesign = date.shift_design.find(shift => {
             const totalNumber = shift.time_slot.total_number;
@@ -53,8 +51,6 @@ export const checkAttendance = async (req, res, next) => {
         if (!currentShiftDesign) {
             return next(createError(NOT_FOUND, 'No matching shift design for the current time range'));
         }
-
-        // console.log('Current Shift Design:', currentShiftDesign);
 
         const shift_code = currentShiftDesign.shift_code;
         const time_slot = currentShiftDesign.time_slot;
@@ -259,7 +255,6 @@ export const getAttendanceHistory = async (req, res, next) => {
 export const getDateDesignInMonthByEmployee = async (req, res, next) => {
     const employeeID = req.query.employeeID;
     const targetMonth = req.body.month;
-
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));

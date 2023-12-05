@@ -1,7 +1,7 @@
 import express from 'express';
 import {
     deleteEmployeeById, getAllEmployees, getAttendanceByTime,
-    getEmployeeSpecific, getEmployeesByDate, getEmployeesByDateAndShift, updateEmployee
+    getEmployeeSpecific, getEmployeesByDate, getEmployeesByDateAndShift, searchSpecific, updateEmployee
 } from '../controllers/adminController.js';
 import {
     addMemberDepartment, createDepartment, deleteDepartmentByName, getAllDepartments,
@@ -24,6 +24,9 @@ import {
 } from '../controllers/dateDesignController.js';
 
 const router = express.Router();
+
+// all
+router.get('/manage-all/search-specific', verifyUserAdmin, searchSpecific);
 
 // employee
 router.get('/manage-employee/get-all', verifyUserAdmin, getAllEmployees);

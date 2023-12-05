@@ -91,70 +91,185 @@ export const getAllEmployees = async (req, res, next) => {
 };
 
 export const searchSpecific = async (req, res, next) => {
-    const query = req.query.query;
+    const role = req.query.role;
+    const department = req.query.department;
+    const details = req.query.details;
     try {
-        if (!query) {
-            const managements = await AdminSchema.find();
-            const matchedManagement = managements.filter(management => {
-                const matchedSchedules = employee.schedules.filter(schedule => {
-                    return (
-                        schedule.date.getTime() === targetDate.getTime() &&
-                        schedule.shift_design.some(shift => shift.shift_code === targetShiftCode)
-                    );
-                });
-
-                return matchedSchedules.length > 0;
-            });
-            const employee = await EmployeeSchema.find();
-            if (!employee) return next(createError(NOT_FOUND, "Employees not found!"))
-
-            res.status(OK).json({
-                success: true,
-                status: OK,
-                message: employee,
-            });
-        }
-        const regex = new RegExp(query, 'i');
-        const employeeName = await EmployeeSchema.find({ name: regex });
-        const employeeID = await EmployeeSchema.find({ id: regex });
-        const employeeRole = await EmployeeSchema.find({ role: query });
-        const employeePosition = await EmployeeSchema.find({ position: query });
-
-        if (employeeName.length !== 0) {
-            const filteredEmployees = employeeName.filter(employee => employee.department_name === inhaber.department_name);
-            res.status(OK).json({
-                success: true,
-                status: OK,
-                message: filteredEmployees,
-            });
-        } else if (employeeID.length !== 0) {
-            const filteredEmployees = employeeID.filter(employee => employee.department_name === inhaber.department_name);
-            res.status(OK).json({
-                success: true,
-                status: OK,
-                message: filteredEmployees,
-            });
-        } else if (employeeRole.length !== 0) {
-            const filteredEmployees = employeeRole.filter(employee => employee.department_name === inhaber.department_name);
-            res.status(OK).json({
-                success: true,
-                status: OK,
-                message: filteredEmployees,
-            });
-        } else if (employeePosition.length !== 0) {
-            const filteredEmployees = employeePosition.filter(employee => employee.department_name === inhaber.department_name);
-            res.status(OK).json({
-                success: true,
-                status: OK,
-                message: filteredEmployees,
-            });
-        }
-
-        res.status(OK).json({
-            success: true,
-            status: OK,
-            message: [],
+        const regex = new RegExp(details, 'i');
+        const managements = await AdminSchema.find();
+        // console.log(managements);
+        const matchedManagement = managements.filter(management => {
+            return (management.role === "Inhaber" || management.role === "Manager");
         });
+        if (matchedManagement.length === 0) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: "No managements found for the specified criteria.",
+            });
+        }
+
+        const employees = await EmployeeSchema.find();
+        if (!employees) return next(createError(NOT_FOUND, "Employees not found!"))
+
+        let all_roles = [];
+        all_roles.push(matchedManagement);
+        all_roles.push(employees);
+        const flattenedRoles = all_roles.flat();
+
+        if (!role && !department && !details) {
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: all_roles
+            });
+        }
+        if (role && department && details) {
+            const matchValue = flattenedRoles.filter(match_value => {
+                const id = regex.test(match_value.id);
+                const name = regex.test(match_value.name);
+                const position = regex.test(match_value.position);
+
+                return (
+                    match_value.role === role &&
+                    match_value.department_name === department &&
+                    (id || name || position)
+                );
+            })
+            if (matchValue !== 0) {
+                res.status(OK).json({
+                    success: true,
+                    status: OK,
+                    message: matchValue,
+                });
+            } else {
+                res.status(OK).json({
+                    success: true,
+                    status: OK,
+                    message: [],
+                });
+            }
+        } else if (role && !department && details) {
+            const matchValue = flattenedRoles.filter(match_value => {
+                const id = regex.test(match_value.id);
+                const name = regex.test(match_value.name);
+                const position = regex.test(match_value.position);
+                return (
+                    match_value.role === role &&
+                    (id || name || position)
+                );
+            })
+            if (matchValue !== 0) {
+                res.status(OK).json({
+                    success: true,
+                    status: OK,
+                    message: matchValue,
+                });
+            } else {
+                res.status(OK).json({
+                    success: true,
+                    status: OK,
+                    message: [],
+                });
+            }
+        } else if (!role && department && details) {
+            const matchValue = flattenedRoles.filter(match_value => {
+                const id = regex.test(match_value.id);
+                const name = regex.test(match_value.name);
+                const position = regex.test(match_value.position);
+                return (
+                    match_value.department_name === department &&
+                    (id || name || position)
+                );
+            })
+            if (matchValue !== 0) {
+                res.status(OK).json({
+                    success: true,
+                    status: OK,
+                    message: matchValue,
+                });
+            } else {
+                res.status(OK).json({
+                    success: true,
+                    status: OK,
+                    message: [],
+                });
+            }
+        } else if (role && department && !details) {
+            const matchValue = flattenedRoles.filter(match_value => {
+                return (match_value.role === role && match_value.department_name === department);
+            })
+            if (matchValue !== 0) {
+                res.status(OK).json({
+                    success: true,
+                    status: OK,
+                    message: matchValue,
+                });
+            } else {
+                res.status(OK).json({
+                    success: true,
+                    status: OK,
+                    message: [],
+                });
+            }
+        } else if (role && !department && !details) {
+            const matchRole = flattenedRoles.filter(match_value => {
+                return (match_value.role === role)
+            });
+
+            if (matchRole.length !== 0) {
+                res.status(OK).json({
+                    success: true,
+                    status: OK,
+                    message: matchRole,
+                });
+            } else {
+                res.status(OK).json({
+                    success: true,
+                    status: OK,
+                    message: [],
+                });
+            }
+        } else if (!role && department && !details) {
+            const matchDepartment = flattenedRoles.filter(match_value => {
+                return (match_value.department_name === department)
+            });
+
+            if (matchDepartment.length !== 0) {
+                res.status(OK).json({
+                    success: true,
+                    status: OK,
+                    message: matchDepartment,
+                });
+            } else {
+                res.status(OK).json({
+                    success: true,
+                    status: OK,
+                    message: [],
+                });
+            }
+        } else if (!role && !department && details) {
+            const matchDetails = flattenedRoles.filter(match_value => {
+                const id = regex.test(match_value.id);
+                const name = regex.test(match_value.name);
+                const position = regex.test(match_value.position);
+                return (id || name || position);
+            });
+
+            if (matchDetails !== 0) {
+                res.status(OK).json({
+                    success: true,
+                    status: OK,
+                    message: matchDetails,
+                });
+            } else {
+                res.status(OK).json({
+                    success: true,
+                    status: OK,
+                    message: [],
+                });
+            }
+        }
     } catch (err) {
         next(err);
     }

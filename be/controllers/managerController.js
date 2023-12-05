@@ -1,67 +1,11 @@
 import { createError } from "../utils/error.js";
 import { FORBIDDEN, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
-import AttendanceSchema from "../models/AttendanceSchema.js";
 import AdminSchema from "../models/AdminSchema.js";
-
-export const updateEmployee = async (req, res, next) => {
-    const manager_name = req.body.manager_name;
-    const employeeID = req.query.employeeID;
-    try {
-        const manager = await AdminSchema.findOne({ name: manager_name });
-        if (!manager) return next(createError(NOT_FOUND, "manager not found!"));
-
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
-
-        if (manager.department_name !== employee.department_name) {
-            return next(createError(FORBIDDEN, "Permission denied. Manager can only update an employee in their department."));
-        }
-
-        const updateEmployee = await EmployeeSchema.findOneAndUpdate(
-            { id: employeeID },
-            { $set: req.body },
-            { $new: true },
-        )
-
-        await updateEmployee.save();
-        res.status(OK).json({
-            success: true,
-            status: OK,
-            message: updateEmployee,
-        });
-    } catch (err) {
-        next(err);
-    }
-};
-
-export const deleteEmployeeById = async (req, res, next) => {
-    const manager_name = req.body.manager_name;
-    const employeeID = req.query.employeeID;
-    try {
-        const manager = await AdminSchema.findOne({ name: manager_name });
-        if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
-
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
-
-        if (manager.department_name !== employee.department_name) {
-            return next(createError(FORBIDDEN, "Permission denied. Manager can only delete an employee in their department."));
-        }
-
-        await EmployeeSchema.findOneAndDelete({ id: employeeID });
-        res.status(OK).json({
-            success: true,
-            status: OK,
-            message: "Employee deleted successfully",
-        });
-    } catch (err) {
-        next(err);
-    }
-};
+import ShiftSchema from "../models/ShiftSchema.js";
 
 export const getAllEmployees = async (req, res, next) => {
-    const manager_name = req.body.manager_name;
+    const manager_name = req.query.manager_name;
     try {
         const manager = await AdminSchema.findOne({ name: manager_name });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
@@ -81,7 +25,7 @@ export const getAllEmployees = async (req, res, next) => {
 
 export const getEmployeeSpecific = async (req, res, next) => {
     const query = req.query.query;
-    const manager_name = req.body.manager_name;
+    const manager_name = req.query.manager_name;
     try {
         const manager = await AdminSchema.findOne({ name: manager_name });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
@@ -142,9 +86,169 @@ export const getEmployeeSpecific = async (req, res, next) => {
     }
 };
 
-export const getEmployeeSchedule = async (req, res, next) => {
+export const getEmployeesByDateByManager = async (req, res, next) => {
+    try {
+        const targetDate = new Date(req.body.date);
+        const managerName = req.query.manager_name;
+
+        // Find the manager
+        const manager = await AdminSchema.findOne({ name: managerName });
+        if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
+
+        // Find all employees
+        const employees = await EmployeeSchema.find();
+
+        // Filter employees based on the target date, shift code, and department
+        const matchedEmployees = employees.filter(employee => {
+            const matchedSchedules = employee.schedules.filter(schedule => {
+                return schedule.date.getTime() === targetDate.getTime();
+            });
+
+            return (
+                matchedSchedules.length > 0 &&
+                manager.department_name === employee.department_name
+            );
+        });
+
+        if (matchedEmployees.length === 0) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: "No employees found for the specified criteria.",
+            });
+        }
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: matchedEmployees,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getEmployeesByDateAndShiftByManager = async (req, res, next) => {
+    try {
+        const targetDate = new Date(req.body.date);
+        const targetShiftCode = req.body.shift_code;
+        const managerName = req.query.manager_name;
+
+        // Find the manager
+        const manager = await AdminSchema.findOne({ name: managerName });
+        if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
+
+        const shift = await ShiftSchema.findOne({ code: targetShiftCode });
+        if (!shift) return next(createError(NOT_FOUND, "Shift not found!"))
+
+        // Find all employees
+        const employees = await EmployeeSchema.find();
+
+        // Filter employees based on the target date, shift code, and department
+        const matchedEmployees = employees.filter(employee => {
+            const matchedSchedules = employee.schedules.filter(schedule => {
+                return (
+                    schedule.date.getTime() === targetDate.getTime() &&
+                    schedule.shift_design.some(shift => shift.shift_code === targetShiftCode)
+                );
+            });
+
+            return (
+                matchedSchedules.length > 0 &&
+                manager.department_name === employee.department_name
+            );
+        });
+
+        if (matchedEmployees.length === 0) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: "No employees found for the specified criteria.",
+            });
+        }
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: matchedEmployees,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const createDateDesignByManager = async (req, res, next) => {
+    const manager_name = req.query.manager_name;
+    const shiftCode = req.body.shift_code;
     const employeeID = req.query.employeeID;
-    const manager_name = req.body.manager_name;
+    try {
+        const manager = await AdminSchema.findOne({ name: manager_name });
+        if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
+
+        const shift = await ShiftSchema.findOne({ code: shiftCode });
+        if (!shift) return next(createError(NOT_FOUND, "Shift not found!"))
+
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+
+        if (manager.department_name !== employee.department_name) {
+            return next(createError(FORBIDDEN, "Permission denied. manager can only intervention an employee in their department."));
+        }
+
+        const existingDateInSchedules = employee.schedules.find(schedule => {
+            return schedule.date.getTime() === new Date(req.body.date).getTime();
+        });
+
+        if (!existingDateInSchedules) {
+            // date not exists
+            employee.schedules.push({
+                date: req.body.date,
+                shift_design: [{
+                    shift_code: shift.code,
+                    time_slot: shift.time_slot
+                }]
+            });
+            await employee.save();
+            res.status(CREATED).json({
+                success: true,
+                status: CREATED,
+                message: employee,
+            });
+        } else {
+            // date exists
+            const existingShiftDesign = existingDateInSchedules.shift_design.find(design => {
+                return design.shift_code === shiftCode
+            });
+
+            if (existingShiftDesign) {
+                // Shift design already exists for the day
+                res.status(BAD_REQUEST).json({
+                    success: false,
+                    status: BAD_REQUEST,
+                    message: "Shift design already exists for the day"
+                });
+            } else {
+                // If there is no existing shift_design with the same shiftCode, create a new shift_design
+                existingDateInSchedules.shift_design.push({
+                    shift_code: shift.code,
+                    time_slot: shift.time_slot
+                });
+                await employee.save();
+                res.status(CREATED).json({
+                    success: true,
+                    status: CREATED,
+                    message: employee,
+                });
+            }
+        }
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getAllDatesByManager = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+    const manager_name = req.query.manager_name;
     try {
         const manager = await AdminSchema.findOne({ name: manager_name });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
@@ -153,7 +257,7 @@ export const getEmployeeSchedule = async (req, res, next) => {
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
 
         if (manager.department_name !== employee.department_name) {
-            return next(createError(FORBIDDEN, "Permission denied. Manager can only delete an employee in their department."));
+            return next(createError(FORBIDDEN, "Permission denied. manager can only intervention an employee in their department."));
         }
 
         res.status(OK).json({
@@ -166,27 +270,111 @@ export const getEmployeeSchedule = async (req, res, next) => {
     }
 };
 
-export const getAttendanceByTime = async (req, res, next) => {
-    const year = req.query.year;
-    const month = req.query.month;
+export const getDateDesignInMonthByManager = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+    const manager_name = req.query.manager_name;
+    const targetMonth = req.body.month;
 
     try {
-        const query = {
-            date: {
-                $gte: new Date(year, month ? month - 1 : 0, 1, 0, 0, 0, 0),
-                $lt: new Date(year, month ? month : 12, 1, 0, 0, 0, 0),
-            },
-        };
+        const manager = await AdminSchema.findOne({ name: manager_name });
+        if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
 
-        const attendanceList = await AttendanceSchema.find(query);
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
-        if (Array.isArray(attendanceList) && attendanceList.length === 0) {
-            return res.status(NOT_FOUND).json({ error: "Cannot find attendance history" });
+        if (manager.department_name !== employee.department_name) {
+            return next(createError(FORBIDDEN, "Permission denied. manager can only intervene with an employee in their department."));
         }
 
-        return res.status(OK).json({ success: 'Attendance found', attendanceList });
+        // Filter schedules for the target month
+        const schedulesInMonth = employee.schedules.filter(schedule => {
+            const scheduleMonth = schedule.date.getMonth() + 1;
+            return scheduleMonth === targetMonth;
+        });
+
+        if (schedulesInMonth.length === 0) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: `No schedules found for the employee in the specified month.`,
+            });
+        }
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: schedulesInMonth,
+        });
     } catch (err) {
         next(err);
     }
-}
+};
+
+export const getDateSpecificByManager = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+    const manager_name = req.query.manager_name;
+    try {
+        const manager = await AdminSchema.findOne({ name: manager_name });
+        if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
+
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+
+        if (manager.department_name !== employee.department_name) {
+            return next(createError(FORBIDDEN, "Permission denied. manager can only intervention an employee in their department."));
+        }
+
+        const date = employee.schedules.find(schedule => {
+            return schedule.date.getTime() === new Date(req.body.date).getTime();
+        });
+        if (!date) return next(createError(NOT_FOUND, "Date not found!"))
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: date,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const deleteDateSpecificByManager = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+    const dateToDelete = new Date(req.body.date);
+    const manager_name = req.query.manager_name;
+    try {
+        const manager = await AdminSchema.findOne({ name: manager_name });
+        if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
+
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+
+        if (manager.department_name !== employee.department_name) {
+            return next(createError(FORBIDDEN, "Permission denied. manager can only intervention an employee in their department."));
+        }
+
+        const existingDateIndex = employee.schedules.findIndex(schedule => {
+            return schedule.date.getTime() === dateToDelete.getTime();
+        });
+
+        if (existingDateIndex === -1) {
+            return next(createError(NOT_FOUND, "Date design not found!"));
+        }
+
+        // Remove the date design
+        employee.schedules.splice(existingDateIndex, 1);
+
+        await employee.save();
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: employee,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 

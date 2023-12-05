@@ -1,8 +1,8 @@
 import express from 'express';
 import { verifyUserInhaber } from '../utils/verifyToken.js';
 import {
-    createDateDesignByInhaber, deleteDateSpecificByInhaber,
-    deleteEmployeeById, getAllDatesByInhaber, getAllEmployees, getDateDesignInMonthByInhaber, getDateSpecificByInhaber,
+    createDateDesignByInhaber, deleteDateSpecificByInhaber, deleteEmployeeById,
+    getAllDatesByInhaber, getAllEmployees, getDateDesignInMonthByInhaber, getDateSpecificByInhaber,
     getEmployeeSpecific, getEmployeesByDateAndShiftByInhaber, getEmployeesByDateByInhaber, updateEmployee
 } from '../controllers/inhaberController.js';
 import {

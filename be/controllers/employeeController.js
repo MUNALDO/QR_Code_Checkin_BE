@@ -97,10 +97,10 @@ export const checkAttendance = async (req, res, next) => {
                 const startTimeMinus30 = new Date(startTime);
                 startTimeMinus30.setMinutes(startTime.getMinutes() - 30);
 
-                // Calculate startTime + 30 minutes
-                const startTimePlus30 = new Date(startTime);
-                startTimePlus30.setMinutes(startTime.getMinutes() + 30);
-                if (currentTime > startTimeMinus30 && currentTime < startTimePlus30) {
+                // Calculate startTime
+                const startTimeOrigin = new Date(startTime);
+                startTimeOrigin.setMinutes(startTime.getMinutes());
+                if (currentTime > startTimeMinus30 && currentTime < startTimeOrigin) {
                     // check in on time
                     newAttendance.shift_info.time_slot.check_in = true;
                     newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
@@ -112,11 +112,11 @@ export const checkAttendance = async (req, res, next) => {
                         message: newAttendance,
                         log: `${currentTime}`,
                     });
-                } else if (currentTime > startTimePlus30) {
+                } else if (currentTime > startTimeOrigin) {
                     // check in late
-                    newAttendance.shift_info.time_slot.check_in = false;
+                    newAttendance.shift_info.time_slot.check_in = true;
                     newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
-                    newAttendance.shift_info.time_slot.check_in_status = 'missing';
+                    newAttendance.shift_info.time_slot.check_in_status = 'late';
                     await newAttendance.save();
                     return res.status(CREATED).json({
                         success: true,
@@ -262,10 +262,10 @@ export const checkAttendance = async (req, res, next) => {
                 const startTimeMinus30 = new Date(startTime);
                 startTimeMinus30.setMinutes(startTime.getMinutes() - 30);
 
-                // Calculate startTime + 30 minutes
-                const startTimePlus30 = new Date(startTime);
-                startTimePlus30.setMinutes(startTime.getMinutes() + 30);
-                if (timestamp > startTimeMinus30 && timestamp < startTimePlus30) {
+                // Calculate startTime
+                const startTimeOrigin = new Date(startTime);
+                startTimeOrigin.setMinutes(startTime.getMinutes());
+                if (timestamp > startTimeMinus30 && timestamp < startTimeOrigin) {
                     // check in on time
                     newAttendance.shift_info.time_slot.check_in = true;
                     newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
@@ -277,11 +277,11 @@ export const checkAttendance = async (req, res, next) => {
                         message: newAttendance,
                         log: `${currentTime}, ${timestamp}`,
                     });
-                } else if (timestamp > startTimePlus30) {
+                } else if (timestamp > startTimeOrigin) {
                     // check in late
-                    newAttendance.shift_info.time_slot.check_in = false;
+                    newAttendance.shift_info.time_slot.check_in = true;
                     newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
-                    newAttendance.shift_info.time_slot.check_in_status = 'missing';
+                    newAttendance.shift_info.time_slot.check_in_status = 'late';
                     await newAttendance.save();
                     return res.status(CREATED).json({
                         success: true,
@@ -403,7 +403,7 @@ export const checkAttendance = async (req, res, next) => {
 }
 
 export const getAttendanceHistory = async (req, res, next) => {
-    const employeeID = req.params.employeeID;
+    const employeeID = req.query.employeeID;
     const year = req.query.year;
     const month = req.query.month;
 
@@ -430,3 +430,34 @@ export const getAttendanceHistory = async (req, res, next) => {
     }
 }
 
+export const getDateDesignInMonthByEmployee = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+    const targetMonth = req.body.month;
+
+    try {
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+
+        // Filter schedules for the target month
+        const schedulesInMonth = employee.schedules.filter(schedule => {
+            const scheduleMonth = schedule.date.getMonth() + 1;
+            return scheduleMonth === targetMonth;
+        });
+
+        if (schedulesInMonth.length === 0) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: `No schedules found for the employee in the specified month.`,
+            });
+        }
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: schedulesInMonth,
+        });
+    } catch (err) {
+        next(err);
+    }
+};

@@ -143,15 +143,10 @@ export const registerManagerByAdmin = async (req, res, next) => {
 
 export const registerManagerByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
-    const manager_department_name = req.body.department_name;
 
     try {
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
-
-        if (inhaber.department_name !== manager_department_name) {
-            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an manager in their department."));
-        }
 
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
@@ -160,7 +155,7 @@ export const registerManagerByInhaber = async (req, res, next) => {
             ...req.body,
             password: hash,
             role: "Manager",
-            department_name: manager_department_name
+            department_name: inhaber.department_name
         });
         await newManager.save();
         res.status(CREATED).json({
@@ -234,15 +229,10 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
 
 export const registerEmployeeByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
-    const employee_department_name = req.body.department_name;
 
     try {
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
-
-        if (inhaber.department_name !== employee_department_name) {
-            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));
-        }
 
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
@@ -250,7 +240,7 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
         const newEmployee = new EmployeeSchema({
             ...req.body,
             password: hash,
-            department_name: employee_department_name,
+            department_name: inhaber.department_name,
         });
         await newEmployee.save();
         res.status(CREATED).json({
@@ -266,15 +256,10 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
 
 export const registerEmployeeByManager = async (req, res, next) => {
     const manager_name = req.query.manager_name;
-    const employee_department_name = req.body.department_name;
 
     try {
         const manager = await AdminSchema.findOne({ name: manager_name });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
-
-        if (manager.department_name !== employee_department_name) {
-            return next(createError(FORBIDDEN, "Permission denied. Manager can only intervention an employee in their department."));
-        }
 
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
@@ -282,7 +267,7 @@ export const registerEmployeeByManager = async (req, res, next) => {
         const newEmployee = new EmployeeSchema({
             ...req.body,
             password: hash,
-            department_name: employee_department_name,
+            department_name: manager.department_name,
         });
         await newEmployee.save();
         res.status(CREATED).json({

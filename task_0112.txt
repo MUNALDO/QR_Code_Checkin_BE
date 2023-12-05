@@ -1,7 +1,7 @@
 1. Bo phone + Add Ngay nghi phep mac dinh: Done
-2. Bo group => Xoay quanh shift
+2. Bo group => Xoay quanh shift: Done
 3. Ngay nghi van di lam
-4. An vao shift bt ai dang di lam
+4. An vao shift bt ai dang di lam: Done
 5. Chon ngay => Chon shift => add nhan vien
 6. Tong so gio lam quan trong => count tong so gio lam (chinh xac tung phut)
 7. Khong check out sau 30p => Auto lay gio het ca la check out

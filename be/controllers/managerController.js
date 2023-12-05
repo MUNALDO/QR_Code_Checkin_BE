@@ -202,7 +202,7 @@ export const createDateDesignByManager = async (req, res, next) => {
         if (!existingDateInSchedules) {
             // date not exists
             employee.schedules.push({
-                date: req.body.date,
+                date: new Date(req.body.date),
                 shift_design: [{
                     shift_code: shift.code,
                     time_slot: shift.time_slot,

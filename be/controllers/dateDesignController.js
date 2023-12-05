@@ -1,4 +1,4 @@
-import { CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
+import { BAD_REQUEST, CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";
 import { createError } from "../utils/error.js";
@@ -20,7 +20,7 @@ export const createDateDesign = async (req, res, next) => {
         if (!existingDateInSchedules) {
             // date not exists
             employee.schedules.push({
-                date: req.body.date,
+                date: new Date(req.body.date),
                 shift_design: [{
                     shift_code: shift.code,
                     time_slot: shift.time_slot,
@@ -137,13 +137,12 @@ export const getDateSpecific = async (req, res, next) => {
 
 export const deleteDateSpecific = async (req, res, next) => {
     const employeeID = req.query.employeeID;
-    const dateToDelete = new Date(req.body.date);
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
 
         const existingDateIndex = employee.schedules.findIndex(schedule => {
-            return schedule.date.getTime() === dateToDelete.getTime();
+            return schedule.date.getTime() === new Date(req.body.date).getTime();
         });
 
         if (existingDateIndex === -1) {

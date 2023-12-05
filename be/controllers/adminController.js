@@ -4,6 +4,7 @@ import EmployeeSchema from "../models/EmployeeSchema.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import DayOffSchema from "../models/DayOffSchema.js";
 import AdminSchema from "../models/AdminSchema.js";
+import ShiftSchema from "../models/ShiftSchema.js";
 
 export const updateEmployee = async (req, res, next) => {
     const employeeID = req.query.employeeID;

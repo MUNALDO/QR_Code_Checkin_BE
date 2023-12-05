@@ -16,21 +16,15 @@ export const checkAttendance = async (req, res, next) => {
         const date = employee.schedules.find(schedule => {
             return schedule.date.getDate() === day;
         });
-        // console.log(date);
         if (!date) return next(createError(NOT_FOUND, 'Design not found for the current day'));
 
         // Collect time ranges from shift_design
         const timeRanges = date.shift_design.map(shift => {
             const totalNumber = shift.time_slot.total_number;
             const startTime = shift.time_slot.detail[0].start_time;
-            // console.log(startTime);
             const endTime = totalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
-            // console.log(endTime);
-
             return { startTime, endTime };
         });
-
-        // console.log(timeRanges);
 
         // Compare the current time with each time range
         const currentTimestamp = currentTime.getTime();
@@ -39,7 +33,6 @@ export const checkAttendance = async (req, res, next) => {
         for (const timeRange of timeRanges) {
             const startTime = new Date(`${current_date} ${timeRange.startTime}`).getTime();
             const endTime = new Date(`${current_date} ${timeRange.endTime}`).getTime();
-
             if (currentTimestamp >= startTime && currentTimestamp <= endTime) {
                 currentTimeRange = timeRange;
                 break;
@@ -74,329 +67,162 @@ export const checkAttendance = async (req, res, next) => {
             },
         });
 
-        const checkCurrentTimeZone = currentTime.toString();
-        // console.log(checkCurrentTimeZone);
-        if (checkCurrentTimeZone.includes("GMT+0100")) {
-            // same time zone
-            if (!existingAttendance) {
-                // only check in
-                const newAttendance = new AttendanceSchema({
-                    date: date,
-                    employee_id: employeeID,
-                    employee_name: employee.name,
-                    department_name: employee.department_name,
-                    role: employee.role,
-                    position: employee.position,
-                    shift_info: {
-                        shift_code: shift_code
-                    }
+        if (!existingAttendance) {
+            // only check in
+            const newAttendance = new AttendanceSchema({
+                date: date,
+                employee_id: employeeID,
+                employee_name: employee.name,
+                department_name: employee.department_name,
+                role: employee.role,
+                position: employee.position,
+                shift_info: {
+                    shift_code: shift_code
+                }
+            });
+            const [startHours, startMinutes] = time_slot.detail[0].start_time.split(':').map(Number);
+            const startTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), startHours, startMinutes);
+            // Calculate startTime - 30 minutes
+            const startTimeMinus30 = new Date(startTime);
+            startTimeMinus30.setMinutes(startTime.getMinutes() - 30);
+
+            // Calculate startTime
+            const startTimeOrigin = new Date(startTime);
+            startTimeOrigin.setMinutes(startTime.getMinutes());
+            if (currentTime > startTimeMinus30 && currentTime < startTimeOrigin) {
+                // check in on time
+                newAttendance.shift_info.time_slot.check_in = true;
+                newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString()}`;
+                newAttendance.shift_info.time_slot.check_in_status = 'on time';
+                await newAttendance.save();
+                return res.status(CREATED).json({
+                    success: true,
+                    status: CREATED,
+                    message: newAttendance,
+                    log: `${currentTime}`,
                 });
-                const [startHours, startMinutes] = time_slot.detail[0].start_time.split(':').map(Number);
-                const startTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), startHours, startMinutes);
-                // Calculate startTime - 30 minutes
-                const startTimeMinus30 = new Date(startTime);
-                startTimeMinus30.setMinutes(startTime.getMinutes() - 30);
-
-                // Calculate startTime
-                const startTimeOrigin = new Date(startTime);
-                startTimeOrigin.setMinutes(startTime.getMinutes());
-                if (currentTime > startTimeMinus30 && currentTime < startTimeOrigin) {
-                    // check in on time
-                    newAttendance.shift_info.time_slot.check_in = true;
-                    newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
-                    newAttendance.shift_info.time_slot.check_in_status = 'on time';
-                    await newAttendance.save();
-                    return res.status(CREATED).json({
-                        success: true,
-                        status: CREATED,
-                        message: newAttendance,
-                        log: `${currentTime}`,
-                    });
-                } else if (currentTime > startTimeOrigin) {
-                    // check in late
-                    newAttendance.shift_info.time_slot.check_in = true;
-                    newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
-                    newAttendance.shift_info.time_slot.check_in_status = 'late';
-                    await newAttendance.save();
-                    return res.status(CREATED).json({
-                        success: true,
-                        status: CREATED,
-                        message: newAttendance,
-                        log: `${currentTime}`,
-                    });
-                } else if (currentTime < startTimeMinus30) {
-                    // check in too soon
-                    return res.status(BAD_REQUEST).json({
-                        success: false,
-                        status: BAD_REQUEST,
-                        message: `You can not check in at this time ${currentTime.toLocaleTimeString()}`,
-                    });
-                }
-            } else {
-                // only check out
-                if (existingAttendance.shift_info.time_slot.check_in != true) {
-                    return res.status(BAD_REQUEST).json({
-                        success: false,
-                        status: BAD_REQUEST,
-                        message: "You haven't check in yet",
-                    });
-                } else {
-                    const checkInTime = new Date(existingAttendance.shift_info.time_slot.check_in_time);
-                    if (time_slot.total_number == 1) {
-                        const [endHours, endMinutes] = time_slot.detail[0].end_time.split(':').map(Number);
-                        const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
-
-                        // Calculate endTime + 30 minutes
-                        const endTimePlus30 = new Date(endTime);
-                        endTimePlus30.setMinutes(endTime.getMinutes() + 30);
-                        if (currentTime > endTime && currentTime < endTimePlus30) {
-                            // check out on time
-                            existingAttendance.shift_info.time_slot.check_out = true;
-                            existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
-                            existingAttendance.shift_info.time_slot.check_out_status = 'on time';
-                            const timeDifference = currentTime - checkInTime;
-                            const totalHours = timeDifference / (1000 * 60 * 60);
-                            existingAttendance.shift_info.total_hour = totalHours;
-                            await existingAttendance.save();
-                            return res.status(OK).json({
-                                success: true,
-                                status: OK,
-                                message: existingAttendance,
-                                log: `${currentTime}`,
-                            });
-                        } else if (currentTime > endTimePlus30) {
-                            // check out late
-                            existingAttendance.shift_info.time_slot.check_out = true;
-                            existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
-                            existingAttendance.shift_info.time_slot.check_out_status = 'late';
-                            const timeDifference = currentTime - checkInTime;
-                            const totalHours = timeDifference / (1000 * 60 * 60);
-                            existingAttendance.shift_info.total_hour = totalHours;
-                            await existingAttendance.save();
-                            return res.status(OK).json({
-                                success: true,
-                                status: OK,
-                                message: existingAttendance,
-                                log: `${currentTime}`,
-                            });
-                        } else if (currentTime < endTime) {
-                            // check out too soon
-                            return res.status(BAD_REQUEST).json({
-                                success: false,
-                                status: BAD_REQUEST,
-                                message: `You can not check out at this time ${currentTime.toLocaleTimeString()}`,
-                            });
-                        }
-                    } else if (time_slot.total_number == 2) {
-                        const [endHours, endMinutes] = time_slot.detail[1].end_time.split(':').map(Number);
-                        const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
-                        // Calculate endTime + 30 minutes
-                        const endTimePlus30 = new Date(endTime);
-                        endTimePlus30.setMinutes(endTime.getMinutes() + 30);
-                        if (currentTime > endTime && currentTime < endTimePlus30) {
-                            // check out on time
-                            existingAttendance.shift_info.time_slot.check_out = true;
-                            existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
-                            existingAttendance.shift_info.time_slot.check_out_status = 'on time';
-                            const timeDifference = currentTime - checkInTime;
-                            const totalHours = timeDifference / (1000 * 60 * 60);
-                            existingAttendance.shift_info.total_hour = totalHours;
-                            await existingAttendance.save();
-                            return res.status(OK).json({
-                                success: true,
-                                status: OK,
-                                message: existingAttendance,
-                                log: `${currentTime}`,
-                            });
-                        } else if (currentTime > endTimePlus30) {
-                            // check out late
-                            existingAttendance.shift_info.time_slot.check_out = true;
-                            existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
-                            existingAttendance.shift_info.time_slot.check_out_status = 'late';
-                            const timeDifference = currentTime - checkInTime;
-                            const totalHours = timeDifference / (1000 * 60 * 60);
-                            existingAttendance.shift_info.total_hour = totalHours;
-                            await existingAttendance.save();
-                            return res.status(OK).json({
-                                success: true,
-                                status: OK,
-                                message: existingAttendance,
-                                log: `${currentTime}`,
-                            });
-                        } else if (currentTime < endTime) {
-                            // check out too soon
-                            return res.status(BAD_REQUEST).json({
-                                success: false,
-                                status: BAD_REQUEST,
-                                message: `You can not check out at this time ${currentTime.toLocaleTimeString()}`,
-                            });
-                        }
-                    }
-                }
-            };
+            } else if (currentTime > startTimeOrigin) {
+                // check in late
+                newAttendance.shift_info.time_slot.check_in = true;
+                newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString()}`;
+                newAttendance.shift_info.time_slot.check_in_status = 'late';
+                await newAttendance.save();
+                return res.status(CREATED).json({
+                    success: true,
+                    status: CREATED,
+                    message: newAttendance,
+                    log: `${currentTime}`,
+                });
+            } else if (currentTime < startTimeMinus30) {
+                // check in too soon
+                return res.status(BAD_REQUEST).json({
+                    success: false,
+                    status: BAD_REQUEST,
+                    message: `You can not check in at this time ${currentTime.toLocaleTimeString()}`,
+                });
+            }
         } else {
-            // different time zone
-            const timeString = currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", });
-            // const today = new Date();
-            const timestampString = `${currentTime.toISOString().split('T')[0]}T${timeString}.000Z`;
-            const timestamp = new Date(timestampString);
-
-            // console.log(timestamp);
-
-            if (!existingAttendance) {
-                // only check in
-                const newAttendance = new AttendanceSchema({
-                    date: date,
-                    employee_id: employeeID,
-                    employee_name: employee.name,
-                    department_name: employee.department_name,
-                    role: employee.role,
-                    position: employee.position,
-                    shift_info: {
-                        shift_code: shift_code
-                    }
+            // only check out
+            if (existingAttendance.shift_info.time_slot.check_in != true) {
+                return res.status(BAD_REQUEST).json({
+                    success: false,
+                    status: BAD_REQUEST,
+                    message: "You haven't check in yet",
                 });
-                const [startHours, startMinutes] = time_slot.detail[0].start_time.split(':').map(Number);
-                const startTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), startHours, startMinutes);
-                // Calculate startTime - 30 minutes
-                const startTimeMinus30 = new Date(startTime);
-                startTimeMinus30.setMinutes(startTime.getMinutes() - 30);
-
-                // Calculate startTime
-                const startTimeOrigin = new Date(startTime);
-                startTimeOrigin.setMinutes(startTime.getMinutes());
-                if (timestamp > startTimeMinus30 && timestamp < startTimeOrigin) {
-                    // check in on time
-                    newAttendance.shift_info.time_slot.check_in = true;
-                    newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
-                    newAttendance.shift_info.time_slot.check_in_status = 'on time';
-                    await newAttendance.save();
-                    return res.status(CREATED).json({
-                        success: true,
-                        status: CREATED,
-                        message: newAttendance,
-                        log: `${currentTime}, ${timestamp}`,
-                    });
-                } else if (timestamp > startTimeOrigin) {
-                    // check in late
-                    newAttendance.shift_info.time_slot.check_in = true;
-                    newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
-                    newAttendance.shift_info.time_slot.check_in_status = 'late';
-                    await newAttendance.save();
-                    return res.status(CREATED).json({
-                        success: true,
-                        status: CREATED,
-                        message: newAttendance,
-                        log: `${currentTime}, ${timestamp}`,
-                    });
-                } else if (timestamp < startTimeMinus30) {
-                    // check in too soon
-                    return res.status(BAD_REQUEST).json({
-                        success: false,
-                        status: BAD_REQUEST,
-                        message: `You can not check in at this time ${currentTime.toLocaleTimeString()}`,
-                    });
-                }
             } else {
-                // only check out
-                if (existingAttendance.shift_info.time_slot.check_in != true) {
-                    return res.status(BAD_REQUEST).json({
-                        success: false,
-                        status: BAD_REQUEST,
-                        message: "You haven't check in yet",
-                    });
-                } else {
-                    const checkInTime = new Date(existingAttendance.shift_info.time_slot.check_in_time);
-                    if (time_slot.total_number == 1) {
-                        const [endHours, endMinutes] = time_slot.detail[0].end_time.split(':').map(Number);
-                        const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
+                const checkInTime = new Date(existingAttendance.shift_info.time_slot.check_in_time);
+                if (time_slot.total_number == 1) {
+                    const [endHours, endMinutes] = time_slot.detail[0].end_time.split(':').map(Number);
+                    const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
 
-                        // Calculate endTime + 30 minutes
-                        const endTimePlus30 = new Date(endTime);
-                        endTimePlus30.setMinutes(endTime.getMinutes() + 30);
-                        if (timestamp > endTime && timestamp < endTimePlus30) {
-                            // check out on time
-                            existingAttendance.shift_info.time_slot.check_out = true;
-                            existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
-                            existingAttendance.shift_info.time_slot.check_out_status = 'on time';
-                            const timeDifference = currentTime - checkInTime;
-                            const totalHours = timeDifference / (1000 * 60 * 60);
-                            existingAttendance.shift_info.total_hour = totalHours;
-                            await existingAttendance.save();
-                            return res.status(OK).json({
-                                success: true,
-                                status: OK,
-                                message: existingAttendance,
-                            });
-                        } else if (timestamp > endTimePlus30) {
-                            // check out late
-                            existingAttendance.shift_info.time_slot.check_out = true;
-                            existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
-                            existingAttendance.shift_info.time_slot.check_out_status = 'late';
-                            const timeDifference = currentTime - checkInTime;
-                            const totalHours = timeDifference / (1000 * 60 * 60);
-                            existingAttendance.shift_info.total_hour = totalHours;
-                            await existingAttendance.save();
-                            return res.status(OK).json({
-                                success: true,
-                                status: OK,
-                                message: existingAttendance,
-                            });
-                        } else if (timestamp < endTime) {
-                            // check out too soon
-                            return res.status(BAD_REQUEST).json({
-                                success: false,
-                                status: BAD_REQUEST,
-                                message: `You can not check out at this time ${currentTime.toLocaleTimeString()}`,
-                            });
-                        }
-                    } else if (time_slot.total_number == 2) {
-                        const [endHours, endMinutes] = time_slot.detail[1].end_time.split(':').map(Number);
-                        const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
-
-                        // Calculate endTime + 30 minutes
-                        const endTimePlus30 = new Date(endTime);
-                        endTimePlus30.setMinutes(endTime.getMinutes() + 30);
-                        if (timestamp > endTime && timestamp < endTimePlus30) {
-                            // check out on time
-                            existingAttendance.shift_info.time_slot.check_out = true;
-                            existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
-                            existingAttendance.shift_info.time_slot.check_out_status = 'on time';
-                            const timeDifference = currentTime - checkInTime;
-                            const totalHours = timeDifference / (1000 * 60 * 60);
-                            existingAttendance.shift_info.total_hour = totalHours;
-                            await existingAttendance.save();
-                            return res.status(OK).json({
-                                success: true,
-                                status: OK,
-                                message: existingAttendance,
-                            });
-                        } else if (timestamp > endTimePlus30) {
-                            // check out late
-                            existingAttendance.shift_info.time_slot.check_out = true;
-                            existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", })}`;
-                            existingAttendance.shift_info.time_slot.check_out_status = 'late';
-                            const timeDifference = currentTime - checkInTime;
-                            const totalHours = timeDifference / (1000 * 60 * 60);
-                            existingAttendance.shift_info.total_hour = totalHours;
-                            await existingAttendance.save();
-                            return res.status(OK).json({
-                                success: true,
-                                status: OK,
-                                message: existingAttendance,
-                            });
-                        } else if (timestamp < endTime) {
-                            // check out too soon
-                            return res.status(BAD_REQUEST).json({
-                                success: false,
-                                status: BAD_REQUEST,
-                                message: `You can not check out at this time ${currentTime.toLocaleTimeString()}`,
-                            });
-                        }
+                    // Calculate endTime + 30 minutes
+                    const endTimePlus30 = new Date(endTime);
+                    endTimePlus30.setMinutes(endTime.getMinutes() + 30);
+                    if (currentTime > endTime && currentTime < endTimePlus30) {
+                        // check out on time
+                        existingAttendance.shift_info.time_slot.check_out = true;
+                        existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString()}`;
+                        existingAttendance.shift_info.time_slot.check_out_status = 'on time';
+                        const timeDifference = currentTime - checkInTime;
+                        const totalHours = timeDifference / (1000 * 60 * 60);
+                        existingAttendance.shift_info.total_hour = totalHours;
+                        await existingAttendance.save();
+                        return res.status(OK).json({
+                            success: true,
+                            status: OK,
+                            message: existingAttendance,
+                            log: `${currentTime}`,
+                        });
+                    } else if (currentTime > endTimePlus30) {
+                        // check out late
+                        existingAttendance.shift_info.time_slot.check_out = true;
+                        existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString()}`;
+                        existingAttendance.shift_info.time_slot.check_out_status = 'late';
+                        const timeDifference = currentTime - checkInTime;
+                        const totalHours = timeDifference / (1000 * 60 * 60);
+                        existingAttendance.shift_info.total_hour = totalHours;
+                        await existingAttendance.save();
+                        return res.status(OK).json({
+                            success: true,
+                            status: OK,
+                            message: existingAttendance,
+                            log: `${currentTime}`,
+                        });
+                    } else if (currentTime < endTime) {
+                        // check out too soon
+                        return res.status(BAD_REQUEST).json({
+                            success: false,
+                            status: BAD_REQUEST,
+                            message: `You can not check out at this time ${currentTime.toLocaleTimeString()}`,
+                        });
+                    }
+                } else if (time_slot.total_number == 2) {
+                    const [endHours, endMinutes] = time_slot.detail[1].end_time.split(':').map(Number);
+                    const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
+                    // Calculate endTime + 30 minutes
+                    const endTimePlus30 = new Date(endTime);
+                    endTimePlus30.setMinutes(endTime.getMinutes() + 30);
+                    if (currentTime > endTime && currentTime < endTimePlus30) {
+                        // check out on time
+                        existingAttendance.shift_info.time_slot.check_out = true;
+                        existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString()}`;
+                        existingAttendance.shift_info.time_slot.check_out_status = 'on time';
+                        const timeDifference = currentTime - checkInTime;
+                        const totalHours = timeDifference / (1000 * 60 * 60);
+                        existingAttendance.shift_info.total_hour = totalHours;
+                        await existingAttendance.save();
+                        return res.status(OK).json({
+                            success: true,
+                            status: OK,
+                            message: existingAttendance,
+                            log: `${currentTime}`,
+                        });
+                    } else if (currentTime > endTimePlus30) {
+                        // check out late
+                        existingAttendance.shift_info.time_slot.check_out = true;
+                        existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString()}`;
+                        existingAttendance.shift_info.time_slot.check_out_status = 'late';
+                        const timeDifference = currentTime - checkInTime;
+                        const totalHours = timeDifference / (1000 * 60 * 60);
+                        existingAttendance.shift_info.total_hour = totalHours;
+                        await existingAttendance.save();
+                        return res.status(OK).json({
+                            success: true,
+                            status: OK,
+                            message: existingAttendance,
+                            log: `${currentTime}`,
+                        });
+                    } else if (currentTime < endTime) {
+                        // check out too soon
+                        return res.status(BAD_REQUEST).json({
+                            success: false,
+                            status: BAD_REQUEST,
+                            message: `You can not check out at this time ${currentTime.toLocaleTimeString()}`,
+                        });
                     }
                 }
-            };
-        }
+            }
+        };
     } catch (err) {
         next(err);
     }

@@ -30,17 +30,9 @@ const shiftSchema = new mongoose.Schema(
                     end_time: {
                         type: String,
                     },
-                    value: {
-                        type: Number,
-                    }
                 }
             ]
         },
-        // shift_type: {
-        //     type: String,
-        //     enum: ['default', 'custom'],
-        //     required: true
-        // },
     },
     { timestamps: true }
 );

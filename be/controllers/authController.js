@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
 import { createError } from "../utils/error.js";
-import { BAD_REQUEST, CREATED, FORBIDDEN, NOT_FOUND, OK } from "../constant/HttpStatus.js";
+import { BAD_REQUEST, CONFLICT, CREATED, FORBIDDEN, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import dotenv from 'dotenv';
 import AdminSchema from "../models/AdminSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
@@ -18,6 +18,9 @@ export const registerAdmin = async (req, res, next) => {
             password: hash,
             role: "Admin"
         })
+        const admin = await AdminSchema.findOne({name: newAdmin.name});
+        if (admin) return next(createError(CONFLICT, "Admin is already exists!"))
+
         await newAdmin.save()
         res.status(CREATED).json({
             success: true,
@@ -74,6 +77,11 @@ export const registerInhaberByAdmin = async (req, res, next) => {
             role: "Inhaber",
             department_name: inhaber_department_name
         })
+        const inhaber = await AdminSchema.findOne({name: newInhaber.name});
+        if (inhaber) return next(createError(CONFLICT, "Inhaber is already exists!"))
+        if (department.members.some(member => member.name === newInhaber.name)) {
+            return next(createError(CONFLICT, "This Inhaber already exists in the department!"));
+        }
         department.members.push(newInhaber);
         await department.save();
         await newInhaber.save();
@@ -132,6 +140,11 @@ export const registerManagerByAdmin = async (req, res, next) => {
             role: "Manager",
             department_name: manager_department_name
         })
+        const manager = await AdminSchema.findOne({name: newManager.name});
+        if (manager) return next(createError(CONFLICT, "Manager is already exists!"))
+        if (department.members.some(member => member.name === newManager.name)) {
+            return next(createError(CONFLICT, "This Manager already exists in the department!"));
+        }
         department.members.push(newManager);
         await department.save();
         await newManager.save();
@@ -164,6 +177,11 @@ export const registerManagerByInhaber = async (req, res, next) => {
             role: "Manager",
             department_name: inhaber.department_name
         });
+        const manager = await AdminSchema.findOne({name: newManager.name});
+        if (manager) return next(createError(CONFLICT, "Manager is already exists!"))
+        if (department.members.some(member => member.name === newManager.name)) {
+            return next(createError(CONFLICT, "This Inhaber already exists in the department!"));
+        }
         department.members.push(newManager);
         await department.save();
         await newManager.save();
@@ -223,6 +241,11 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
             password: hash,
             department_name: employee_department_name
         });
+        const employee = await EmployeeSchema.findOne({name: newEmployee.name});
+        if (employee) return next(createError(CONFLICT, "Employee is already exists!"))
+        if (department.members.some(member => member.name === newEmployee.name)) {
+            return next(createError(CONFLICT, "This Inhaber already exists in the department!"));
+        }
         department.members.push(newEmployee);
         await department.save();
         await newEmployee.save();
@@ -254,6 +277,11 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
             password: hash,
             department_name: inhaber.department_name,
         });
+        const employee = await EmployeeSchema.findOne({name: newEmployee.name});
+        if (employee) return next(createError(CONFLICT, "Employee is already exists!"))
+        if (department.members.some(member => member.name === newEmployee.name)) {
+            return next(createError(CONFLICT, "This Inhaber already exists in the department!"));
+        }
         department.members.push(newEmployee);
         await department.save();
         await newEmployee.save();
@@ -285,6 +313,11 @@ export const registerEmployeeByManager = async (req, res, next) => {
             password: hash,
             department_name: manager.department_name,
         });
+        const employee = await EmployeeSchema.findOne({name: newEmployee.name});
+        if (employee) return next(createError(CONFLICT, "Employee is already exists!"))
+        if (department.members.some(member => member.name === newEmployee.name)) {
+            return next(createError(CONFLICT, "This Inhaber already exists in the department!"));
+        }
         department.members.push(newEmployee);
         await department.save();
         await newEmployee.save();

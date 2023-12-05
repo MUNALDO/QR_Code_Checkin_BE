@@ -91,10 +91,11 @@ export const getAllEmployees = async (req, res, next) => {
 
 export const getEmployeeSpecific = async (req, res, next) => {
     const query = req.query.query;
-    // console.log(query);
     try {
         if (!query) {
             const employee = await EmployeeSchema.find();
+            if (!employee) return next(createError(NOT_FOUND, "Employees not found!"))
+
             res.status(OK).json({
                 success: true,
                 status: OK,
@@ -103,34 +104,45 @@ export const getEmployeeSpecific = async (req, res, next) => {
         }
         const regex = new RegExp(query, 'i');
         const employeeName = await EmployeeSchema.find({ name: regex });
-        const employeeID = await EmployeeSchema.find({ id: query });
+        const employeeID = await EmployeeSchema.find({ id: regex });
         const employeeRole = await EmployeeSchema.find({ role: query });
+        const employeePosition = await EmployeeSchema.find({ position: query });
 
         if (employeeName.length !== 0) {
+            const filteredEmployees = employeeName.filter(employee => employee.department_name === inhaber.department_name);
             res.status(OK).json({
                 success: true,
                 status: OK,
-                message: employeeName,
+                message: filteredEmployees,
             });
         } else if (employeeID.length !== 0) {
+            const filteredEmployees = employeeID.filter(employee => employee.department_name === inhaber.department_name);
             res.status(OK).json({
                 success: true,
                 status: OK,
-                message: employeeID,
+                message: filteredEmployees,
             });
         } else if (employeeRole.length !== 0) {
+            const filteredEmployees = employeeRole.filter(employee => employee.department_name === inhaber.department_name);
             res.status(OK).json({
                 success: true,
                 status: OK,
-                message: employeeRole,
+                message: filteredEmployees,
             });
-        } else {
+        } else if (employeePosition.length !== 0) {
+            const filteredEmployees = employeePosition.filter(employee => employee.department_name === inhaber.department_name);
             res.status(OK).json({
                 success: true,
                 status: OK,
-                message: [],
+                message: filteredEmployees,
             });
         }
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: [],
+        });
     } catch (err) {
         next(err);
     }

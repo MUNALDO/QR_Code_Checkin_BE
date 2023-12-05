@@ -2,8 +2,8 @@
 2. Bo group => Xoay quanh shift: Done
 3. Ngay nghi van di lam
 4. An vao shift bt ai dang di lam: Done
-5. Chon ngay => Chon shift => add nhan vien
-6. Tong so gio lam quan trong => count tong so gio lam (chinh xac tung phut)
+5. Chon ngay => Chon shift => add nhan vien: Done
+6. Tong so gio lam quan trong => count tong so gio lam (chinh xac tung phut): Done
 7. Khong check out sau 30p => Auto lay gio het ca la check out
 8. [(So gio lam + overtime)*a] - b - c
    a,b,c: Tu nhap thang dau tien. Thang sau lay save cua thang truoc
@@ -12,7 +12,7 @@
 10. role: delivery 
     check out: gui anh tong ket
 11. checkin truoc 30p
-12. employee nhin duoc attend + schedule current month
+12. employee nhin duoc attend + schedule current month: Done
 13. employee xin nghi phep:
 - xin trc 1 thang
 - notification cho admin (email..)

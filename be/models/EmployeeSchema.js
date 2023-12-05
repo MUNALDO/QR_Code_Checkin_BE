@@ -63,6 +63,10 @@ const employeeSchema = new mongoose.Schema(
                         time_slot: {
                             type: Object,
                         },
+                        shift_type: {
+                            type: String,
+                            enum: ['normal', 'overtime']
+                        }
                     }
                 ],
             },

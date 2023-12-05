@@ -36,11 +36,11 @@ const shiftSchema = new mongoose.Schema(
                 }
             ]
         },
-        shift_type: {
-            type: String,
-            enum: ['default', 'custom'],
-            required: true
-        },
+        // shift_type: {
+        //     type: String,
+        //     enum: ['default', 'custom'],
+        //     required: true
+        // },
     },
     { timestamps: true }
 );

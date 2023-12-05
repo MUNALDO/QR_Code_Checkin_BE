@@ -205,7 +205,8 @@ export const createDateDesignByManager = async (req, res, next) => {
                 date: req.body.date,
                 shift_design: [{
                     shift_code: shift.code,
-                    time_slot: shift.time_slot
+                    time_slot: shift.time_slot,
+                    shift_type: req.body.shift_type
                 }]
             });
             await employee.save();
@@ -231,7 +232,8 @@ export const createDateDesignByManager = async (req, res, next) => {
                 // If there is no existing shift_design with the same shiftCode, create a new shift_design
                 existingDateInSchedules.shift_design.push({
                     shift_code: shift.code,
-                    time_slot: shift.time_slot
+                    time_slot: shift.time_slot,
+                    shift_type: req.body.shift_type
                 });
                 await employee.save();
                 res.status(CREATED).json({

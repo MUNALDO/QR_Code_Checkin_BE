@@ -20,7 +20,7 @@ import {
 } from '../controllers/dayOffController.js';
 import {
     createDateDesign, deleteDateSpecific,
-    getAllDates, getDateSpecific
+    getAllDates, getDateDesignInMonth, getDateSpecific
 } from '../controllers/dateDesignController.js';
 
 const router = express.Router();
@@ -53,8 +53,9 @@ router.put('/manage-shift/update', verifyUserAdmin, updateShift);
 // date design
 router.post('/manage-date-design/create', verifyUserAdmin, createDateDesign);
 router.get('/manage-date-design/get-all', verifyUserAdmin, getAllDates);
-router.get('/manage-date-design/get-specific', verifyUserAdmin, getDateSpecific);
-router.put('/manage-date-design/delete', verifyUserAdmin, deleteDateSpecific);
+router.get('/manage-date-design/get-by-month', verifyUserAdmin, getDateDesignInMonth);
+router.get('/manage-date-design/get-by-date', verifyUserAdmin, getDateSpecific);
+router.delete('/manage-date-design/delete', verifyUserAdmin, deleteDateSpecific);
 
 // day off
 router.post('/day-off/create-dayOff', createDayOff);

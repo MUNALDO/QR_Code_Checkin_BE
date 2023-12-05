@@ -74,7 +74,9 @@ export const registerInhaberByAdmin = async (req, res, next) => {
             role: "Inhaber",
             department_name: inhaber_department_name
         })
-        await newInhaber.save()
+        department.members.push(newInhaber);
+        await department.save();
+        await newInhaber.save();
         res.status(CREATED).json({
             success: true,
             status: CREATED,
@@ -130,7 +132,9 @@ export const registerManagerByAdmin = async (req, res, next) => {
             role: "Manager",
             department_name: manager_department_name
         })
-        await newManager.save()
+        department.members.push(newManager);
+        await department.save();
+        await newManager.save();
         res.status(CREATED).json({
             success: true,
             status: CREATED,
@@ -148,6 +152,9 @@ export const registerManagerByInhaber = async (req, res, next) => {
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
+        const department = await DepartmentSchema.findOne({ name: inhaber.department_name });
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"))
+
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
 
@@ -157,13 +164,14 @@ export const registerManagerByInhaber = async (req, res, next) => {
             role: "Manager",
             department_name: inhaber.department_name
         });
+        department.members.push(newManager);
+        await department.save();
         await newManager.save();
         res.status(CREATED).json({
             success: true,
             status: CREATED,
             message: newManager,
         });
-
     } catch (err) {
         next(err);
     }
@@ -215,13 +223,14 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
             password: hash,
             department_name: employee_department_name
         });
+        department.members.push(newEmployee);
+        await department.save();
         await newEmployee.save();
         res.status(CREATED).json({
             success: true,
             status: CREATED,
             message: newEmployee,
         });
-
     } catch (err) {
         next(err);
     }
@@ -234,6 +243,9 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
+        const department = await DepartmentSchema.findOne({ name: inhaber.department_name });
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
 
@@ -242,13 +254,14 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
             password: hash,
             department_name: inhaber.department_name,
         });
+        department.members.push(newEmployee);
+        await department.save();
         await newEmployee.save();
         res.status(CREATED).json({
             success: true,
             status: CREATED,
             message: newEmployee,
         });
-
     } catch (err) {
         next(err);
     }
@@ -261,6 +274,9 @@ export const registerEmployeeByManager = async (req, res, next) => {
         const manager = await AdminSchema.findOne({ name: manager_name });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
 
+        const department = await DepartmentSchema.findOne({ name: manager.department_name });
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
 
@@ -269,13 +285,14 @@ export const registerEmployeeByManager = async (req, res, next) => {
             password: hash,
             department_name: manager.department_name,
         });
+        department.members.push(newEmployee);
+        await department.save();
         await newEmployee.save();
         res.status(CREATED).json({
             success: true,
             status: CREATED,
             message: newEmployee,
         });
-
     } catch (err) {
         next(err);
     }

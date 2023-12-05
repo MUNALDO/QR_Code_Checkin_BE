@@ -23,7 +23,8 @@ export const createDateDesign = async (req, res, next) => {
                 date: req.body.date,
                 shift_design: [{
                     shift_code: shift.code,
-                    time_slot: shift.time_slot
+                    time_slot: shift.time_slot,
+                    shift_type: req.body.shift_type
                 }]
             });
             await employee.save();
@@ -49,7 +50,8 @@ export const createDateDesign = async (req, res, next) => {
                 // If there is no existing shift_design with the same shiftCode, create a new shift_design
                 existingDateInSchedules.shift_design.push({
                     shift_code: shift.code,
-                    time_slot: shift.time_slot
+                    time_slot: shift.time_slot,
+                    shift_type: req.body.shift_type
                 });
                 await employee.save();
                 res.status(CREATED).json({
@@ -80,6 +82,37 @@ export const getAllDates = async (req, res, next) => {
     }
 };
 
+export const getDateDesignInMonth = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+    const targetMonth = req.body.month;
+
+    try {
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+
+        // Filter schedules for the target month
+        const schedulesInMonth = employee.schedules.filter(schedule => {
+            const scheduleMonth = schedule.date.getMonth() + 1;
+            return scheduleMonth === targetMonth;
+        });
+
+        if (schedulesInMonth.length === 0) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: `No schedules found for the employee in the specified month.`,
+            });
+        }
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: schedulesInMonth,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
 
 export const getDateSpecific = async (req, res, next) => {
     const employeeID = req.query.employeeID;

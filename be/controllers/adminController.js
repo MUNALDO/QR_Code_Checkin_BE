@@ -3,6 +3,7 @@ import { NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import DayOffSchema from "../models/DayOffSchema.js";
+import AdminSchema from "../models/AdminSchema.js";
 
 export const updateEmployee = async (req, res, next) => {
     const employeeID = req.query.employeeID;
@@ -89,10 +90,21 @@ export const getAllEmployees = async (req, res, next) => {
     }
 };
 
-export const getEmployeeSpecific = async (req, res, next) => {
+export const searchSpecific = async (req, res, next) => {
     const query = req.query.query;
     try {
         if (!query) {
+            const managements = await AdminSchema.find();
+            const matchedManagement = managements.filter(management => {
+                const matchedSchedules = employee.schedules.filter(schedule => {
+                    return (
+                        schedule.date.getTime() === targetDate.getTime() &&
+                        schedule.shift_design.some(shift => shift.shift_code === targetShiftCode)
+                    );
+                });
+
+                return matchedSchedules.length > 0;
+            });
             const employee = await EmployeeSchema.find();
             if (!employee) return next(createError(NOT_FOUND, "Employees not found!"))
 
@@ -143,6 +155,61 @@ export const getEmployeeSpecific = async (req, res, next) => {
             status: OK,
             message: [],
         });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getEmployeeSpecific = async (req, res, next) => {
+    const query = req.query.query;
+    try {
+        if (!query) {
+            const employee = await EmployeeSchema.find();
+            if (!employee) return next(createError(NOT_FOUND, "Employees not found!"))
+
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: employee,
+            });
+        }
+        const regex = new RegExp(query, 'i');
+        const employeeName = await EmployeeSchema.find({ name: regex });
+        const employeeID = await EmployeeSchema.find({ id: regex });
+        const employeeRole = await EmployeeSchema.find({ role: query });
+        const employeePosition = await EmployeeSchema.find({ position: query });
+
+        if (employeeName.length !== 0) {
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: employeeName,
+            });
+        } else if (employeeID.length !== 0) {
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: employeeID,
+            });
+        } else if (employeeRole.length !== 0) {
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: employeeRole,
+            });
+        } else if (employeePosition.length !== 0) {
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: employeePosition,
+            });
+        } else {
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: [],
+            });
+        }
     } catch (err) {
         next(err);
     }

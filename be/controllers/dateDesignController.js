@@ -48,17 +48,48 @@ export const createDateDesign = async (req, res, next) => {
                 });
             } else {
                 // If there is no existing shift_design with the same shiftCode, create a new shift_design
-                existingDateInSchedules.shift_design.push({
-                    shift_code: shift.code,
-                    time_slot: shift.time_slot,
-                    shift_type: req.body.shift_type
+                const existsTimeRanges = existingDateInSchedules.shift_design.map(shift => {
+                    const totalNumber = shift.time_slot.total_number;
+                    const startTime = shift.time_slot.detail[0].start_time;
+                    const endTime = totalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
+                    return { startTime, endTime };
                 });
-                await employee.save();
-                res.status(CREATED).json({
-                    success: true,
-                    status: CREATED,
-                    message: employee,
+
+                const newShiftTotalNumber = shift.time_slot.total_number;
+                const newShiftStartTime = shift.time_slot.detail[0].start_time;
+                const newShiftEndTime = newShiftTotalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
+                // const newShiftTimeRange = { newShiftStartTime, newShiftEndTime };
+
+                // Check for time range conflicts
+                const hasConflict = existsTimeRanges.some(range => {
+                    return (
+                        (newShiftStartTime >= range.startTime && newShiftStartTime < range.endTime) ||
+                        (newShiftEndTime > range.startTime && newShiftEndTime <= range.endTime) ||
+                        (newShiftStartTime <= range.startTime && newShiftEndTime >= range.endTime)
+                    );
                 });
+
+                if (hasConflict) {
+                    // Time range conflict
+                    res.status(BAD_REQUEST).json({
+                        success: false,
+                        status: BAD_REQUEST,
+                        message: "Time range conflict with existing shifts for the day",
+                    });
+                } else {
+                    // No time range conflict, add the new shift design
+                    existingDateInSchedules.shift_design.push({
+                        shift_code: shift.code,
+                        time_slot: shift.time_slot,
+                        shift_type: req.body.shift_type
+                    });
+                    await employee.save();
+                    res.status(CREATED).json({
+                        success: true,
+                        status: CREATED,
+                        message: employee,
+                    });
+                }
             }
         }
     } catch (err) {

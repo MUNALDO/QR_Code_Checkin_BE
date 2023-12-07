@@ -2,29 +2,54 @@ import { createError } from "../utils/error.js";
 import { BAD_REQUEST, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
-import DayOffSchema from "../models/DayOffSchema.js";
 import AdminSchema from "../models/AdminSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";
+import DepartmentSchema from "../models/DepartmentSchema.js";
 
 export const updateEmployee = async (req, res, next) => {
     const employeeID = req.query.employeeID;
     try {
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
-
         const updateEmployee = await EmployeeSchema.findOneAndUpdate(
             { id: employeeID },
             { $set: req.body },
-            { $new: true },
-        )
+            { new: true }
+        );
 
-        await updateEmployee.save();
-        res.status(OK).json({
-            success: true,
-            status: OK,
-            message: updateEmployee,
-        });
+        if (!updateEmployee) {
+            return next(createError(NOT_FOUND, "Employee not found!"));
+        }
 
+        const department = await DepartmentSchema.findOne({ name: updateEmployee.department_name });
+        if (!department) {
+            return next(createError(NOT_FOUND, "Department not found!"));
+        }
+
+        const employeeIndex = department.members.findIndex(member => member.id === updateEmployee.id);
+        if (employeeIndex !== -1) {
+            department.members[employeeIndex] = {
+                id: updateEmployee.id,
+                name: updateEmployee.name,
+                email: updateEmployee.email,
+                department_name: updateEmployee.department_name,
+                role: updateEmployee.role,
+                position: updateEmployee.position,
+                status: updateEmployee.status,
+            };
+
+            await department.save();
+            await updateEmployee.save();
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: updateEmployee,
+            });
+        } else {
+            res.status(NOT_FOUND).json({
+                success: true,
+                status: OK,
+                message: "Can not found employee in department",
+            });
+        }
     } catch (err) {
         next(err);
     }
@@ -32,50 +57,27 @@ export const updateEmployee = async (req, res, next) => {
 
 export const deleteEmployeeById = async (req, res, next) => {
     const employeeID = req.query.employeeID;
-
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
-        if (employee.grouped_work_code && employee.day_off_code) {
-            await GroupSchema.updateOne({
-                code: employee.grouped_work_code
-            },
-                {
-                    $pull: {
-                        "members": employeeID,
-                    }
-                }
-            );
+        const department = await DepartmentSchema.findOne({ name: employee.department_name });
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
 
-            await DayOffSchema.updateOne({
-                code: employee.day_off_code
-            },
-                {
-                    $pull: {
-                        "members": employeeID,
-                    }
-                }
-            );
+        department.members = department.members.filter(member => member.id !== employee.id);
+        await department.save();
 
-            await EmployeeSchema.findOneAndDelete({ id: employeeID });
-            res.status(OK).json({
-                success: true,
-                status: OK,
-                message: "Employee deleted successfully",
-            });
-        } else {
-            await EmployeeSchema.findOneAndDelete({ id: employeeID });
-            res.status(OK).json({
-                success: true,
-                status: OK,
-                message: "Employee deleted successfully",
-            });
-        }
+        await EmployeeSchema.findOneAndDelete({ id: employeeID });
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: "Employee deleted successfully",
+        });
     } catch (err) {
         next(err);
     }
 };
+
 
 export const getAllEmployees = async (req, res, next) => {
     try {

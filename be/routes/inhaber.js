@@ -1,10 +1,10 @@
 import express from 'express';
 import { verifyUserInhaber } from '../utils/verifyToken.js';
 import {
-    createDateDesignByInhaber, deleteDateSpecificByInhaber, deleteEmployeeById,
-    getAllDatesByInhaber, getAllEmployeeAttendanceByInhaber, getAllEmployees, getDateDesignInMonthByInhaber, getDateSpecificByInhaber,
-    getEmployeeAttendanceByInhaber,
-    getEmployeeSpecific, getEmployeesByDateAndShiftByInhaber, getEmployeesByDateByInhaber, updateEmployee
+    createDateDesignByInhaber, deleteDateSpecificByInhaber, deleteEmployeeByIdByInhaber,
+    getAllDatesByInhaber, getAllEmployeeAttendanceByInhaber, getAllEmployees, 
+    getDateDesignInMonthByInhaber, getDateSpecificByInhaber, getEmployeeAttendanceByInhaber,
+    getEmployeeSpecific, getEmployeesByDateAndShiftByInhaber, getEmployeesByDateByInhaber, updateEmployeeByInhaber
 } from '../controllers/inhaberController.js';
 import {
     createShift, getAllShifts, getShiftByCode,
@@ -14,8 +14,8 @@ import {
 const router = express.Router();
 
 // manage employee
-router.put("/manage-employee/update", verifyUserInhaber, updateEmployee);
-router.delete("/manage-employee/delete-byId", verifyUserInhaber, deleteEmployeeById);
+router.put("/manage-employee/update", verifyUserInhaber, updateEmployeeByInhaber);
+router.delete("/manage-employee/delete-byId", verifyUserInhaber, deleteEmployeeByIdByInhaber);
 router.get("/manage-employee/get-all", verifyUserInhaber, getAllEmployees);
 router.get("/manage-employee/get-specific", verifyUserInhaber, getEmployeeSpecific);
 router.get("/manage-employee/get-by-date", verifyUserInhaber, getEmployeesByDateByInhaber);

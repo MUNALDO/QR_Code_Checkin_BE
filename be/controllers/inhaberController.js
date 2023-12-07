@@ -5,38 +5,64 @@ import AttendanceSchema from "../models/AttendanceSchema.js";
 import AdminSchema from "../models/AdminSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";
 
-export const updateEmployee = async (req, res, next) => {
+export const updateEmployeeByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
     const employeeID = req.query.employeeID;
     try {
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
-
-        if (inhaber.department_name !== employee.department_name) {
-            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));
-        }
-
         const updateEmployee = await EmployeeSchema.findOneAndUpdate(
             { id: employeeID },
             { $set: req.body },
-            { $new: true },
-        )
+            { new: true }
+        );
 
-        await updateEmployee.save();
-        res.status(OK).json({
-            success: true,
-            status: OK,
-            message: updateEmployee,
-        });
+        if (!updateEmployee) {
+            return next(createError(NOT_FOUND, "Employee not found!"));
+        }
+
+        const department = await DepartmentSchema.findOne({ name: updateEmployee.department_name });
+        if (!department) {
+            return next(createError(NOT_FOUND, "Department not found!"));
+        }
+
+        if (inhaber.department_name !== updateEmployee.department_name) {
+            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));
+        }
+
+        const employeeIndex = department.members.findIndex(member => member.id === updateEmployee.id);
+        if (employeeIndex !== -1) {
+            department.members[employeeIndex] = {
+                id: updateEmployee.id,
+                name: updateEmployee.name,
+                email: updateEmployee.email,
+                department_name: updateEmployee.department_name,
+                role: updateEmployee.role,
+                position: updateEmployee.position,
+                status: updateEmployee.status,
+            };
+
+            await department.save();
+            await updateEmployee.save();
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: updateEmployee,
+            });
+        } else {
+            res.status(NOT_FOUND).json({
+                success: true,
+                status: OK,
+                message: "Can not found employee in department",
+            });
+        }
     } catch (err) {
         next(err);
     }
 };
 
-export const deleteEmployeeById = async (req, res, next) => {
+export const deleteEmployeeByIdByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
     const employeeID = req.query.employeeID;
     try {
@@ -44,11 +70,17 @@ export const deleteEmployeeById = async (req, res, next) => {
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
         const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+
+        const department = await DepartmentSchema.findOne({ name: employee.department_name });
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
 
         if (inhaber.department_name !== employee.department_name) {
             return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));
         }
+
+        department.members = department.members.filter(member => member.id !== employee.id);
+        await department.save();
 
         await EmployeeSchema.findOneAndDelete({ id: employeeID });
         res.status(OK).json({
@@ -143,43 +175,15 @@ export const getEmployeeSpecific = async (req, res, next) => {
     }
 };
 
-export const getAttendanceByTime = async (req, res, next) => {
-    const year = req.query.year;
-    const month = req.query.month;
-
-    try {
-        const query = {
-            date: {
-                $gte: new Date(year, month ? month - 1 : 0, 1, 0, 0, 0, 0),
-                $lt: new Date(year, month ? month : 12, 1, 0, 0, 0, 0),
-            },
-        };
-
-        const attendanceList = await AttendanceSchema.find(query);
-
-        if (Array.isArray(attendanceList) && attendanceList.length === 0) {
-            return res.status(NOT_FOUND).json({ error: "Cannot find attendance history" });
-        }
-
-        return res.status(OK).json({ success: 'Attendance found', attendanceList });
-    } catch (err) {
-        next(err);
-    }
-}
-
 export const getEmployeesByDateByInhaber = async (req, res, next) => {
     try {
         const targetDate = new Date(req.body.date);
         const inhaberName = req.query.inhaber_name;
 
-        // Find the inhaber
         const inhaber = await AdminSchema.findOne({ name: inhaberName });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
-        // Find all employees
         const employees = await EmployeeSchema.find();
-
-        // Filter employees based on the target date, shift code, and department
         const matchedEmployees = employees.filter(employee => {
             const matchedSchedules = employee.schedules.filter(schedule => {
                 return schedule.date.getTime() === targetDate.getTime();
@@ -215,17 +219,13 @@ export const getEmployeesByDateAndShiftByInhaber = async (req, res, next) => {
         const targetShiftCode = req.body.shift_code;
         const inhaberName = req.query.inhaber_name;
 
-        // Find the inhaber
         const inhaber = await AdminSchema.findOne({ name: inhaberName });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
         const shift = await ShiftSchema.findOne({ code: targetShiftCode });
         if (!shift) return next(createError(NOT_FOUND, "Shift not found!"))
 
-        // Find all employees
         const employees = await EmployeeSchema.find();
-
-        // Filter employees based on the target date, shift code, and department
         const matchedEmployees = employees.filter(employee => {
             const matchedSchedules = employee.schedules.filter(schedule => {
                 return (

@@ -9,8 +9,6 @@ export const autoCheck = async (req, res, next) => {
 
     // Find all employees
     const employees = await EmployeeSchema.find();
-
-    // Filter employees based on the target date and shift code
     const matchedEmployees = employees.filter(employee => {
         const matchedSchedules = employee.schedules.filter(schedule => {
             return schedule.date.toLocaleDateString() == currentTime.toLocaleDateString();

@@ -18,7 +18,7 @@ export const registerAdmin = async (req, res, next) => {
             password: hash,
             role: "Admin"
         })
-        const admin = await AdminSchema.findOne({name: newAdmin.name});
+        const admin = await AdminSchema.findOne({ name: newAdmin.name });
         if (admin) return next(createError(CONFLICT, "Admin is already exists!"))
 
         await newAdmin.save()
@@ -77,12 +77,19 @@ export const registerInhaberByAdmin = async (req, res, next) => {
             role: "Inhaber",
             department_name: inhaber_department_name
         })
-        const inhaber = await AdminSchema.findOne({name: newInhaber.name});
+        const inhaber = await AdminSchema.findOne({ name: newInhaber.name });
         if (inhaber) return next(createError(CONFLICT, "Inhaber is already exists!"))
         if (department.members.some(member => member.name === newInhaber.name)) {
             return next(createError(CONFLICT, "This Inhaber already exists in the department!"));
         }
-        department.members.push(newInhaber);
+        department.members.push({
+            id: newInhaber.id,
+            name: newInhaber.name,
+            email: newInhaber.email,
+            department_name: newInhaber.department_name,
+            role: newInhaber.role,
+            status: newInhaber.status
+        });
         await department.save();
         await newInhaber.save();
         res.status(CREATED).json({
@@ -140,12 +147,19 @@ export const registerManagerByAdmin = async (req, res, next) => {
             role: "Manager",
             department_name: manager_department_name
         })
-        const manager = await AdminSchema.findOne({name: newManager.name});
+        const manager = await AdminSchema.findOne({ name: newManager.name });
         if (manager) return next(createError(CONFLICT, "Manager is already exists!"))
         if (department.members.some(member => member.name === newManager.name)) {
             return next(createError(CONFLICT, "This Manager already exists in the department!"));
         }
-        department.members.push(newManager);
+        department.members.push({
+            id: newManager.id,
+            name: newManager.name,
+            email: newManager.email,
+            department_name: newManager.department_name,
+            role: newManager.role,
+            status: newManager.status
+        });
         await department.save();
         await newManager.save();
         res.status(CREATED).json({
@@ -177,12 +191,19 @@ export const registerManagerByInhaber = async (req, res, next) => {
             role: "Manager",
             department_name: inhaber.department_name
         });
-        const manager = await AdminSchema.findOne({name: newManager.name});
+        const manager = await AdminSchema.findOne({ name: newManager.name });
         if (manager) return next(createError(CONFLICT, "Manager is already exists!"))
         if (department.members.some(member => member.name === newManager.name)) {
             return next(createError(CONFLICT, "This Inhaber already exists in the department!"));
         }
-        department.members.push(newManager);
+        department.members.push({
+            id: newManager.id,
+            name: newManager.name,
+            email: newManager.email,
+            department_name: newManager.department_name,
+            role: newManager.role,
+            status: newManager.status
+        });
         await department.save();
         await newManager.save();
         res.status(CREATED).json({
@@ -241,12 +262,20 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
             password: hash,
             department_name: employee_department_name
         });
-        const employee = await EmployeeSchema.findOne({name: newEmployee.name});
+        const employee = await EmployeeSchema.findOne({ name: newEmployee.name });
         if (employee) return next(createError(CONFLICT, "Employee is already exists!"))
         if (department.members.some(member => member.name === newEmployee.name)) {
             return next(createError(CONFLICT, "This Inhaber already exists in the department!"));
         }
-        department.members.push(newEmployee);
+        department.members.push({
+            id: newEmployee.id,
+            name: newEmployee.name,
+            email: newEmployee.email,
+            department_name: newEmployee.department_name,
+            role: newEmployee.role,
+            position: newEmployee.position,
+            status: newEmployee.status
+        });
         await department.save();
         await newEmployee.save();
         res.status(CREATED).json({
@@ -277,12 +306,20 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
             password: hash,
             department_name: inhaber.department_name,
         });
-        const employee = await EmployeeSchema.findOne({name: newEmployee.name});
+        const employee = await EmployeeSchema.findOne({ name: newEmployee.name });
         if (employee) return next(createError(CONFLICT, "Employee is already exists!"))
         if (department.members.some(member => member.name === newEmployee.name)) {
             return next(createError(CONFLICT, "This Inhaber already exists in the department!"));
         }
-        department.members.push(newEmployee);
+        department.members.push({
+            id: newEmployee.id,
+            name: newEmployee.name,
+            email: newEmployee.email,
+            department_name: newEmployee.department_name,
+            role: newEmployee.role,
+            position: newEmployee.position,
+            status: newEmployee.status
+        });
         await department.save();
         await newEmployee.save();
         res.status(CREATED).json({
@@ -313,12 +350,20 @@ export const registerEmployeeByManager = async (req, res, next) => {
             password: hash,
             department_name: manager.department_name,
         });
-        const employee = await EmployeeSchema.findOne({name: newEmployee.name});
+        const employee = await EmployeeSchema.findOne({ name: newEmployee.name });
         if (employee) return next(createError(CONFLICT, "Employee is already exists!"))
         if (department.members.some(member => member.name === newEmployee.name)) {
             return next(createError(CONFLICT, "This Inhaber already exists in the department!"));
         }
-        department.members.push(newEmployee);
+        department.members.push({
+            id: newEmployee.id,
+            name: newEmployee.name,
+            email: newEmployee.email,
+            department_name: newEmployee.department_name,
+            role: newEmployee.role,
+            position: newEmployee.position,
+            status: newEmployee.status
+        });
         await department.save();
         await newEmployee.save();
         res.status(CREATED).json({

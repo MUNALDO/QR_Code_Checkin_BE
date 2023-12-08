@@ -1,7 +1,7 @@
 import express from 'express';
 import {
-    deleteEmployeeById, getAllEmployeeAttendance, getAllEmployees, getEmployeeAttendance, getEmployeeSpecific,
-    getEmployeesByDate, getEmployeesByDateAndShift, searchSpecific, updateEmployee
+    deleteEmployeeById, getAllEmployeeAttendance, getAllEmployees, getAllRequests, getEmployeeAttendance, getEmployeeSpecific,
+    getEmployeesByDate, getEmployeesByDateAndShift, getRequestById, searchSpecific, updateEmployee
 } from '../controllers/adminController.js';
 import {
     addMemberDepartment, createDepartment, deleteDepartmentByName, getAllDepartments,
@@ -15,13 +15,10 @@ import { verifyTokenAdmin, verifyUserAdmin } from '../utils/verifyToken.js';
 import { salaryCalculate } from '../controllers/salaryController.js';
 import { exportAttendanceToExcel } from '../controllers/xlsxController.js';
 import {
-    addDayOffSchedule, addMemberDayOff, createDayOff, getAllDaysOff,
-    getDayOffByCode, getDayOffByName, removeDayOffSchedule, updateDayOff
-} from '../controllers/dayOffController.js';
-import {
     createDateDesign, deleteDateSpecific,
     getAllDates, getDateDesignInMonth, getDateSpecific
 } from '../controllers/dateDesignController.js';
+import { createDayOff, deleteDayOffById, deleteEmployeeDayOff, getAllGlobalDayOffs, getDayOffById, getEmployeeDayOffs } from '../controllers/dayOffController.js';
 
 const router = express.Router();
 
@@ -61,15 +58,18 @@ router.get('/manage-date-design/get-by-date', verifyUserAdmin, getDateSpecific);
 router.delete('/manage-date-design/delete', verifyUserAdmin, deleteDateSpecific);
 
 // day off
-router.post('/day-off/create-dayOff', createDayOff);
-router.get('/day-off/get-all', getAllDaysOff);
-router.get('/day-off/get-by-code', getDayOffByCode);
-router.get('/day-off/get-by-name', getDayOffByName);
-router.put('/day-off/update', updateDayOff);
-router.put('/day-off/add-member', addMemberDayOff);
-router.put('/day-off/add-dayOff', addDayOffSchedule);
-router.put('/day-off/remove-dayOff', removeDayOffSchedule);
+router.post('/manage-day-off/create', verifyUserAdmin, createDayOff);
+router.get('/manage-day-off/get-all', verifyUserAdmin, getAllGlobalDayOffs);
+router.get('/manage-day-off/get-byId/:_id', verifyUserAdmin, getDayOffById);
+router.delete('/manage-day-off/delete-byId/:_id', verifyUserAdmin, deleteDayOffById);
+router.get('/manage-day-off/get-specific-employee', verifyUserAdmin, getEmployeeDayOffs);
+router.delete('/manage-day-off/delete-employee/:_id', verifyUserAdmin, deleteEmployeeDayOff);
 
+// manage request
+router.get('/manage-request/get-all', verifyUserAdmin, getAllRequests);
+router.get('/manage-request/get-byId/:_id', verifyUserAdmin, getRequestById);
+
+// manage attendance
 router.get('/manage-attendance/get-all', verifyUserAdmin, getAllEmployeeAttendance);
 router.get('/manage-attendance/get-specific/:employeeID', verifyUserAdmin, getEmployeeAttendance);
 

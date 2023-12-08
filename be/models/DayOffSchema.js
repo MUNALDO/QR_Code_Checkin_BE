@@ -2,32 +2,22 @@ import mongoose from "mongoose";
 
 const dayOffSchema = new mongoose.Schema(
     {
-        code: {
-            type: String,
-            required: true,
-            unique: true
+        date: {
+            type: Date,
+            required: true
         },
         name: {
             type: String,
-            required: true,
         },
-        dayOff_schedule: [
-            {
-                date: {
-                    type: String,
-                    required: true,
-                },
-                type: {
-                    type: String,
-                    enum: ['day-off', 'holiday'],
-                    default: 'day-off'
-                },
-                name: {
-                    type: String,
-                }
-            }
-        ],
-        members: []
+        type: {
+            type: String,
+            enum: ['global', 'specific']
+        },
+        members: [],
+        allowed: {
+            type: Boolean,
+            default: false
+        }
     },
     { timestamps: true }
 );

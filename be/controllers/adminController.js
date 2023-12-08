@@ -5,6 +5,7 @@ import AttendanceSchema from "../models/AttendanceSchema.js";
 import AdminSchema from "../models/AdminSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";
 import DepartmentSchema from "../models/DepartmentSchema.js";
+import RequestSchema from "../models/RequestSchema.js";
 
 export const updateEmployee = async (req, res, next) => {
     const employeeID = req.query.employeeID;
@@ -502,7 +503,33 @@ export const getEmployeeAttendance = async (req, res, next) => {
     }
 };
 
+export const getAllRequests = async (req, res, next) => {
+    try {
+        const requests = await RequestSchema.find();
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: requests,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
 
+export const getRequestById = async (req, res, next) => {
+    try {
+        const request = await RequestSchema.find({ _id: req.params._id });
+        if (!request) return next(createError(NOT_FOUND, "Request not found!"));
+
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: request,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
 
 
 

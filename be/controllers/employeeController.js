@@ -1,6 +1,8 @@
 import { BAD_REQUEST, CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
+import DayOffSchema from "../models/DayOffSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
+import RequestSchema from "../models/RequestSchema.js";
 import { createError } from "../utils/error.js";
 
 export const autoCheck = async (req, res, next) => {
@@ -499,3 +501,57 @@ export const getDateDesignInMonthByEmployee = async (req, res, next) => {
         next(err);
     }
 };
+
+export const createRequest = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+    try {
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+
+        if (employee.default_total_dayOff > 0) {
+            const newRequest = new RequestSchema({
+                employee_id: employee.id,
+                employee_name: employee.name,
+                default_total_dayOff: employee.default_total_dayOff,
+                request_dayOff: req.body.request_dayOff,
+                request_content: req.body.request_content
+            })
+
+            const dateChecking = await DayOffSchema.findOne({ date: new Date(newRequest.request_dayOff) });
+            if (!dateChecking || dateChecking.type === "global") {
+                const newDayOff = new DayOffSchema({
+                    date: new Date(newRequest.request_dayOff),
+                    name: "leave",
+                    type: "specific",
+                });
+                await newDayOff.save();
+            } else {
+                dateChecking.members.push({
+                    id: employee.id,
+                    name: employee.name,
+                    email: employee.email,
+                    department_name: employee.department_name,
+                    role: employee.role,
+                    position: employee.position,
+                    status: employee.status
+                });
+                await dateChecking.save();
+            }
+
+            await newRequest.save();
+            return res.status(CREATED).json({
+                success: true,
+                status: CREATED,
+                message: newRequest,
+            });
+        } else {
+            return res.status(BAD_REQUEST).json({
+                success: false,
+                status: BAD_REQUEST,
+                message: "Your day off is not enough",
+            });
+        }
+    } catch (err) {
+        next(err);
+    }
+}

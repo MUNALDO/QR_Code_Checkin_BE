@@ -4,7 +4,7 @@ const employeeSchema = new mongoose.Schema(
     {
         id: {
             type: String,
-            // required: true,
+            required: true,
         },
         name: {
             type: String,
@@ -40,9 +40,7 @@ const employeeSchema = new mongoose.Schema(
             enum: ['Service', 'Bar', 'Küche', 'Lito', 'Autofahrer', 'Fahrradfahrer',
                 'Büro', 'Lehrgang für Azubi', 'FacTech GmbH'],
         },
-        salary_service_code: {
-            type: String,
-        },
+        salary: [],
         default_total_dayOff: {
             type: Number,
             default: 0
@@ -70,6 +68,7 @@ const employeeSchema = new mongoose.Schema(
                 ],
             },
         ],
+        dayOff_schedule: [],
         status: {
             type: String,
             enum: ['active', 'inactive'],

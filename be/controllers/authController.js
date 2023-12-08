@@ -194,7 +194,7 @@ export const registerManagerByInhaber = async (req, res, next) => {
         const manager = await AdminSchema.findOne({ name: newManager.name });
         if (manager) return next(createError(CONFLICT, "Manager is already exists!"))
         if (department.members.some(member => member.name === newManager.name)) {
-            return next(createError(CONFLICT, "This Inhaber already exists in the department!"));
+            return next(createError(CONFLICT, "This Manager already exists in the department!"));
         }
         department.members.push({
             id: newManager.id,
@@ -264,8 +264,9 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
         });
         const employee = await EmployeeSchema.findOne({ name: newEmployee.name });
         if (employee) return next(createError(CONFLICT, "Employee is already exists!"))
+
         if (department.members.some(member => member.name === newEmployee.name)) {
-            return next(createError(CONFLICT, "This Inhaber already exists in the department!"));
+            return next(createError(CONFLICT, "This Employee already exists in the department!"));
         }
         department.members.push({
             id: newEmployee.id,
@@ -308,8 +309,9 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
         });
         const employee = await EmployeeSchema.findOne({ name: newEmployee.name });
         if (employee) return next(createError(CONFLICT, "Employee is already exists!"))
+
         if (department.members.some(member => member.name === newEmployee.name)) {
-            return next(createError(CONFLICT, "This Inhaber already exists in the department!"));
+            return next(createError(CONFLICT, "This Employee already exists in the department!"));
         }
         department.members.push({
             id: newEmployee.id,
@@ -352,8 +354,9 @@ export const registerEmployeeByManager = async (req, res, next) => {
         });
         const employee = await EmployeeSchema.findOne({ name: newEmployee.name });
         if (employee) return next(createError(CONFLICT, "Employee is already exists!"))
+
         if (department.members.some(member => member.name === newEmployee.name)) {
-            return next(createError(CONFLICT, "This Inhaber already exists in the department!"));
+            return next(createError(CONFLICT, "This Employee already exists in the department!"));
         }
         department.members.push({
             id: newEmployee.id,

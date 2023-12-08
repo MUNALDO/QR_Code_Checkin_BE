@@ -10,7 +10,7 @@ function calculateDuration(startDate, endDate) {
     const end = new Date(endDate);
 
     const durationInMilliseconds = Math.abs(start - end);
-    const durationInDays = Math.round(durationInMilliseconds / oneDay);
+    const durationInDays = Math.round(durationInMilliseconds / oneDay + 1);
 
     return durationInDays;
 }

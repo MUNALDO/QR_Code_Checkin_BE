@@ -3,18 +3,41 @@ import DayOffSchema from "../models/DayOffSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import { createError } from "../utils/error.js";
 
+function calculateDuration(startDate, endDate) {
+    const oneDay = 24 * 60 * 60 * 1000;
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    const durationInMilliseconds = Math.abs(start - end);
+    const durationInDays = Math.round(durationInMilliseconds / oneDay);
+
+    return durationInDays;
+}
+
+// // Example usage:
+// const startDate = "2023-12-27T17:00:00.000Z";
+// const endDate = "2024-01-01T17:00:00.000Z";
+
+// const duration = calculateDuration(startDate, endDate);
+
 export const createDayOff = async (req, res, next) => {
-    const date = req.body.date;
+    const date_start = req.body.date_start;
+    const date_end = req.body.date_end;
     const employeeID = req.query.employeeID;
     try {
         const newDayOff = new DayOffSchema({
-            date: new Date(date),
+            date_start: new Date(date_start),
+            date_end: new Date(date_end),
             name: req.body.name,
             type: req.body.type,
         });
 
+        const duration = calculateDuration(date_start, date_end);
+
         const dateChecking = await DayOffSchema.findOne({
-            date: newDayOff.date,
+            date_start: newDayOff.date_start,
+            date_end: newDayOff.date_end,
             type: newDayOff.type
         });
         if (dateChecking) return next(createError(CONFLICT, "Day Off is already exists!"));
@@ -24,9 +47,12 @@ export const createDayOff = async (req, res, next) => {
             if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
             employee.dayOff_schedule.push({
-                date: newDayOff.date,
+                date_start: newDayOff.date_start,
+                date_end: newDayOff.date_end,
+                duration: duration,
                 name: newDayOff.name,
-                type: newDayOff.type
+                type: newDayOff.type,
+                allowed: newDayOff.allowed
             });
 
             newDayOff.members.push({
@@ -56,14 +82,18 @@ export const createDayOff = async (req, res, next) => {
 
                 // Add the new day off to all employees
                 employee.dayOff_schedule.push({
-                    date: newDayOff.date,
+                    date_start: newDayOff.date_start,
+                    date_end: newDayOff.date_end,
+                    duration: duration,
                     name: newDayOff.name,
-                    type: newDayOff.type
+                    type: newDayOff.type,
+                    allowed: newDayOff.allowed
                 });
                 employee.save();
             });
         }
 
+        newDayOff.duration = duration;
         await newDayOff.save();
         return res.status(CREATED).json({
             success: true,
@@ -107,13 +137,34 @@ export const getDayOffById = async (req, res, next) => {
 
 export const deleteDayOffById = async (req, res, next) => {
     try {
-        const day_off = await DayOffSchema.findOneAndDelete({ _id: req.params._id });
+        const day_off = await DayOffSchema.findOne({ _id: req.params._id });
         if (!day_off) return next(createError(NOT_FOUND, "Day Off not found!"));
+
+        const employeeIds = day_off.members.map(member => member.id);
+
+        // Update each employee's dayOff_schedule
+        await Promise.all(
+            employeeIds.map(async employeeId => {
+                const employee = await EmployeeSchema.findOne({ id: employeeId });
+                if (employee) {
+                    // Remove day off from the employee's dayOff_schedule
+                    employee.dayOff_schedule = employee.dayOff_schedule.filter(dayOffSchedule =>
+                        dayOffSchedule.date_start.getTime() !== day_off.date_start.getTime() ||
+                        dayOffSchedule.date_end.getTime() !== day_off.date_end.getTime()
+                    );
+                    await employee.save();
+                }
+            })
+        );
+
+        // Now delete the day off
+        const deletedDayOff = await DayOffSchema.findOneAndDelete({ _id: req.params._id });
 
         return res.status(OK).json({
             success: true,
             status: OK,
-            message: "Day Off delete successfully!",
+            message: "Day Off deleted successfully!",
+            deletedDayOff,
         });
     } catch (err) {
         next(err);

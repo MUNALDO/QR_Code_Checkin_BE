@@ -502,6 +502,18 @@ export const getDateDesignInMonthByEmployee = async (req, res, next) => {
     }
 };
 
+function calculateDuration(startDate, endDate) {
+    const oneDay = 24 * 60 * 60 * 1000;
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    const durationInMilliseconds = Math.abs(start - end);
+    const durationInDays = Math.round(durationInMilliseconds / oneDay);
+
+    return durationInDays;
+}
+
 export const createRequest = async (req, res, next) => {
     const employeeID = req.query.employeeID;
     try {
@@ -513,19 +525,17 @@ export const createRequest = async (req, res, next) => {
                 employee_id: employee.id,
                 employee_name: employee.name,
                 default_total_dayOff: employee.default_total_dayOff,
-                request_dayOff: req.body.request_dayOff,
+                request_dayOff_start: req.body.request_dayOff_start,
+                request_dayOff_end: req.body.request_dayOff_end,
                 request_content: req.body.request_content
             })
 
-            const dateChecking = await DayOffSchema.findOne({ date: new Date(newRequest.request_dayOff) });
-            if (!dateChecking || dateChecking.type === "global") {
-                const newDayOff = new DayOffSchema({
-                    date: new Date(newRequest.request_dayOff),
-                    name: "leave",
-                    type: "specific",
-                });
-                await newDayOff.save();
-            } else {
+            const dateChecking = await DayOffSchema.findOne({
+                date_start: new Date(newRequest.request_dayOff_start),
+                date_end: new Date(newRequest.request_dayOff_end),
+                type: "specific"
+            });
+            if (dateChecking) {
                 dateChecking.members.push({
                     id: employee.id,
                     name: employee.name,
@@ -535,7 +545,52 @@ export const createRequest = async (req, res, next) => {
                     position: employee.position,
                     status: employee.status
                 });
+                employee.dayOff_schedule.push({
+                    date_start: dateChecking.date_start,
+                    date_end: dateChecking.date_end,
+                    duration: dateChecking.duration,
+                    name: dateChecking.name,
+                    type: dateChecking.type,
+                    allowed: dateChecking.allowed
+                });
+                await employee.save();
                 await dateChecking.save();
+            } else {
+                const newDayOff = new DayOffSchema({
+                    date_start: new Date(newRequest.request_dayOff_start),
+                    date_end: new Date(newRequest.request_dayOff_end),
+                    name: "leave",
+                    type: "specific",
+                });
+                const duration = calculateDuration(newDayOff.date_start, newDayOff.date_end);
+                if (employee.default_total_dayOff < duration) {
+                    return res.status(BAD_REQUEST).json({
+                        success: false,
+                        status: BAD_REQUEST,
+                        message: "Your day off total is not enough",
+                    });
+                }
+
+                newDayOff.members.push({
+                    id: employee.id,
+                    name: employee.name,
+                    email: employee.email,
+                    department_name: employee.department_name,
+                    role: employee.role,
+                    position: employee.position,
+                    status: employee.status
+                });
+                employee.dayOff_schedule.push({
+                    date_start: newDayOff.date_start,
+                    date_end: newDayOff.date_end,
+                    duration: duration,
+                    name: newDayOff.name,
+                    type: newDayOff.type,
+                    allowed: newDayOff.allowed
+                });
+                newDayOff.duration = duration;
+                await employee.save();
+                await newDayOff.save();
             }
 
             await newRequest.save();
@@ -548,7 +603,7 @@ export const createRequest = async (req, res, next) => {
             return res.status(BAD_REQUEST).json({
                 success: false,
                 status: BAD_REQUEST,
-                message: "Your day off is not enough",
+                message: "Your day off total is not enough",
             });
         }
     } catch (err) {

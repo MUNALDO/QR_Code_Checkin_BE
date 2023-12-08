@@ -6,6 +6,7 @@ import AdminSchema from "../models/AdminSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";
 import DepartmentSchema from "../models/DepartmentSchema.js";
 import RequestSchema from "../models/RequestSchema.js";
+import DayOffSchema from "../models/DayOffSchema.js";
 
 export const updateEmployee = async (req, res, next) => {
     const employeeID = req.query.employeeID;
@@ -530,6 +531,55 @@ export const getRequestById = async (req, res, next) => {
         next(err);
     }
 };
+
+export const handleRequest = async (req, res, next) => {
+    try {
+        const updateRequest = await RequestSchema.findOneAndUpdate(
+            { _id: req.params._id },
+            { $set: { answer_status: req.body.answer_status } },
+            { new: true }
+        );
+        if (!updateRequest) return next(createError(NOT_FOUND, "Request not found!"));
+
+        const day_off = await DayOffSchema.findOne({
+            date_start: new Date(updateRequest.request_dayOff_start),
+            date_end: new Date(updateRequest.request_dayOff_end),
+        });
+        if (!day_off) return next(createError(NOT_FOUND, "Day Off not found!"));
+
+        const employee = await EmployeeSchema.findOne({ id: updateRequest.employee_id });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+
+        if (updateRequest.answer_status === "approved") {
+            day_off.allowed = true;
+            await day_off.save();
+            const employeeDayOff = employee.dayOff_schedule.find(dayOffSchedule =>
+                dayOffSchedule.date_start.getTime() === day_off.date_start.getTime() &&
+                dayOffSchedule.date_end.getTime() === day_off.date_end.getTime()
+            );
+
+            employeeDayOff.allowed = true;
+            employee.default_total_dayOff = employee.default_total_dayOff - day_off.duration;
+
+            employee.markModified('dayOff_schedule');
+            await employee.save();
+        } else if (updateRequest.answer_status === "denied") {
+            employee.dayOff_schedule = employee.dayOff_schedule.filter(dayOffSchedule =>
+                dayOffSchedule.date_start.getTime() !== day_off.date_start.getTime() ||
+                dayOffSchedule.date_end.getTime() !== day_off.date_end.getTime()
+            );
+            await employee.save();
+            await DayOffSchema.findOneAndDelete({ _id: req.params._id });
+        }
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: updateRequest,
+        });
+    } catch (err) {
+        next(err);
+    }
+}
 
 
 

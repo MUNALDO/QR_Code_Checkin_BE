@@ -2,8 +2,16 @@ import mongoose from "mongoose";
 
 const dayOffSchema = new mongoose.Schema(
     {
-        date: {
+        date_start: {
             type: Date,
+            required: true
+        },
+        date_end: {
+            type: Date,
+            required: true
+        },
+        duration: {
+            type: Number,
             required: true
         },
         name: {

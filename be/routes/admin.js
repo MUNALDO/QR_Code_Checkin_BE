@@ -1,7 +1,7 @@
 import express from 'express';
 import {
     deleteEmployeeById, getAllEmployeeAttendance, getAllEmployees, getAllRequests, getEmployeeAttendance, getEmployeeSpecific,
-    getEmployeesByDate, getEmployeesByDateAndShift, getRequestById, searchSpecific, updateEmployee
+    getEmployeesByDate, getEmployeesByDateAndShift, getRequestById, handleRequest, searchSpecific, updateEmployee
 } from '../controllers/adminController.js';
 import {
     addMemberDepartment, createDepartment, deleteDepartmentByName, getAllDepartments,
@@ -68,6 +68,7 @@ router.delete('/manage-day-off/delete-employee/:_id', verifyUserAdmin, deleteEmp
 // manage request
 router.get('/manage-request/get-all', verifyUserAdmin, getAllRequests);
 router.get('/manage-request/get-byId/:_id', verifyUserAdmin, getRequestById);
+router.put('/manage-request/handle/:_id', verifyUserAdmin, handleRequest);
 
 // manage attendance
 router.get('/manage-attendance/get-all', verifyUserAdmin, getAllEmployeeAttendance);

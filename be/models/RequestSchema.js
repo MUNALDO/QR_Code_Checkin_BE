@@ -13,7 +13,11 @@ const requestSchema = new mongoose.Schema(
         default_total_dayOff: {
             type: Number
         },
-        request_dayOff: {
+        request_dayOff_start: {
+            type: Date,
+            required: true
+        },
+        request_dayOff_end: {
             type: Date,
             required: true
         },

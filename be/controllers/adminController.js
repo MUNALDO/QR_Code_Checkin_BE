@@ -337,7 +337,7 @@ export const getEmployeeSpecific = async (req, res, next) => {
 
 export const getEmployeesByDate = async (req, res, next) => {
     try {
-        const targetDate = new Date(req.body.date);
+        const targetDate = new Date(req.query.date);
 
         // Find all employees
         const employees = await EmployeeSchema.find();
@@ -363,8 +363,8 @@ export const getEmployeesByDate = async (req, res, next) => {
 
 export const getEmployeesByDateAndShift = async (req, res, next) => {
     try {
-        const targetDate = new Date(req.body.date);
-        const targetShiftCode = req.body.shift_code;
+        const targetDate = new Date(req.query.date);
+        const targetShiftCode = req.query.shift_code;
 
         const shift = await ShiftSchema.findOne({ code: targetShiftCode });
         if (!shift) return next(createError(NOT_FOUND, "Shift not found!"))

@@ -335,11 +335,11 @@ export const getEmployeeSpecific = async (req, res, next) => {
     }
 };
 
+import moment from 'moment-timezone';
+
 export const getEmployeesByDate = async (req, res, next) => {
     try {
-        // Parse the date from the request and set it to UTC
-        const targetDate = new Date(req.body.date);
-        targetDate.setUTCHours(0, 0, 0, 0);
+        const targetDate = moment(req.body.date).toDate();
 
         // Find all employees
         const employees = await EmployeeSchema.find();
@@ -347,26 +347,21 @@ export const getEmployeesByDate = async (req, res, next) => {
         // Filter employees based on the target date and shift code
         const matchedEmployees = employees.filter(employee => {
             const matchedSchedules = employee.schedules.filter(schedule => {
-                // Adjust the schedule date to UTC
-                const scheduleDateUTC = new Date(schedule.date.toISOString());
-                scheduleDateUTC.setUTCHours(0, 0, 0, 0);
-
-                return scheduleDateUTC.getTime() === targetDate.getTime();
+                return schedule.date.getTime() === targetDate.getTime();
             });
 
             return matchedSchedules.length > 0;
         });
 
-        res.status(200).json({
+        res.status(OK).json({
             success: true,
-            status: 200,
+            status: OK,
             message: matchedEmployees,
         });
     } catch (err) {
         next(err);
     }
 };
-
 
 export const getEmployeesByDateAndShift = async (req, res, next) => {
     try {

@@ -337,7 +337,9 @@ export const getEmployeeSpecific = async (req, res, next) => {
 
 export const getEmployeesByDate = async (req, res, next) => {
     try {
+        // Parse the date from the request and set it to UTC
         const targetDate = new Date(req.body.date);
+        targetDate.setUTCHours(0, 0, 0, 0);
 
         // Find all employees
         const employees = await EmployeeSchema.find();
@@ -345,21 +347,26 @@ export const getEmployeesByDate = async (req, res, next) => {
         // Filter employees based on the target date and shift code
         const matchedEmployees = employees.filter(employee => {
             const matchedSchedules = employee.schedules.filter(schedule => {
-                return schedule.date.getTime() === targetDate.getTime();
+                // Adjust the schedule date to UTC
+                const scheduleDateUTC = new Date(schedule.date.toISOString());
+                scheduleDateUTC.setUTCHours(0, 0, 0, 0);
+
+                return scheduleDateUTC.getTime() === targetDate.getTime();
             });
 
             return matchedSchedules.length > 0;
         });
 
-        res.status(OK).json({
+        res.status(200).json({
             success: true,
-            status: OK,
+            status: 200,
             message: matchedEmployees,
         });
     } catch (err) {
         next(err);
     }
 };
+
 
 export const getEmployeesByDateAndShift = async (req, res, next) => {
     try {

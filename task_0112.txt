@@ -13,7 +13,7 @@
     check out: gui anh tong ket
 11. checkin truoc 30p:Done
 12. employee nhin duoc attend + schedule current month: Done
-13. employee xin nghi phep:
+13. employee xin nghi phep: Done
 - xin trc 1 thang
 - notification cho admin (email..)
 - check xem qua tong so ngay nghi mac dinh

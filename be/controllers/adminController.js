@@ -338,7 +338,6 @@ export const getEmployeeSpecific = async (req, res, next) => {
 export const getEmployeesByDate = async (req, res, next) => {
     try {
         const targetDate = new Date(req.body.date);
-        console.log(targetDate);
 
         // Find all employees
         const employees = await EmployeeSchema.find();

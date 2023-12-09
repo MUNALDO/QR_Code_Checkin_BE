@@ -530,6 +530,25 @@ export const createRequest = async (req, res, next) => {
                 request_content: req.body.request_content
             })
 
+            const oneMonthBeforeStart = new Date(newRequest.request_dayOff_start);
+            oneMonthBeforeStart.setMonth(oneMonthBeforeStart.getMonth() - 1);
+            const currentTime = new Date();
+            if (
+                (oneMonthBeforeStart.getFullYear() === currentTime.getFullYear() &&
+                    oneMonthBeforeStart.getMonth() < currentTime.getMonth()) ||
+                (oneMonthBeforeStart.getFullYear() === currentTime.getFullYear() &&
+                    oneMonthBeforeStart.getMonth() === currentTime.getMonth() &&
+                    oneMonthBeforeStart.getDate() < currentTime.getDate()) ||
+                (oneMonthBeforeStart.getFullYear() !== currentTime.getFullYear() &&
+                    oneMonthBeforeStart.getMonth() === 0 &&
+                    oneMonthBeforeStart.getDate() < currentTime.getDate())) {
+                return res.status(BAD_REQUEST).json({
+                    success: false,
+                    status: BAD_REQUEST,
+                    message: "Your request is not valid. It should be created within the last month.",
+                });
+            }
+
             const dateChecking = await DayOffSchema.findOne({
                 date_start: new Date(newRequest.request_dayOff_start),
                 date_end: new Date(newRequest.request_dayOff_end),

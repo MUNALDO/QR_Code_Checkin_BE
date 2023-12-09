@@ -335,11 +335,9 @@ export const getEmployeeSpecific = async (req, res, next) => {
     }
 };
 
-import moment from 'moment-timezone';
-
 export const getEmployeesByDate = async (req, res, next) => {
     try {
-        const targetDate = moment(req.body.date).startOf('day'); // Parse date using moment
+        const targetDate = new Date(req.body.date);
         console.log(targetDate);
 
         // Find all employees
@@ -348,8 +346,7 @@ export const getEmployeesByDate = async (req, res, next) => {
         // Filter employees based on the target date and shift code
         const matchedEmployees = employees.filter(employee => {
             const matchedSchedules = employee.schedules.filter(schedule => {
-                const scheduleDate = moment(schedule.date).startOf('day'); // Parse schedule date using moment
-                return scheduleDate.isSame(targetDate);
+                return schedule.date.getTime() === targetDate.getTime();
             });
 
             return matchedSchedules.length > 0;
@@ -364,7 +361,6 @@ export const getEmployeesByDate = async (req, res, next) => {
         next(err);
     }
 };
-
 
 export const getEmployeesByDateAndShift = async (req, res, next) => {
     try {

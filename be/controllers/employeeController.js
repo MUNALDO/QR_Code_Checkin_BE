@@ -10,11 +10,19 @@ export const checkAttendance = async (req, res, next) => {
         if (!employee) return next(createError(NOT_FOUND, "Employee not found"))
 
         const currentTime = new Date();
-        const current_date = currentTime.toLocaleDateString();
-        const day = currentTime.getDate();
+        // const current_date = currentTime.toLocaleDateString();
+        // const day = currentTime.getDate();
+
+        const existingAttendance = await AttendanceSchema.findOne({
+            employee_id: employee.id,
+            date: {
+                $gte: new Date().setHours(0, 0, 0, 0),
+                $lt: new Date().setHours(23, 59, 59, 999),
+            },
+        });
 
         const date = employee.schedules.find(schedule => {
-            return schedule.date.getDate() === day;
+            return schedule.date.toLocaleDateString() == currentTime.toLocaleDateString();
         });
         if (!date) return next(createError(NOT_FOUND, 'Design not found for the current day'));
 
@@ -31,11 +39,93 @@ export const checkAttendance = async (req, res, next) => {
         let currentTimeRange = null;
 
         for (const timeRange of timeRanges) {
-            const startTime = new Date(`${current_date} ${timeRange.startTime}`).getTime();
-            const endTime = new Date(`${current_date} ${timeRange.endTime}`).getTime();
-            if (currentTimestamp >= startTime && currentTimestamp <= endTime) {
-                currentTimeRange = timeRange;
-                break;
+            const [startHours, startMinutes] = timeRange.startTime.split(':').map(Number);
+            const [endHours, endMinutes] = timeRange.endTime.split(':').map(Number);
+
+            const startDateTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), startHours, startMinutes);
+            const endDateTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
+            const endOfDay = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), 23, 59, 59, 999);
+
+            // Calculate startTime - 30 minutes
+            const startTimeMinus30 = new Date(startDateTime);
+            startTimeMinus30.setMinutes(startDateTime.getMinutes() - 30);
+
+            const endTimePlus30 = new Date(endDateTime);
+            endTimePlus30.setMinutes(endTimePlus30.getMinutes() + 30);
+
+            if (endDateTime < endOfDay) {
+                // Compare currentTimestamp with the adjusted time range
+                if (currentTimestamp >= startTimeMinus30.getTime() && currentTimestamp <= endTimePlus30) {
+                    currentTimeRange = timeRange;
+                    break;
+                } else if (currentTimestamp < startTimeMinus30.getTime()) {
+                    return res.status(BAD_REQUEST).json({
+                        success: false,
+                        status: BAD_REQUEST,
+                        message: `You can not check in at this time ${currentTime.toLocaleTimeString()}`,
+                    });
+                } else if (currentTimestamp > endTimePlus30.getTime()) {
+                    currentTimeRange = timeRange;
+                    // Find the corresponding shift_design based on currentTimeRange
+                    const currentShiftDesign = date.shift_design.find(shift => {
+                        const totalNumber = shift.time_slot.total_number;
+                        const startTime = shift.time_slot.detail[0].start_time;
+                        const endTime = totalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
+
+                        return startTime === currentTimeRange.startTime && endTime === currentTimeRange.endTime;
+                    });
+
+                    if (!currentShiftDesign) {
+                        return next(createError(NOT_FOUND, 'No matching shift design for the current time range'));
+                    }
+
+                    const shift_code = currentShiftDesign.shift_code;
+                    const time_slot = currentShiftDesign.time_slot;
+                    if (!existingAttendance) {
+                        const newAttendance = new AttendanceSchema({
+                            date: date.date,
+                            employee_id: employeeID,
+                            employee_name: employee.name,
+                            department_name: employee.department_name,
+                            role: employee.role,
+                            position: employee.position,
+                            shift_info: {
+                                shift_code: shift_code,
+                                shift_type: currentShiftDesign.shift_type,
+                            },
+                            status: "missing"
+                        });
+                        await newAttendance.save();
+                        return res.status(CREATED).json({
+                            success: true,
+                            status: CREATED,
+                            message: newAttendance,
+                        });
+                    } else {
+                        const checkInTime = new Date(existingAttendance.shift_info.time_slot.check_in_time);
+                        // check out late
+                        existingAttendance.shift_info.time_slot.check_out = true;
+                        existingAttendance.shift_info.time_slot.check_out_time = `${endHours}: 0${endMinutes}`;
+                        existingAttendance.shift_info.time_slot.check_out_status = 'late';
+                        existingAttendance.status = 'checked';
+                        const timeDifference = endDateTime - checkInTime;
+                        const totalHours = timeDifference / (1000 * 60 * 60);
+                        existingAttendance.shift_info.total_hour = totalHours;
+                        await existingAttendance.save();
+                        return res.status(OK).json({
+                            success: true,
+                            status: OK,
+                            message: existingAttendance,
+                            log: `${currentTime}`,
+                        });
+                    }
+                }
+            } else {
+                return res.status(BAD_REQUEST).json({
+                    success: false,
+                    status: BAD_REQUEST,
+                    message: `Err!`,
+                });
             }
         }
 
@@ -55,67 +145,108 @@ export const checkAttendance = async (req, res, next) => {
         const shift_code = currentShiftDesign.shift_code;
         const time_slot = currentShiftDesign.time_slot;
 
-        const existingAttendance = await AttendanceSchema.findOne({
-            employee_id: employee.id,
-            date: {
-                $gte: new Date().setHours(0, 0, 0, 0),
-                $lt: new Date().setHours(23, 59, 59, 999),
-            },
-        });
-
         if (!existingAttendance) {
             // only check in
             const newAttendance = new AttendanceSchema({
-                date: date,
+                date: date.date,
                 employee_id: employeeID,
                 employee_name: employee.name,
                 department_name: employee.department_name,
                 role: employee.role,
                 position: employee.position,
                 shift_info: {
-                    shift_code: shift_code
+                    shift_code: shift_code,
+                    shift_type: currentShiftDesign.shift_type,
                 }
             });
-            const [startHours, startMinutes] = time_slot.detail[0].start_time.split(':').map(Number);
-            const startTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), startHours, startMinutes);
-            // Calculate startTime - 30 minutes
-            const startTimeMinus30 = new Date(startTime);
-            startTimeMinus30.setMinutes(startTime.getMinutes() - 30);
+            if (time_slot.total_number == 1) {
+                const [endHours, endMinutes] = time_slot.detail[0].end_time.split(':').map(Number);
+                const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
+                const [startHours, startMinutes] = time_slot.detail[0].start_time.split(':').map(Number);
+                const startTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), startHours, startMinutes);
+                // Calculate startTime - 30 minutes
+                const startTimeMinus30 = new Date(startTime);
+                startTimeMinus30.setMinutes(startTime.getMinutes() - 30);
 
-            // Calculate startTime
-            const startTimeOrigin = new Date(startTime);
-            startTimeOrigin.setMinutes(startTime.getMinutes());
-            if (currentTime > startTimeMinus30 && currentTime < startTimeOrigin) {
-                // check in on time
-                newAttendance.shift_info.time_slot.check_in = true;
-                newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString()}`;
-                newAttendance.shift_info.time_slot.check_in_status = 'on time';
-                await newAttendance.save();
-                return res.status(CREATED).json({
-                    success: true,
-                    status: CREATED,
-                    message: newAttendance,
-                    log: `${currentTime}`,
-                });
-            } else if (currentTime > startTimeOrigin) {
-                // check in late
-                newAttendance.shift_info.time_slot.check_in = true;
-                newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString()}`;
-                newAttendance.shift_info.time_slot.check_in_status = 'late';
-                await newAttendance.save();
-                return res.status(CREATED).json({
-                    success: true,
-                    status: CREATED,
-                    message: newAttendance,
-                    log: `${currentTime}`,
-                });
-            } else if (currentTime < startTimeMinus30) {
-                // check in too soon
-                return res.status(BAD_REQUEST).json({
-                    success: false,
-                    status: BAD_REQUEST,
-                    message: `You can not check in at this time ${currentTime.toLocaleTimeString()}`,
-                });
+                // Calculate startTime
+                const startTimeOrigin = new Date(startTime);
+                startTimeOrigin.setMinutes(startTime.getMinutes());
+                if (currentTime > startTimeMinus30 && currentTime < startTimeOrigin) {
+                    // check in on time
+                    newAttendance.shift_info.time_slot.check_in = true;
+                    newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString()}`;
+                    newAttendance.shift_info.time_slot.check_in_status = 'on time';
+                    await newAttendance.save();
+                    return res.status(CREATED).json({
+                        success: true,
+                        status: CREATED,
+                        message: newAttendance,
+                        log: `${currentTime}`,
+                    });
+                } else if (currentTime > startTimeOrigin && currentTime < endTime) {
+                    // check in late
+                    newAttendance.shift_info.time_slot.check_in = true;
+                    newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString()}`;
+                    newAttendance.shift_info.time_slot.check_in_status = 'late';
+                    await newAttendance.save();
+                    return res.status(CREATED).json({
+                        success: true,
+                        status: CREATED,
+                        message: newAttendance,
+                        log: `${currentTime}`,
+                    });
+                } else if (currentTime < startTimeMinus30) {
+                    // check in too soon
+                    return res.status(BAD_REQUEST).json({
+                        success: false,
+                        status: BAD_REQUEST,
+                        message: `You can not check in at this time ${currentTime.toLocaleTimeString()}`,
+                    });
+                }
+            } else if (time_slot.total_number == 2) {
+                const [endHours, endMinutes] = time_slot.detail[1].end_time.split(':').map(Number);
+                const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
+                const [startHours, startMinutes] = time_slot.detail[0].start_time.split(':').map(Number);
+                const startTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), startHours, startMinutes);
+                // Calculate startTime - 30 minutes
+                const startTimeMinus30 = new Date(startTime);
+                startTimeMinus30.setMinutes(startTime.getMinutes() - 30);
+
+                // Calculate startTime
+                const startTimeOrigin = new Date(startTime);
+                startTimeOrigin.setMinutes(startTime.getMinutes());
+                if (currentTime > startTimeMinus30 && currentTime < startTimeOrigin) {
+                    // check in on time
+                    newAttendance.shift_info.time_slot.check_in = true;
+                    newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString()}`;
+                    newAttendance.shift_info.time_slot.check_in_status = 'on time';
+                    await newAttendance.save();
+                    return res.status(CREATED).json({
+                        success: true,
+                        status: CREATED,
+                        message: newAttendance,
+                        log: `${currentTime}`,
+                    });
+                } else if (currentTime > startTimeOrigin && currentTime < endTime) {
+                    // check in late
+                    newAttendance.shift_info.time_slot.check_in = true;
+                    newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString()}`;
+                    newAttendance.shift_info.time_slot.check_in_status = 'late';
+                    await newAttendance.save();
+                    return res.status(CREATED).json({
+                        success: true,
+                        status: CREATED,
+                        message: newAttendance,
+                        log: `${currentTime}`,
+                    });
+                } else if (currentTime < startTimeMinus30 || currentTime > endTime) {
+                    // check in too soon or too late
+                    return res.status(BAD_REQUEST).json({
+                        success: false,
+                        status: BAD_REQUEST,
+                        message: `You can not check in at this time ${currentTime.toLocaleTimeString()}`,
+                    });
+                }
             }
         } else {
             // only check out
@@ -125,7 +256,7 @@ export const checkAttendance = async (req, res, next) => {
                     status: BAD_REQUEST,
                     message: "You haven't check in yet",
                 });
-            } else {
+            } else if (existingAttendance.shift_info.time_slot.check_in == true && existingAttendance.shift_info.time_slot.check_out != true) {
                 const checkInTime = new Date(existingAttendance.shift_info.time_slot.check_in_time);
                 if (time_slot.total_number == 1) {
                     const [endHours, endMinutes] = time_slot.detail[0].end_time.split(':').map(Number);
@@ -139,6 +270,7 @@ export const checkAttendance = async (req, res, next) => {
                         existingAttendance.shift_info.time_slot.check_out = true;
                         existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString()}`;
                         existingAttendance.shift_info.time_slot.check_out_status = 'on time';
+                        existingAttendance.status = 'checked';
                         const timeDifference = currentTime - checkInTime;
                         const totalHours = timeDifference / (1000 * 60 * 60);
                         existingAttendance.shift_info.total_hour = totalHours;
@@ -154,6 +286,7 @@ export const checkAttendance = async (req, res, next) => {
                         existingAttendance.shift_info.time_slot.check_out = true;
                         existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString()}`;
                         existingAttendance.shift_info.time_slot.check_out_status = 'late';
+                        existingAttendance.status = 'checked';
                         const timeDifference = currentTime - checkInTime;
                         const totalHours = timeDifference / (1000 * 60 * 60);
                         existingAttendance.shift_info.total_hour = totalHours;
@@ -183,6 +316,7 @@ export const checkAttendance = async (req, res, next) => {
                         existingAttendance.shift_info.time_slot.check_out = true;
                         existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString()}`;
                         existingAttendance.shift_info.time_slot.check_out_status = 'on time';
+                        existingAttendance.status = 'checked';
                         const timeDifference = currentTime - checkInTime;
                         const totalHours = timeDifference / (1000 * 60 * 60);
                         existingAttendance.shift_info.total_hour = totalHours;
@@ -198,6 +332,7 @@ export const checkAttendance = async (req, res, next) => {
                         existingAttendance.shift_info.time_slot.check_out = true;
                         existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString()}`;
                         existingAttendance.shift_info.time_slot.check_out_status = 'late';
+                        existingAttendance.status = 'checked';
                         const timeDifference = currentTime - checkInTime;
                         const totalHours = timeDifference / (1000 * 60 * 60);
                         existingAttendance.shift_info.total_hour = totalHours;
@@ -217,6 +352,12 @@ export const checkAttendance = async (req, res, next) => {
                         });
                     }
                 }
+            } else if (existingAttendance.shift_info.time_slot.check_in == true && existingAttendance.shift_info.time_slot.check_out == true) {
+                return res.status(BAD_REQUEST).json({
+                    success: false,
+                    status: BAD_REQUEST,
+                    message: "You have already check out",
+                });
             }
         };
     } catch (err) {

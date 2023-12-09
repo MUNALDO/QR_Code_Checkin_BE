@@ -7,7 +7,7 @@ const attendanceSchema = new mongoose.Schema(
             required: true,
         },
         employee_id: {
-            type: Number,
+            type: String,
             required: true,
         },
         employee_name: {
@@ -27,6 +27,9 @@ const attendanceSchema = new mongoose.Schema(
             shift_code: {
                 type: String,
             },
+            shift_type: {
+                type: String,
+            },
             time_slot: {
                 check_in: {
                     type: Boolean,
@@ -36,7 +39,10 @@ const attendanceSchema = new mongoose.Schema(
                 },
                 check_in_status: {
                     type: String,
-                    enum: ['on time', 'missing', 'late']
+                    enum: ['on time', 'late']
+                },
+                check_in_image: {
+                    type: String
                 },
                 check_out: {
                     type: Boolean,
@@ -46,16 +52,20 @@ const attendanceSchema = new mongoose.Schema(
                 },
                 check_out_status: {
                     type: String,
-                    enum: ['on time', 'missing', 'late']
+                    enum: ['on time', 'late']
+                },
+                check_out_image: {
+                    type: String
                 },
                 total_hour: {
                     type: Number
                 }
             }
         },
-        image_upload: {
+        status: {
             type: String,
-        },
+            enum: ['checked', 'missing']
+        }
     },
     { timestamps: true }
 );

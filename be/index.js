@@ -15,6 +15,7 @@ import managerRoute from "./routes/manager.js"
 // import { scanAndUpdateAttendance } from './controllers/adminController.js';
 import { autoCheck } from './controllers/employeeController.js';
 
+process.env.TZ = 'Asia/Ho_Chi_Minh';
 const app = express();
 dotenv.config();
 mongoose.set('strictQuery', false);

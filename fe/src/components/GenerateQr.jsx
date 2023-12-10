@@ -1,34 +1,50 @@
-import React, { useEffect, useState } from "react";
-import QRCode from "react-qr-code";
+import React, { useEffect, useState } from 'react';
+import QRCode from 'react-qr-code';
 
 const GenerateQR = () => {
-  const [qrData, setQRData] = useState(`qr code for employee - ${Date.now()}`);
+    const [selectedDepartment, setSelectedDepartment] = useState('');
+    const [qrData, setQRData] = useState(`QR code for department - ${Date.now()}`);
 
-  useEffect(() => {
-    // Function to update QR code data
-    const updateQRCode = () => {
-      const timestamp = new Date().toISOString();
-      setQRData(`QR code for employee - ${timestamp}`);
+    useEffect(() => {
+        const updateQRCode = () => {
+            const timestamp = new Date().toISOString();
+            setQRData(`QR code for department ${selectedDepartment} - ${timestamp}`);
+        };
+
+        updateQRCode();
+
+        const intervalId = setInterval(updateQRCode, 20000);
+
+        return () => {
+            clearInterval(intervalId);
+        };
+    }, [selectedDepartment]);
+
+    const handleDepartmentChange = (event) => {
+        setSelectedDepartment(event.target.value);
     };
 
-    // Manually update QR code on initial render
-    updateQRCode();
+    return (
+        <div className="generate-qr-container">
+            <label htmlFor="department">Choose a department:</label>
+            <select id="department" value={selectedDepartment} onChange={handleDepartmentChange}>
+                <option value="">Select Department</option>
+                <option value="C1">C1</option>
+                <option value="C2">C2</option>
+                <option value="C3">C3</option>
+                <option value="C4">C4</option>
+                <option value="C5">C5</option>
+                <option value="C6">C6</option>
+                <option value="C Ulm">C Ulm</option>
+                <option value="Wabi">Wabi</option>
+                <option value="Buero">Buero</option>
+                <option value="FacTech">FacTech</option>
+            </select>
 
-    // Automatically refresh QR code every 20 seconds
-    const intervalId = setInterval(updateQRCode, 20000);
-
-    return () => {
-      // Cleanup interval on component unmount
-      clearInterval(intervalId);
-    };
-  }, []);
-
-  return (
-    <div className="generate-qr-container">
-      <h2>Your QR Code</h2>
-      {qrData && <QRCode value={qrData} className="qr-code" />}
-    </div>
-  );
+            <h2>Your QR Code</h2>
+            {qrData && <QRCode value={qrData} className="qr-code" />}
+        </div>
+    );
 };
 
 export default GenerateQR;

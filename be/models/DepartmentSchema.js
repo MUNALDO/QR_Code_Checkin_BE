@@ -8,7 +8,10 @@ const departmentSchema = new mongoose.Schema(
             //     'C Ulm', 'Wabi', 'Buero', 'FacTech'],
             required: true
         },
-        members: []
+        members: [],
+        // qr_code: {
+        //     type: String
+        // }
     },
     { timestamps: true }
 );

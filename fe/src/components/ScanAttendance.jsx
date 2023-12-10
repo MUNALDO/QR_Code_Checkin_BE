@@ -18,7 +18,8 @@ const ScanQR = () => {
           "https://qr-code-checkin.vercel.app/api/employee/check-attendance",
           {
             employeeID: userID,
-          }
+          },
+          { withCredentials: true },
         );
         if (res.data.success) {
           alert("Attendance checked successfully!");

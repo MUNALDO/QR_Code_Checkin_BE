@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
 import { createError } from "../utils/error.js";
-import { BAD_REQUEST, CONFLICT, CREATED, FORBIDDEN, NOT_FOUND, OK } from "../constant/HttpStatus.js";
+import { BAD_REQUEST, CONFLICT, CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import dotenv from 'dotenv';
 import AdminSchema from "../models/AdminSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
@@ -249,7 +249,6 @@ export const logoutManager = (req, res, next) => {
 
 export const registerEmployeeByAdmin = async (req, res, next) => {
     const employee_department_name = req.body.department_name;
-
     try {
         const department = await DepartmentSchema.findOne({ name: employee_department_name });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"));
@@ -277,6 +276,7 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
             position: newEmployee.position,
             status: newEmployee.status
         });
+        newEmployee.default_day_off = newEmployee.realistic_day_off;
         await department.save();
         await newEmployee.save();
         res.status(CREATED).json({
@@ -291,7 +291,6 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
 
 export const registerEmployeeByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
-
     try {
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
@@ -322,6 +321,7 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
             position: newEmployee.position,
             status: newEmployee.status
         });
+        newEmployee.default_day_off = newEmployee.realistic_day_off;
         await department.save();
         await newEmployee.save();
         res.status(CREATED).json({
@@ -336,7 +336,6 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
 
 export const registerEmployeeByManager = async (req, res, next) => {
     const manager_name = req.query.manager_name;
-
     try {
         const manager = await AdminSchema.findOne({ name: manager_name });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
@@ -367,6 +366,7 @@ export const registerEmployeeByManager = async (req, res, next) => {
             position: newEmployee.position,
             status: newEmployee.status
         });
+        newEmployee.default_day_off = newEmployee.realistic_day_off;
         await department.save();
         await newEmployee.save();
         res.status(CREATED).json({

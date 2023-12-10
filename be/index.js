@@ -41,29 +41,6 @@ mongoose.connection.on('disconnected', () => {
     console.log("Database disconnected");
 });
 
-// app.use((req, res, next) => {
-//     let requesterIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-
-//     // Handle IPv6-mapped IPv4 addresses
-//     const ipv4Match = requesterIp.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-//     if (ipv4Match) {
-//         requesterIp = ipv4Match[1];
-//     }
-
-//     const validIp = requesterIp.startsWith('192.168.0.');
-//     // Check if the requester's IP address starts with '192.168.0'
-//     if (validIp) {
-//         console.log(`Device with IP ${requesterIp} is valid.`);
-//         next();
-//     } else {
-//         console.log(`Device with IP ${requesterIp} is not on the allowed network.`);
-//         res.status(FORBIDDEN).json({ error: 'Access denied' });
-//     }
-// });
-
-
-// Initialize wifi-control
-
 // wifi.init({
 //     iface: null, 
 // });
@@ -126,9 +103,7 @@ async function startApp() {
     await autoChecking();
     await connect();
     app.listen(8800, () => {
-        // connect();
         console.log('Server is running on port 8800');
-        // scanAndUpdateAttendance();
     });
 }
 

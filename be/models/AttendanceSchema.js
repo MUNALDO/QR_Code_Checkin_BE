@@ -41,15 +41,6 @@ const attendanceSchema = new mongoose.Schema(
                     type: String,
                     enum: ['on time', 'late']
                 },
-                check_in_image: {
-                    type: String
-                },
-                check_in_car: {
-                    type: String
-                },
-                check_in_km: {
-                    type: String
-                },
                 check_out: {
                     type: Boolean,
                 },
@@ -60,12 +51,6 @@ const attendanceSchema = new mongoose.Schema(
                     type: String,
                     enum: ['on time', 'late']
                 },
-                check_out_image: {
-                    type: String
-                },
-                check_out_km: {
-                    type: String
-                },
             },
             total_hour: {
                 type: Number
@@ -73,6 +58,30 @@ const attendanceSchema = new mongoose.Schema(
             total_minutes: {
                 type: Number
             }
+        },
+        car_info: {
+            car_type: {
+                type: String,
+                enum: ['company', 'private']
+            },
+            car_name: {
+                type: String
+            }
+        },
+        check_in_image: {
+            type: String
+        },
+        check_in_km: {
+            type: Number
+        },
+        check_out_image: {
+            type: String
+        },
+        check_out_km: {
+            type: Number
+        },
+        total_km: {
+            type: Number
         },
         status: {
             type: String,

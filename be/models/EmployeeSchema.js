@@ -40,11 +40,63 @@ const employeeSchema = new mongoose.Schema(
             enum: ['Service', 'Bar', 'Küche', 'Lito', 'Autofahrer', 'Fahrradfahrer',
                 'Büro', 'Lehrgang für Azubi', 'FacTech GmbH'],
         },
-        salary: [],
-        default_total_dayOff: {
+        house_rent_money: {
+            type: Number,
+        },
+        salary: [
+            {
+                year: {
+                    type: Number
+                },
+                month: {
+                    type: Number
+                },
+                date_calculate: {
+                    type: Date
+                },
+                hour_normal: {
+                    type: Number
+                },
+                hour_overtime: {
+                    type: Number
+                },
+                a_parameter: {
+                    type: Number
+                },
+                b_parameter: {
+                    type: Number
+                },
+                c_parameter: {
+                    type: Number
+                },
+            }
+        ],
+        default_day_off: {
             type: Number,
             default: 0
         },
+        realistic_day_off: {
+            type: Number,
+        },
+        attendance_stats: [
+            {
+                year: {
+                    type: Number
+                },
+                month: {
+                    type: Number
+                },
+                date_on_time: {
+                    type: Number
+                },
+                date_late: {
+                    type: Number
+                },
+                date_missing: {
+                    type: Number
+                },
+            }
+        ],
         schedules: [
             {
                 date: {

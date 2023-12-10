@@ -520,11 +520,12 @@ export const createRequest = async (req, res, next) => {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
-        if (employee.default_total_dayOff > 0) {
+        if (employee.realistic_day_off > 0) {
             const newRequest = new RequestSchema({
                 employee_id: employee.id,
                 employee_name: employee.name,
-                default_total_dayOff: employee.default_total_dayOff,
+                default_day_off: employee.default_day_off,
+                realistic_day_off: employee.realistic_day_off,
                 request_dayOff_start: req.body.request_dayOff_start,
                 request_dayOff_end: req.body.request_dayOff_end,
                 request_content: req.body.request_content
@@ -582,7 +583,7 @@ export const createRequest = async (req, res, next) => {
                     type: "specific",
                 });
                 const duration = calculateDuration(newDayOff.date_start, newDayOff.date_end);
-                if (employee.default_total_dayOff < duration) {
+                if (employee.realistic_day_off < duration) {
                     return res.status(BAD_REQUEST).json({
                         success: false,
                         status: BAD_REQUEST,

@@ -5,9 +5,11 @@
 5. Chon ngay => Chon shift => add nhan vien: Done
 6. Tong so gio lam quan trong => count tong so gio lam (chinh xac tung phut): Done
 7. Khong check out sau 30p => Auto lay gio het ca la check out: Done
-8. [(So gio lam + overtime)*a] - b - c: Done
+8. [[(So gio lam + overtime)*a] - b - c] + muc 14 - muc 15 + muc 9 * d(default 0.25)
    a,b,c: Tu nhap thang dau tien. Thang sau lay save cua thang truoc
 9. role: tai xe => checkin success => chon xe + nhap km
+   chon xe: 1. xe cong ty (tu nhap infor)
+            2. xe private: tinh tong so km chay xe private cua 1 nguoi
    checkout: nhap km kthuc ngay
 10. role: delivery 
     check out: gui anh tong ket
@@ -17,6 +19,13 @@
 - xin trc 1 thang
 - notification cho admin (email..)
 - check xem qua tong so ngay nghi mac dinh
+14. Luong ngay nghi: (b*3)/65 * (day-off-days)
+15. Tien thue nha: Them vao employee_infor
+16. export cac thong so tinh luong nhan vien
+17. export: employee_infor, them tong so nghi + ngay con cua nhan vien
+18. Them ngay out cty cua employee, them ngay con + giu ngay nghi goc
+19. Dem ngay check attend late cua employee(month)
+20. Link bang hang thang voi database(co the sua infor=>anh huong den db)----De sau
 
 các position trong mỗi chi nhánh theo thứ tự từ lớn đến nhỏ:
 1. Admin

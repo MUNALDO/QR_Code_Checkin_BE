@@ -559,7 +559,7 @@ export const handleRequest = async (req, res, next) => {
             );
 
             employeeDayOff.allowed = true;
-            employee.default_total_dayOff = employee.default_total_dayOff - day_off.duration;
+            employee.realistic_day_off = employee.default_day_off - day_off.duration;
 
             employee.markModified('dayOff_schedule');
             await employee.save();

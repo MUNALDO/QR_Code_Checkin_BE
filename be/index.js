@@ -97,10 +97,14 @@ mongoose.connection.on('disconnected', () => {
 //     }
 // });
 
+// Add a preflight handler before your routes
+app.options('*', cors());
+
 app.use(cors({
     credentials: true,
-    origin: ['http://localhost:3000', 'https://qr-code-checkin-be.vercel.app/'],
+    origin: ['http://localhost:3000', 'https://qr-code-checkin-be.vercel.app'],
 }));
+
 app.use(cookieParser());
 app.use(express.json());
 app.use("/api/auth", authRoute);

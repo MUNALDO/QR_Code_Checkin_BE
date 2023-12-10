@@ -99,7 +99,7 @@ mongoose.connection.on('disconnected', () => {
 
 app.use(cors({
     credentials: true,
-    origin: 'https://qr-code-checkin-be.vercel.app',
+    origin: ['http://localhost:3000', 'https://qr-code-checkin-be.vercel.app'],
 }));
 
 app.use(cookieParser());

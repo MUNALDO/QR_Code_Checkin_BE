@@ -23,7 +23,11 @@ const Login = () => {
     e.preventDefault();
     dispatch({ type: "LOGIN_START" });
     try {
-      const res = await axios.post("https://qr-code-checkin.vercel.app/api/auth/manage-employee/login-employee", credentials);
+      const res = await axios.post(
+        "https://qr-code-checkin.vercel.app/api/auth/manage-employee/login-employee",
+        credentials,
+        { withCredentials: true }
+      );
       console.log(res);
       if (res?.data?.details?.name) {
         dispatch({ type: "LOGIN_SUCCESS", payload: res.data.details });

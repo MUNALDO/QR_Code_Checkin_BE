@@ -25,10 +25,7 @@ const Login = () => {
     try {
       const res = await axios.post(
         "https://qr-code-checkin.vercel.app/api/auth/manage-employee/login-employee",
-        {
-          name: undefined,
-          password: undefined,
-        },
+        credentials,
         { withCredentials: true }
       );
       console.log(res);

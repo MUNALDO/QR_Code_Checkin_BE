@@ -1,14 +1,20 @@
 import express from 'express';
 import {
-    checkAttendance, createRequest, getAttendanceHistory, getDateDesignInMonthByEmployee
+    checkAttendance, createRequest, getAttendanceByCurrentMonth, getAttendanceCurrentTime, getDateDesignInMonthByEmployee, updateAttendance
 } from '../controllers/employeeController.js';
 import { verifyTokenEmployee } from '../utils/verifyToken.js';
+import multer from 'multer';
+const upload = multer({ dest: 'uploads/' });
 
 const router = express.Router();
 
 // attendance
 router.post('/check-attendance', verifyTokenEmployee, checkAttendance);
-router.get('/get-attendance', verifyTokenEmployee, getAttendanceHistory);
+
+// Update your route to include the multer middleware
+router.post('/update-attendance', verifyTokenEmployee, upload.single('image'), updateAttendance);
+router.get('/get-attendance-month', verifyTokenEmployee, getAttendanceByCurrentMonth);
+router.get('/get-attendance-now', verifyTokenEmployee, getAttendanceCurrentTime);
 
 // request
 router.post('/create-request', verifyTokenEmployee, createRequest);

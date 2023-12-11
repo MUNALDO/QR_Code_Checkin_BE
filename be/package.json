@@ -12,6 +12,8 @@
   "author": "ThaiNX",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.470.0",
+    "@aws-sdk/lib-storage": "^3.470.0",
     "app-root-path": "^3.1.0",
     "bcrypt": "^5.1.1",
     "cookie-parser": "^1.4.6",
@@ -23,6 +25,7 @@
     "luxon": "^3.4.3",
     "moment-timezone": "^0.5.43",
     "mongoose": "^8.0.0",
+    "multer": "^1.4.5-lts.1",
     "node-wifi": "^2.0.16",
     "nodemon": "^3.0.1",
     "qrcode": "^1.5.3",

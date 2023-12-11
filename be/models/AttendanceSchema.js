@@ -68,20 +68,20 @@ const attendanceSchema = new mongoose.Schema(
                 type: String
             }
         },
-        check_in_image: {
-            type: String
-        },
-        check_in_km: {
-            type: Number
-        },
         check_out_image: {
             type: String
         },
+        check_in_km: {
+            type: Number,
+            default: 0
+        },
         check_out_km: {
-            type: Number
+            type: Number,
+            default: 0
         },
         total_km: {
-            type: Number
+            type: Number,
+            default: 0
         },
         status: {
             type: String,

@@ -18,8 +18,15 @@ export const salaryCalculate = async (req, res, next) => {
                 message: "Year, month, and employee ID are required parameters",
             });
         }
+
+        // Get values for a, b, c from req.body
+        const { a, b, c, d } = req.body;
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+
+        // day-off salary
+        const days_off = employee.default_day_off - employee.realistic_day_off;
+        const salary_day_off = [(b * 3) / 65] * days_off;
 
         // Define the date range based on the presence of the date parameter
         const dateRange = date
@@ -41,9 +48,12 @@ export const salaryCalculate = async (req, res, next) => {
         // Initialize variables to calculate hours
         let hourNormal = 0;
         let hourOvertime = 0;
+        let kmNumber = 0;
 
         // Calculate hours based on attendance data
         employeeAttendance.forEach(attendance => {
+            const totalKm = attendance.total_km;
+            kmNumber += totalKm;
             const totalHour = attendance.shift_info.total_hour;
             // console.log(totalHour);
             const totalMinutes = attendance.shift_info.total_minutes / 60;
@@ -55,14 +65,19 @@ export const salaryCalculate = async (req, res, next) => {
             }
         });
 
-        // Get values for a, b, c from req.body
-        const { a, b, c } = req.body;
-
         // console.log(hourNormal);
         // console.log(hourOvertime);
 
         // Calculate salary using the provided equation
-        const salary = (hourNormal + hourOvertime) * a - b - c;
+        if (!d) {
+            const salary = (hourNormal + hourOvertime) * a - b - c + salary_day_off - employee.house_rent_money + kmNumber * 0.25;
+            return res.status(OK).json({
+                success: true,
+                status: OK,
+                message: salary,
+            });
+        }
+        const salary = (hourNormal + hourOvertime) * a - b - c + salary_day_off - employee.house_rent_money + kmNumber * d;
 
         return res.status(OK).json({
             success: true,

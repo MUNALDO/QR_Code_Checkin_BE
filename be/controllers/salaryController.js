@@ -78,7 +78,6 @@ export const salaryCalculate = async (req, res, next) => {
             });
         }
         const salary = (hourNormal + hourOvertime) * a - b - c + salary_day_off - employee.house_rent_money + kmNumber * d;
-
         return res.status(OK).json({
             success: true,
             status: OK,

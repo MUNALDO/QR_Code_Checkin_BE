@@ -13,12 +13,19 @@ import inhaberRoute from "./routes/inhaber.js";
 import managerRoute from "./routes/manager.js"
 // import wifi from 'node-wifi'; 
 // import { scanAndUpdateAttendance } from './controllers/adminController.js';
+import { autoCheck } from './controllers/employeeController.js';
 
 const app = express();
 dotenv.config();
 mongoose.set('strictQuery', false);
 
 // const wifiName = process.env.WIFI_NAME;
+
+async function autoChecking() {
+    await connect();
+    console.log("Processing...");
+    autoCheck();
+}
 
 const connect = async () => {
     try {
@@ -91,7 +98,7 @@ mongoose.connection.on('disconnected', () => {
 
 app.use(cors({
     credentials: true,
-    origin: 'http://localhost:3000', 
+    origin: 'http://localhost:3000',
 }));
 app.use(cookieParser());
 app.use(express.json());
@@ -114,6 +121,7 @@ app.use((err, req, res, next) => {
 });
 
 async function startApp() {
+    await autoChecking();
     await connect();
     app.listen(8800, () => {
         // connect();

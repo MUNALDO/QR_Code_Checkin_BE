@@ -2,7 +2,9 @@ import express from 'express';
 import { verifyUserManager } from '../utils/verifyToken.js';
 import {
     createDateDesignByManager, deleteDateSpecificByManager, getAllDatesByManager,
+    getAllEmployeeAttendanceByManager,
     getAllEmployees, getDateDesignInMonthByManager, getDateSpecificByManager,
+    getEmployeeAttendanceByManager,
     getEmployeeSpecific, getEmployeesByDateAndShiftByManager, getEmployeesByDateByManager,
 } from '../controllers/managerController.js';
 
@@ -20,5 +22,9 @@ router.get('/manage-date-design/get-all', verifyUserManager, getAllDatesByManage
 router.get('/manage-date-design/get-by-month', verifyUserManager, getDateDesignInMonthByManager);
 router.get('/manage-date-design/get-by-date', verifyUserManager, getDateSpecificByManager);
 router.delete('/manage-date-design/delete', verifyUserManager, deleteDateSpecificByManager);
+
+// manage attendance
+router.get('/manage-attendance/get-all', verifyUserManager, getAllEmployeeAttendanceByManager);
+router.get('/manage-attendance/get-specific/:employeeID', verifyUserManager, getEmployeeAttendanceByManager);
 
 export default router;

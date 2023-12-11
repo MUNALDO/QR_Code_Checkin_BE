@@ -1,7 +1,7 @@
 import express from 'express';
 import {
-    deleteEmployeeById, getAllEmployees, getAttendanceByTime,
-    getEmployeeSpecific, getEmployeesByDate, getEmployeesByDateAndShift, searchSpecific, updateEmployee
+    deleteEmployeeById, getAllEmployeeAttendance, getAllEmployees, getEmployeeAttendance, getEmployeeSpecific,
+    getEmployeesByDate, getEmployeesByDateAndShift, searchSpecific, updateEmployee
 } from '../controllers/adminController.js';
 import {
     addMemberDepartment, createDepartment, deleteDepartmentByName, getAllDepartments,
@@ -70,8 +70,8 @@ router.put('/day-off/add-member', addMemberDayOff);
 router.put('/day-off/add-dayOff', addDayOffSchedule);
 router.put('/day-off/remove-dayOff', removeDayOffSchedule);
 
-router.get('/get-attendance', getAttendanceByTime);
-// router.post('/scan-attendance', scanAndUpdateAttendance);
+router.get('/manage-attendance/get-all', verifyUserAdmin, getAllEmployeeAttendance);
+router.get('/manage-attendance/get-specific/:employeeID', verifyUserAdmin, getEmployeeAttendance);
 
 router.post('/salary-calculate', verifyTokenAdmin, salaryCalculate);
 export default router;

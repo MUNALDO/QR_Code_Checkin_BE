@@ -459,3 +459,107 @@ export const deleteDateSpecificByInhaber = async (req, res, next) => {
         next(err);
     }
 };
+
+export const getAllEmployeeAttendanceByInhaber = async (req, res, next) => {
+    try {
+        const inhaber_name = req.query.inhaber_name;
+        const year = req.query.year;
+        const month = req.query.month;
+        const date = req.query.date;
+
+        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        // Ensure valid year and month inputs
+        if (!year || !month) {
+            return res.status(BAD_REQUEST).json({
+                success: false,
+                status: BAD_REQUEST,
+                message: "Year and month are required parameters",
+            });
+        }
+
+        // Define the date range based on the presence of the date parameter
+        const dateRange = date
+            ? {
+                $gte: new Date(year, month - 1, date, 0, 0, 0, 0),
+                $lt: new Date(year, month - 1, date, 23, 59, 59, 999),
+            }
+            : {
+                $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
+                $lt: new Date(year, month, 0, 23, 59, 59, 999),
+            };
+
+        // Find all employee attendance for the specified date range
+        const employeeAttendance = await AttendanceSchema.find({
+            date: dateRange,
+        });
+
+        const matchedAttendances = employeeAttendance.filter(attendance => {
+            const matchedDepartment = attendance.department_name;
+
+            return (inhaber.department_name === matchedDepartment);
+        });
+
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: matchedAttendances,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getEmployeeAttendanceByInhaber = async (req, res, next) => {
+    try {
+        const employeeID = req.params.employeeID;
+        const inhaber_name = req.query.inhaber_name;
+        const year = req.query.year;
+        const month = req.query.month;
+        const date = req.query.date;
+
+        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        // Ensure valid year, month, and employee ID inputs
+        if (!year || !month || !employeeID) {
+            return res.status(BAD_REQUEST).json({
+                success: false,
+                status: BAD_REQUEST,
+                message: "Year, month, and employee ID are required parameters",
+            });
+        }
+
+        // Define the date range based on the presence of the date parameter
+        const dateRange = date
+            ? {
+                $gte: new Date(year, month - 1, date, 0, 0, 0, 0),
+                $lt: new Date(year, month - 1, date, 23, 59, 59, 999),
+            }
+            : {
+                $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
+                $lt: new Date(year, month, 0, 23, 59, 59, 999),
+            };
+
+        // Find employee attendance for the specified date range
+        const employeeAttendance = await AttendanceSchema.find({
+            employee_id: employeeID,
+            date: dateRange,
+        });
+
+        const matchedAttendances = employeeAttendance.filter(attendance => {
+            const matchedDepartment = attendance.department_name;
+
+            return (inhaber.department_name === matchedDepartment);
+        });
+
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: matchedAttendances,
+        });
+    } catch (err) {
+        next(err);
+    }
+};

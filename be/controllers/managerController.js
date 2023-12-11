@@ -379,4 +379,106 @@ export const deleteDateSpecificByManager = async (req, res, next) => {
     }
 };
 
+export const getAllEmployeeAttendanceByManager = async (req, res, next) => {
+    try {
+        const manager_name = req.query.manager_name;
+        const year = req.query.year;
+        const month = req.query.month;
+        const date = req.query.date;
 
+        const manager = await AdminSchema.findOne({ name: manager_name });
+        if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
+
+        // Ensure valid year and month inputs
+        if (!year || !month) {
+            return res.status(BAD_REQUEST).json({
+                success: false,
+                status: BAD_REQUEST,
+                message: "Year and month are required parameters",
+            });
+        }
+
+        // Define the date range based on the presence of the date parameter
+        const dateRange = date
+            ? {
+                $gte: new Date(year, month - 1, date, 0, 0, 0, 0),
+                $lt: new Date(year, month - 1, date, 23, 59, 59, 999),
+            }
+            : {
+                $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
+                $lt: new Date(year, month, 0, 23, 59, 59, 999),
+            };
+
+        // Find all employee attendance for the specified date range
+        const employeeAttendance = await AttendanceSchema.find({
+            date: dateRange,
+        });
+
+        const matchedAttendances = employeeAttendance.filter(attendance => {
+            const matchedDepartment = attendance.department_name;
+
+            return (manager.department_name === matchedDepartment);
+        });
+
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: matchedAttendances,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getEmployeeAttendanceByManager = async (req, res, next) => {
+    try {
+        const employeeID = req.params.employeeID;
+        const manager_name = req.query.manager_name;
+        const year = req.query.year;
+        const month = req.query.month;
+        const date = req.query.date;
+
+        const manager = await AdminSchema.findOne({ name: manager_name });
+        if (!manager) return next(createError(NOT_FOUND, "manager not found!"));
+
+        // Ensure valid year, month, and employee ID inputs
+        if (!year || !month || !employeeID) {
+            return res.status(BAD_REQUEST).json({
+                success: false,
+                status: BAD_REQUEST,
+                message: "Year, month, and employee ID are required parameters",
+            });
+        }
+
+        // Define the date range based on the presence of the date parameter
+        const dateRange = date
+            ? {
+                $gte: new Date(year, month - 1, date, 0, 0, 0, 0),
+                $lt: new Date(year, month - 1, date, 23, 59, 59, 999),
+            }
+            : {
+                $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
+                $lt: new Date(year, month, 0, 23, 59, 59, 999),
+            };
+
+        // Find employee attendance for the specified date range
+        const employeeAttendance = await AttendanceSchema.find({
+            employee_id: employeeID,
+            date: dateRange,
+        });
+
+        const matchedAttendances = employeeAttendance.filter(attendance => {
+            const matchedDepartment = attendance.department_name;
+
+            return (manager.department_name === matchedDepartment);
+        });
+
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: matchedAttendances,
+        });
+    } catch (err) {
+        next(err);
+    }
+};

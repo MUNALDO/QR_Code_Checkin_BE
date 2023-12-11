@@ -2,7 +2,8 @@ import express from 'express';
 import { verifyUserInhaber } from '../utils/verifyToken.js';
 import {
     createDateDesignByInhaber, deleteDateSpecificByInhaber, deleteEmployeeById,
-    getAllDatesByInhaber, getAllEmployees, getDateDesignInMonthByInhaber, getDateSpecificByInhaber,
+    getAllDatesByInhaber, getAllEmployeeAttendanceByInhaber, getAllEmployees, getDateDesignInMonthByInhaber, getDateSpecificByInhaber,
+    getEmployeeAttendanceByInhaber,
     getEmployeeSpecific, getEmployeesByDateAndShiftByInhaber, getEmployeesByDateByInhaber, updateEmployee
 } from '../controllers/inhaberController.js';
 import {
@@ -33,5 +34,9 @@ router.get('/manage-shift/get-all', verifyUserInhaber, getAllShifts);
 router.get('/manage-shift/get-by-code', verifyUserInhaber, getShiftByCode);
 router.get('/manage-shift/get-by-name', verifyUserInhaber, getShiftByName);
 router.put('/manage-shift/update', verifyUserInhaber, updateShift);
+
+// manage attendance
+router.get('/manage-attendance/get-all', verifyUserInhaber, getAllEmployeeAttendanceByInhaber);
+router.get('/manage-attendance/get-specific/:employeeID', verifyUserInhaber, getEmployeeAttendanceByInhaber);
 
 export default router;

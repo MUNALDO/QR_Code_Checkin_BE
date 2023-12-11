@@ -44,6 +44,12 @@ const attendanceSchema = new mongoose.Schema(
                 check_in_image: {
                     type: String
                 },
+                check_in_car: {
+                    type: String
+                },
+                check_in_km: {
+                    type: String
+                },
                 check_out: {
                     type: Boolean,
                 },
@@ -57,9 +63,15 @@ const attendanceSchema = new mongoose.Schema(
                 check_out_image: {
                     type: String
                 },
-                total_hour: {
-                    type: Number
-                }
+                check_out_km: {
+                    type: String
+                },
+            },
+            total_hour: {
+                type: Number
+            },
+            total_minutes: {
+                type: Number
             }
         },
         status: {

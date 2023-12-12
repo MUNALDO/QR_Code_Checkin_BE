@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import AdminSchema from "../models/AdminSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import DepartmentSchema from "../models/DepartmentSchema.js";
+import DayOffSchema from "../models/DayOffSchema.js";
 
 dotenv.config();
 
@@ -253,6 +254,13 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
         const department = await DepartmentSchema.findOne({ name: employee_department_name });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"));
 
+        const employeeExists = await EmployeeSchema.findOne({ name: req.body.name });
+        if (employeeExists) return next(createError(CONFLICT, "Employee is already exists!"));
+
+        if (department.members.some(member => member.name === req.body.name)) {
+            return next(createError(CONFLICT, "This Employee already exists in the department!"));
+        }
+
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
 
@@ -261,12 +269,7 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
             password: hash,
             department_name: employee_department_name
         });
-        const employee = await EmployeeSchema.findOne({ name: newEmployee.name });
-        if (employee) return next(createError(CONFLICT, "Employee is already exists!"))
 
-        if (department.members.some(member => member.name === newEmployee.name)) {
-            return next(createError(CONFLICT, "This Employee already exists in the department!"));
-        }
         department.members.push({
             id: newEmployee.id,
             name: newEmployee.name,
@@ -276,10 +279,35 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
             position: newEmployee.position,
             status: newEmployee.status
         });
+
+        const globalDayOffs = await DayOffSchema.find({ type: 'global' });
+        globalDayOffs.forEach(globalDayOff => {
+            newEmployee.dayOff_schedule.push({
+                date_start: globalDayOff.date_start,
+                date_end: globalDayOff.date_end,
+                duration: globalDayOff.duration,
+                name: globalDayOff.name,
+                type: globalDayOff.type,
+                allowed: globalDayOff.allowed
+            });
+
+            globalDayOff.members.push({
+                id: newEmployee.id,
+                name: newEmployee.name,
+                email: newEmployee.email,
+                department_name: newEmployee.department_name,
+                role: newEmployee.role,
+                position: newEmployee.position,
+                status: newEmployee.status
+            });
+            globalDayOff.save();
+        })
+
         newEmployee.default_day_off = newEmployee.realistic_day_off;
         await department.save();
         await newEmployee.save();
-        res.status(CREATED).json({
+
+        return res.status(CREATED).json({
             success: true,
             status: CREATED,
             message: newEmployee,
@@ -288,6 +316,7 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
         next(err);
     }
 };
+
 
 export const registerEmployeeByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
@@ -321,10 +350,34 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
             position: newEmployee.position,
             status: newEmployee.status
         });
+        const globalDayOffs = await DayOffSchema.find({ type: 'global' });
+        globalDayOffs.forEach(globalDayOff => {
+            newEmployee.dayOff_schedule.push({
+                date_start: globalDayOff.date_start,
+                date_end: globalDayOff.date_end,
+                duration: globalDayOff.duration,
+                name: globalDayOff.name,
+                type: globalDayOff.type,
+                allowed: globalDayOff.allowed
+            });
+
+            globalDayOff.members.push({
+                id: newEmployee.id,
+                name: newEmployee.name,
+                email: newEmployee.email,
+                department_name: newEmployee.department_name,
+                role: newEmployee.role,
+                position: newEmployee.position,
+                status: newEmployee.status
+            });
+            globalDayOff.save();
+        })
+
         newEmployee.default_day_off = newEmployee.realistic_day_off;
         await department.save();
         await newEmployee.save();
-        res.status(CREATED).json({
+
+        return res.status(CREATED).json({
             success: true,
             status: CREATED,
             message: newEmployee,
@@ -366,10 +419,34 @@ export const registerEmployeeByManager = async (req, res, next) => {
             position: newEmployee.position,
             status: newEmployee.status
         });
+        const globalDayOffs = await DayOffSchema.find({ type: 'global' });
+        globalDayOffs.forEach(globalDayOff => {
+            newEmployee.dayOff_schedule.push({
+                date_start: globalDayOff.date_start,
+                date_end: globalDayOff.date_end,
+                duration: globalDayOff.duration,
+                name: globalDayOff.name,
+                type: globalDayOff.type,
+                allowed: globalDayOff.allowed
+            });
+
+            globalDayOff.members.push({
+                id: newEmployee.id,
+                name: newEmployee.name,
+                email: newEmployee.email,
+                department_name: newEmployee.department_name,
+                role: newEmployee.role,
+                position: newEmployee.position,
+                status: newEmployee.status
+            });
+            globalDayOff.save();
+        })
+
         newEmployee.default_day_off = newEmployee.realistic_day_off;
         await department.save();
         await newEmployee.save();
-        res.status(CREATED).json({
+
+        return res.status(CREATED).json({
             success: true,
             status: CREATED,
             message: newEmployee,

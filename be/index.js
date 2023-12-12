@@ -74,18 +74,12 @@ mongoose.connection.on('disconnected', () => {
 //     }
 // });
 
-const allowedOrigins = ['http://localhost:3000', 'https://qr-code-checkin-be.vercel.app', 'https://qr-code-checkin.vercel.app'];
-
 app.use(cors({
+    origin: ['http://localhost:3000', 'https://qr-code-checkin-be.vercel.app', 'https://qr-code-checkin.vercel.app'],
     credentials: true,
-    origin: function (origin, callback) {
-        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-}));
+  }));
+
+app.options('*', cors());
 
 app.use(cookieParser());
 app.use(express.json());

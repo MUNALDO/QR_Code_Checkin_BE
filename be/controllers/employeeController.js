@@ -9,9 +9,9 @@ import { createError } from "../utils/error.js";
 
 export const autoCheck = async (req, res, next) => {
     const currentTime = new Date();
-    // const targetDate = currentTime;
+    const currentYear = currentTime.getFullYear();
+    const currentMonth = currentTime.getMonth();
 
-    // Find all employees
     const employees = await EmployeeSchema.find();
     const matchedEmployees = employees.filter(employee => {
         const matchedSchedules = employee.schedules.filter(schedule => {
@@ -23,7 +23,6 @@ export const autoCheck = async (req, res, next) => {
 
     for (const employee of matchedEmployees) {
         // console.log(employee);
-
         const date = employee.schedules.find(schedule => {
             return schedule.date.toLocaleDateString() == currentTime.toLocaleDateString();
         });
@@ -100,6 +99,25 @@ export const autoCheck = async (req, res, next) => {
                         });
                         await newAttendance.save();
                         console.log("Attendance create successfully!");
+
+                        // Find the current year and month in attendance_stats
+                        const statsIndex = employee.attendance_stats.findIndex(stat =>
+                            stat.year === currentYear && stat.month === currentMonth + 1
+                        );
+
+                        if (statsIndex > -1) {
+                            employee.attendance_stats[statsIndex].date_missing += 1;
+                        } else {
+                            // Create a new attendance_stats object for the current month and year
+                            employee.attendance_stats.push({
+                                year: currentYear,
+                                month: currentMonth + 1,
+                                date_on_time: 0,
+                                date_late: 0,
+                                date_missing: 1,
+                            });
+                        }
+                        await employee.save();
                     } else {
                         if (existingAttendance.shift_info.time_slot.check_in == true && existingAttendance.shift_info.time_slot.check_out != true) {
                             const checkInTimeString = existingAttendance.shift_info.time_slot.check_in_time;
@@ -136,6 +154,25 @@ export const autoCheck = async (req, res, next) => {
                             existingAttendance.shift_info.total_minutes = totalMinutes;
                             await existingAttendance.save();
                             console.log("Attendance update successfully!");
+
+                            // Find the current year and month in attendance_stats
+                            const statsIndex = employee.attendance_stats.findIndex(stat =>
+                                stat.year === currentYear && stat.month === currentMonth + 1
+                            );
+
+                            if (statsIndex > -1) {
+                                employee.attendance_stats[statsIndex].date_late += 1;
+                            } else {
+                                // Create a new attendance_stats object for the current month and year
+                                employee.attendance_stats.push({
+                                    year: currentYear,
+                                    month: currentMonth + 1,
+                                    date_on_time: 0,
+                                    date_late: 1,
+                                    date_missing: 0,
+                                });
+                            }
+                            await employee.save();
                         } else {
                             console.log("Nothing to create or update!");
                         }
@@ -155,6 +192,8 @@ export const checkAttendance = async (req, res, next) => {
         if (!employee) return next(createError(NOT_FOUND, "Employee not found"))
 
         const currentTime = new Date();
+        const currentYear = currentTime.getFullYear();
+        const currentMonth = currentTime.getMonth();
 
         const date = employee.schedules.find(schedule => {
             return schedule.date.toLocaleDateString() == currentTime.toLocaleDateString();
@@ -369,6 +408,47 @@ export const checkAttendance = async (req, res, next) => {
                         existingAttendance.shift_info.total_hour = totalHours;
                         existingAttendance.shift_info.total_minutes = totalMinutes;
                         await existingAttendance.save();
+
+                        if (existingAttendance.shift_info.time_slot.check_in_status === "on time") {
+                            // Find the current year and month in attendance_stats
+                            const statsIndex = employee.attendance_stats.findIndex(stat =>
+                                stat.year === currentYear && stat.month === currentMonth + 1
+                            );
+
+                            if (statsIndex > -1) {
+                                employee.attendance_stats[statsIndex].date_on_time += 1;
+                            } else {
+                                // Create a new attendance_stats object for the current month and year
+                                employee.attendance_stats.push({
+                                    year: currentYear,
+                                    month: currentMonth + 1,
+                                    date_on_time: 1,
+                                    date_late: 0,
+                                    date_missing: 0,
+                                });
+                            }
+                            await employee.save();
+                        } else {
+                            // Find the current year and month in attendance_stats
+                            const statsIndex = employee.attendance_stats.findIndex(stat =>
+                                stat.year === currentYear && stat.month === currentMonth + 1
+                            );
+
+                            if (statsIndex > -1) {
+                                employee.attendance_stats[statsIndex].date_late += 1;
+                            } else {
+                                // Create a new attendance_stats object for the current month and year
+                                employee.attendance_stats.push({
+                                    year: currentYear,
+                                    month: currentMonth + 1,
+                                    date_on_time: 0,
+                                    date_late: 1,
+                                    date_missing: 0,
+                                });
+                            }
+                            await employee.save();
+                        }
+
                         return res.status(OK).json({
                             success: true,
                             status: OK,
@@ -407,6 +487,47 @@ export const checkAttendance = async (req, res, next) => {
                         existingAttendance.shift_info.total_hour = totalHours;
                         existingAttendance.shift_info.total_minutes = totalMinutes;
                         await existingAttendance.save();
+
+                        if (existingAttendance.shift_info.time_slot.check_in_status === "on time") {
+                            // Find the current year and month in attendance_stats
+                            const statsIndex = employee.attendance_stats.findIndex(stat =>
+                                stat.year === currentYear && stat.month === currentMonth + 1
+                            );
+
+                            if (statsIndex > -1) {
+                                employee.attendance_stats[statsIndex].date_on_time += 1;
+                            } else {
+                                // Create a new attendance_stats object for the current month and year
+                                employee.attendance_stats.push({
+                                    year: currentYear,
+                                    month: currentMonth + 1,
+                                    date_on_time: 1,
+                                    date_late: 0,
+                                    date_missing: 0,
+                                });
+                            }
+                            await employee.save();
+                        } else {
+                            // Find the current year and month in attendance_stats
+                            const statsIndex = employee.attendance_stats.findIndex(stat =>
+                                stat.year === currentYear && stat.month === currentMonth + 1
+                            );
+
+                            if (statsIndex > -1) {
+                                employee.attendance_stats[statsIndex].date_late += 1;
+                            } else {
+                                // Create a new attendance_stats object for the current month and year
+                                employee.attendance_stats.push({
+                                    year: currentYear,
+                                    month: currentMonth + 1,
+                                    date_on_time: 0,
+                                    date_late: 1,
+                                    date_missing: 0,
+                                });
+                            }
+                            await employee.save();
+                        }
+
                         return res.status(OK).json({
                             success: true,
                             status: OK,
@@ -453,11 +574,11 @@ async function uploadImageToS3(file) {
     try {
         const command = new PutObjectCommand(uploadParams);
         const uploadResult = await s3Client.send(command);
-        fs.unlinkSync(file.path); 
-        return `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`; 
+        fs.unlinkSync(file.path);
+        return `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
     } catch (error) {
         fs.unlinkSync(file.path);
-        throw error; 
+        throw error;
     }
 }
 
@@ -567,7 +688,7 @@ export const updateAttendance = async (req, res, next) => {
                 }
             } else if (employee.position === "Lito") {
                 if (existingAttendance.shift_info.time_slot.check_in === true && existingAttendance.shift_info.time_slot.check_out !== true) {
-                    const file = req.file; 
+                    const file = req.file;
                     if (!file) {
                         return res.status(BAD_REQUEST).send('No file uploaded for checkout.');
                     }
@@ -580,7 +701,7 @@ export const updateAttendance = async (req, res, next) => {
                             success: true,
                             status: OK,
                             message: existingAttendance,
-                            imageUrl: imageUrl 
+                            imageUrl: imageUrl
                         });
                     } catch (err) {
                         return res.status(SYSTEM_ERROR).send('Error uploading file.');

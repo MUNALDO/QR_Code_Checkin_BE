@@ -54,6 +54,9 @@ const employeeSchema = new mongoose.Schema(
                 date_calculate: {
                     type: Date
                 },
+                total_salary: {
+                    type: Number
+                },
                 hour_normal: {
                     type: Number
                 },
@@ -68,6 +71,10 @@ const employeeSchema = new mongoose.Schema(
                 },
                 c_parameter: {
                     type: Number
+                },
+                d_parameter: {
+                    type: Number,
+                    default: 0.25
                 },
             }
         ],

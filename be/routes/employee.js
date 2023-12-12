@@ -4,8 +4,8 @@ import {
     getAttendanceCurrentTime, getDateDesignInMonthByEmployee
 } from '../controllers/employeeController.js';
 import { verifyTokenEmployee } from '../utils/verifyToken.js';
-import multer from 'multer';
-const upload = multer({ dest: 'uploads/' });
+// import multer from 'multer';
+// const upload = multer({ dest: 'uploads/' });
 
 const router = express.Router();
 

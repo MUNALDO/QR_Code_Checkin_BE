@@ -563,168 +563,168 @@ export const checkAttendance = async (req, res, next) => {
     }
 }
 
-async function uploadImageToS3(file) {
-    const fileStream = fs.createReadStream(file.path);
-    const uploadParams = {
-        Bucket: process.env.AWS_S3_BUCKET,
-        Key: `${file.filename}-${Date.now()}`,
-        Body: fileStream,
-    };
+// async function uploadImageToS3(file) {
+//     const fileStream = fs.createReadStream(file.path);
+//     const uploadParams = {
+//         Bucket: process.env.AWS_S3_BUCKET,
+//         Key: `${file.filename}-${Date.now()}`,
+//         Body: fileStream,
+//     };
 
-    try {
-        const command = new PutObjectCommand(uploadParams);
-        const uploadResult = await s3Client.send(command);
-        fs.unlinkSync(file.path);
-        return `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
-    } catch (error) {
-        fs.unlinkSync(file.path);
-        throw error;
-    }
-}
+//     try {
+//         const command = new PutObjectCommand(uploadParams);
+//         const uploadResult = await s3Client.send(command);
+//         fs.unlinkSync(file.path);
+//         return `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+//     } catch (error) {
+//         fs.unlinkSync(file.path);
+//         throw error;
+//     }
+// }
 
-export const updateAttendance = async (req, res, next) => {
-    const employeeID = req.query.employeeID;
-    try {
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found"))
+// export const updateAttendance = async (req, res, next) => {
+//     const employeeID = req.query.employeeID;
+//     try {
+//         const employee = await EmployeeSchema.findOne({ id: employeeID });
+//         if (!employee) return next(createError(NOT_FOUND, "Employee not found"))
 
-        const currentTime = new Date();
+//         const currentTime = new Date();
 
-        const date = employee.schedules.find(schedule => {
-            return schedule.date.toLocaleDateString() == currentTime.toLocaleDateString();
-        });
-        if (!date) return next(createError(NOT_FOUND, 'Design not found for the current day'));
+//         const date = employee.schedules.find(schedule => {
+//             return schedule.date.toLocaleDateString() == currentTime.toLocaleDateString();
+//         });
+//         if (!date) return next(createError(NOT_FOUND, 'Design not found for the current day'));
 
-        // Collect time ranges from shift_design
-        const timeRanges = date.shift_design.map(shift => {
-            const totalNumber = shift.time_slot.total_number;
-            const startTime = shift.time_slot.detail[0].start_time;
-            const endTime = totalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
-            return { startTime, endTime };
-        });
+//         // Collect time ranges from shift_design
+//         const timeRanges = date.shift_design.map(shift => {
+//             const totalNumber = shift.time_slot.total_number;
+//             const startTime = shift.time_slot.detail[0].start_time;
+//             const endTime = totalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
+//             return { startTime, endTime };
+//         });
 
-        // Compare the current time with each time range
-        const currentTimestamp = currentTime.getTime();
-        let currentTimeRange = null;
+//         // Compare the current time with each time range
+//         const currentTimestamp = currentTime.getTime();
+//         let currentTimeRange = null;
 
-        for (const timeRange of timeRanges) {
-            const [startHours, startMinutes] = timeRange.startTime.split(':').map(Number);
-            const [endHours, endMinutes] = timeRange.endTime.split(':').map(Number);
+//         for (const timeRange of timeRanges) {
+//             const [startHours, startMinutes] = timeRange.startTime.split(':').map(Number);
+//             const [endHours, endMinutes] = timeRange.endTime.split(':').map(Number);
 
-            const startDateTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), startHours, startMinutes);
-            const endDateTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
-            const endOfDay = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), 23, 59, 59, 999);
+//             const startDateTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), startHours, startMinutes);
+//             const endDateTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
+//             const endOfDay = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), 23, 59, 59, 999);
 
-            // Calculate startTime - 30 minutes
-            const startTimeMinus30 = new Date(startDateTime);
-            startTimeMinus30.setMinutes(startDateTime.getMinutes() - 30);
+//             // Calculate startTime - 30 minutes
+//             const startTimeMinus30 = new Date(startDateTime);
+//             startTimeMinus30.setMinutes(startDateTime.getMinutes() - 30);
 
-            const endTimePlus30 = new Date(endDateTime);
-            endTimePlus30.setMinutes(endTimePlus30.getMinutes() + 30);
+//             const endTimePlus30 = new Date(endDateTime);
+//             endTimePlus30.setMinutes(endTimePlus30.getMinutes() + 30);
 
-            if (endDateTime < endOfDay) {
-                // Compare currentTimestamp with the adjusted time range
-                if (currentTimestamp >= startTimeMinus30.getTime() && currentTimestamp <= endTimePlus30) {
-                    currentTimeRange = timeRange;
-                    break;
-                }
-            } else {
-                return res.status(BAD_REQUEST).json({
-                    success: false,
-                    status: BAD_REQUEST,
-                    message: `Err!`,
-                });
-            }
-        }
+//             if (endDateTime < endOfDay) {
+//                 // Compare currentTimestamp with the adjusted time range
+//                 if (currentTimestamp >= startTimeMinus30.getTime() && currentTimestamp <= endTimePlus30) {
+//                     currentTimeRange = timeRange;
+//                     break;
+//                 }
+//             } else {
+//                 return res.status(BAD_REQUEST).json({
+//                     success: false,
+//                     status: BAD_REQUEST,
+//                     message: `Err!`,
+//                 });
+//             }
+//         }
 
-        // Find the corresponding shift_design based on currentTimeRange
-        const currentShiftDesign = date.shift_design.find(shift => {
-            const totalNumber = shift.time_slot.total_number;
-            const startTime = shift.time_slot.detail[0].start_time;
-            const endTime = totalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
+//         // Find the corresponding shift_design based on currentTimeRange
+//         const currentShiftDesign = date.shift_design.find(shift => {
+//             const totalNumber = shift.time_slot.total_number;
+//             const startTime = shift.time_slot.detail[0].start_time;
+//             const endTime = totalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
 
-            return startTime === currentTimeRange.startTime && endTime === currentTimeRange.endTime;
-        });
-        if (!currentShiftDesign) {
-            return next(createError(NOT_FOUND, 'No matching shift design for the current time range'));
-        }
+//             return startTime === currentTimeRange.startTime && endTime === currentTimeRange.endTime;
+//         });
+//         if (!currentShiftDesign) {
+//             return next(createError(NOT_FOUND, 'No matching shift design for the current time range'));
+//         }
 
-        const existingAttendance = await AttendanceSchema.findOne({
-            employee_id: employee.id,
-            date: {
-                $gte: new Date().setHours(0, 0, 0, 0),
-                $lt: new Date().setHours(23, 59, 59, 999),
-            },
-            'shift_info.shift_code': currentShiftDesign.shift_code,
-        });
+//         const existingAttendance = await AttendanceSchema.findOne({
+//             employee_id: employee.id,
+//             date: {
+//                 $gte: new Date().setHours(0, 0, 0, 0),
+//                 $lt: new Date().setHours(23, 59, 59, 999),
+//             },
+//             'shift_info.shift_code': currentShiftDesign.shift_code,
+//         });
 
-        if (!existingAttendance) {
-            return res.status(NOT_FOUND).json({
-                success: false,
-                status: NOT_FOUND,
-                message: "Attendance not found!",
-            });
-        } else {
-            if (employee.position === "Autofahrer") {
-                if (existingAttendance.shift_info.time_slot.check_in === true && existingAttendance.shift_info.time_slot.check_out !== true) {
-                    existingAttendance.check_in_km = req.body.check_in_km;
-                    await existingAttendance.save();
+//         if (!existingAttendance) {
+//             return res.status(NOT_FOUND).json({
+//                 success: false,
+//                 status: NOT_FOUND,
+//                 message: "Attendance not found!",
+//             });
+//         } else {
+//             if (employee.position === "Autofahrer") {
+//                 if (existingAttendance.shift_info.time_slot.check_in === true && existingAttendance.shift_info.time_slot.check_out !== true) {
+//                     existingAttendance.check_in_km = req.body.check_in_km;
+//                     await existingAttendance.save();
 
-                    return res.status(OK).json({
-                        success: true,
-                        status: OK,
-                        message: existingAttendance,
-                    });
-                } else if (existingAttendance.shift_info.time_slot.check_in === true && existingAttendance.shift_info.time_slot.check_out === true) {
-                    existingAttendance.check_out_km = req.body.check_out_km;
-                    existingAttendance.total_km = existingAttendance.check_out_km - existingAttendance.check_in_km;
-                    await existingAttendance.save();
+//                     return res.status(OK).json({
+//                         success: true,
+//                         status: OK,
+//                         message: existingAttendance,
+//                     });
+//                 } else if (existingAttendance.shift_info.time_slot.check_in === true && existingAttendance.shift_info.time_slot.check_out === true) {
+//                     existingAttendance.check_out_km = req.body.check_out_km;
+//                     existingAttendance.total_km = existingAttendance.check_out_km - existingAttendance.check_in_km;
+//                     await existingAttendance.save();
 
-                    return res.status(OK).json({
-                        success: true,
-                        status: OK,
-                        message: existingAttendance,
-                    });
-                }
-            } else if (employee.position === "Lito") {
-                if (existingAttendance.shift_info.time_slot.check_in === true && existingAttendance.shift_info.time_slot.check_out !== true) {
-                    const file = req.file;
-                    if (!file) {
-                        return res.status(BAD_REQUEST).send('No file uploaded for checkout.');
-                    }
+//                     return res.status(OK).json({
+//                         success: true,
+//                         status: OK,
+//                         message: existingAttendance,
+//                     });
+//                 }
+//             } else if (employee.position === "Lito") {
+//                 if (existingAttendance.shift_info.time_slot.check_in === true && existingAttendance.shift_info.time_slot.check_out !== true) {
+//                     const file = req.file;
+//                     if (!file) {
+//                         return res.status(BAD_REQUEST).send('No file uploaded for checkout.');
+//                     }
 
-                    try {
-                        const imageUrl = await uploadImageToS3(file);
-                        existingAttendance.check_out_image = imageUrl;
-                        await existingAttendance.save();
-                        return res.status(OK).json({
-                            success: true,
-                            status: OK,
-                            message: existingAttendance,
-                            imageUrl: imageUrl
-                        });
-                    } catch (err) {
-                        return res.status(SYSTEM_ERROR).send('Error uploading file.');
-                    }
-                } else {
-                    return res.status(BAD_REQUEST).json({
-                        success: false,
-                        status: BAD_REQUEST,
-                        message: "Not allow!",
-                    });
-                }
-            } else {
-                return res.status(BAD_REQUEST).json({
-                    success: false,
-                    status: BAD_REQUEST,
-                    message: "Position not allowed!",
-                });
-            }
-        }
-    } catch (err) {
-        next(err);
-    }
-}
+//                     try {
+//                         const imageUrl = await uploadImageToS3(file);
+//                         existingAttendance.check_out_image = imageUrl;
+//                         await existingAttendance.save();
+//                         return res.status(OK).json({
+//                             success: true,
+//                             status: OK,
+//                             message: existingAttendance,
+//                             imageUrl: imageUrl
+//                         });
+//                     } catch (err) {
+//                         return res.status(SYSTEM_ERROR).send('Error uploading file.');
+//                     }
+//                 } else {
+//                     return res.status(BAD_REQUEST).json({
+//                         success: false,
+//                         status: BAD_REQUEST,
+//                         message: "Not allow!",
+//                     });
+//                 }
+//             } else {
+//                 return res.status(BAD_REQUEST).json({
+//                     success: false,
+//                     status: BAD_REQUEST,
+//                     message: "Position not allowed!",
+//                 });
+//             }
+//         }
+//     } catch (err) {
+//         next(err);
+//     }
+// }
 
 export const getAttendanceByCurrentMonth = async (req, res, next) => {
     try {

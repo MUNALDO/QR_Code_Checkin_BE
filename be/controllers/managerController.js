@@ -230,17 +230,57 @@ export const createDateDesignByManager = async (req, res, next) => {
                 });
             } else {
                 // If there is no existing shift_design with the same shiftCode, create a new shift_design
-                existingDateInSchedules.shift_design.push({
-                    shift_code: shift.code,
-                    time_slot: shift.time_slot,
-                    shift_type: req.body.shift_type
+                const existsTimeRanges = existingDateInSchedules.shift_design.map(shift => {
+                    const totalNumber = shift.time_slot.total_number;
+                    const startTime = shift.time_slot.detail[0].start_time;
+                    const endTime = totalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
+                    return { startTime, endTime };
                 });
-                await employee.save();
-                res.status(CREATED).json({
-                    success: true,
-                    status: CREATED,
-                    message: employee,
+
+                const newShiftTotalNumber = shift.time_slot.total_number;
+                const newShiftStartTime = shift.time_slot.detail[0].start_time;
+                const newShiftEndTime = newShiftTotalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
+                // const newShiftTimeRange = { newShiftStartTime, newShiftEndTime };
+                // console.log(newShiftTimeRange);
+
+                const convertToMinutes = (timeString) => {
+                    const [hours, minutes] = timeString.split(':').map(Number);
+                    return hours * 60 + minutes;
+                };
+
+                const hasConflict = existsTimeRanges.some(range => {
+                    const existingStartTime = convertToMinutes(range.startTime);
+                    const existingEndTime = convertToMinutes(range.endTime);
+                    const newStartTime = convertToMinutes(newShiftStartTime);
+                    const newEndTime = convertToMinutes(newShiftEndTime);
+
+                    return (
+                        (newStartTime >= existingStartTime && newStartTime < existingEndTime) ||
+                        (newEndTime > existingStartTime && newEndTime <= existingEndTime)
+                    );
                 });
+
+                if (hasConflict) {
+                    // Time range conflict
+                    res.status(BAD_REQUEST).json({
+                        success: false,
+                        status: BAD_REQUEST,
+                        message: "Time range conflict with existing shifts for the day",
+                    });
+                } else {
+                    // No time range conflict, add the new shift design
+                    existingDateInSchedules.shift_design.push({
+                        shift_code: shift.code,
+                        time_slot: shift.time_slot,
+                        shift_type: req.body.shift_type
+                    });
+                    await employee.save();
+                    res.status(CREATED).json({
+                        success: true,
+                        status: CREATED,
+                        message: employee,
+                    });
+                }
             }
         }
     } catch (err) {
@@ -384,7 +424,7 @@ export const getAllEmployeeAttendanceByManager = async (req, res, next) => {
         const manager_name = req.query.manager_name;
         const year = req.query.year;
         const month = req.query.month;
-        const date = req.query.date;
+        const dateString = req.query.date;
 
         const manager = await AdminSchema.findOne({ name: manager_name });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
@@ -396,6 +436,20 @@ export const getAllEmployeeAttendanceByManager = async (req, res, next) => {
                 status: BAD_REQUEST,
                 message: "Year and month are required parameters",
             });
+        }
+
+        let date = null;
+
+        if (dateString) {
+            date = new Date(dateString);
+
+            if (isNaN(date.getTime())) {
+                return res.status(BAD_REQUEST).json({
+                    success: false,
+                    status: BAD_REQUEST,
+                    message: "Invalid date format",
+                });
+            }
         }
 
         // Define the date range based on the presence of the date parameter
@@ -436,7 +490,7 @@ export const getEmployeeAttendanceByManager = async (req, res, next) => {
         const manager_name = req.query.manager_name;
         const year = req.query.year;
         const month = req.query.month;
-        const date = req.query.date;
+        const dateString = req.query.date;
 
         const manager = await AdminSchema.findOne({ name: manager_name });
         if (!manager) return next(createError(NOT_FOUND, "manager not found!"));
@@ -448,6 +502,20 @@ export const getEmployeeAttendanceByManager = async (req, res, next) => {
                 status: BAD_REQUEST,
                 message: "Year, month, and employee ID are required parameters",
             });
+        }
+
+        let date = null;
+
+        if (dateString) {
+            date = new Date(dateString);
+
+            if (isNaN(date.getTime())) {
+                return res.status(BAD_REQUEST).json({
+                    success: false,
+                    status: BAD_REQUEST,
+                    message: "Invalid date format",
+                });
+            }
         }
 
         // Define the date range based on the presence of the date parameter

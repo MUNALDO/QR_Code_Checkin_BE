@@ -396,7 +396,7 @@ export const getAllEmployeeAttendance = async (req, res, next) => {
     try {
         const year = req.query.year;
         const month = req.query.month;
-        const date = req.query.date;
+        const dateString = req.query.date;
 
         // Ensure valid year and month inputs
         if (!year || !month) {
@@ -407,18 +407,31 @@ export const getAllEmployeeAttendance = async (req, res, next) => {
             });
         }
 
-        // Define the date range based on the presence of the date parameter
+        let date = null;
+
+        if (dateString) {
+            date = new Date(dateString);
+
+            // Check if the date is valid
+            if (isNaN(date.getTime())) {
+                return res.status(BAD_REQUEST).json({
+                    success: false,
+                    status: BAD_REQUEST,
+                    message: "Invalid date format",
+                });
+            }
+        }
+
         const dateRange = date
             ? {
-                $gte: new Date(year, month - 1, date, 0, 0, 0, 0),
-                $lt: new Date(year, month - 1, date, 23, 59, 59, 999),
+                $gte: new Date(year, month - 1, date.getDate(), 0, 0, 0, 0),
+                $lt: new Date(year, month - 1, date.getDate(), 23, 59, 59, 999),
             }
             : {
                 $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
                 $lt: new Date(year, month, 0, 23, 59, 59, 999),
             };
 
-        // Find all employee attendance for the specified date range
         const employeeAttendance = await AttendanceSchema.find({
             date: dateRange,
         });
@@ -433,12 +446,13 @@ export const getAllEmployeeAttendance = async (req, res, next) => {
     }
 };
 
+
 export const getEmployeeAttendance = async (req, res, next) => {
     try {
         const employeeID = req.params.employeeID;
         const year = req.query.year;
         const month = req.query.month;
-        const date = req.query.date;
+        const dateString = req.query.date;
 
         // Ensure valid year, month, and employee ID inputs
         if (!year || !month || !employeeID) {
@@ -449,18 +463,30 @@ export const getEmployeeAttendance = async (req, res, next) => {
             });
         }
 
-        // Define the date range based on the presence of the date parameter
+        let date = null;
+
+        if (dateString) {
+            date = new Date(dateString);
+
+            if (isNaN(date.getTime())) {
+                return res.status(BAD_REQUEST).json({
+                    success: false,
+                    status: BAD_REQUEST,
+                    message: "Invalid date format",
+                });
+            }
+        }
+
         const dateRange = date
             ? {
-                $gte: new Date(year, month - 1, date, 0, 0, 0, 0),
-                $lt: new Date(year, month - 1, date, 23, 59, 59, 999),
+                $gte: new Date(year, month - 1, date.getDate(), 0, 0, 0, 0),
+                $lt: new Date(year, month - 1, date.getDate(), 23, 59, 59, 999),
             }
             : {
                 $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
                 $lt: new Date(year, month, 0, 23, 59, 59, 999),
             };
 
-        // Find employee attendance for the specified date range
         const employeeAttendance = await AttendanceSchema.find({
             employee_id: employeeID,
             date: dateRange,
@@ -475,6 +501,7 @@ export const getEmployeeAttendance = async (req, res, next) => {
         next(err);
     }
 };
+
 
 
 

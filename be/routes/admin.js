@@ -73,5 +73,5 @@ router.put('/day-off/remove-dayOff', removeDayOffSchedule);
 router.get('/manage-attendance/get-all', verifyUserAdmin, getAllEmployeeAttendance);
 router.get('/manage-attendance/get-specific/:employeeID', verifyUserAdmin, getEmployeeAttendance);
 
-router.post('/salary-calculate', verifyTokenAdmin, salaryCalculate);
+router.post('/manage-salary/calculate/:employeeID', verifyTokenAdmin, salaryCalculate);
 export default router;

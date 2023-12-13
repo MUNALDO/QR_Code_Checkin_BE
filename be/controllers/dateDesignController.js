@@ -59,13 +59,22 @@ export const createDateDesign = async (req, res, next) => {
                 const newShiftStartTime = shift.time_slot.detail[0].start_time;
                 const newShiftEndTime = newShiftTotalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
                 // const newShiftTimeRange = { newShiftStartTime, newShiftEndTime };
+                // console.log(newShiftTimeRange);
 
-                // Check for time range conflicts
+                const convertToMinutes = (timeString) => {
+                    const [hours, minutes] = timeString.split(':').map(Number);
+                    return hours * 60 + minutes;
+                };
+
                 const hasConflict = existsTimeRanges.some(range => {
+                    const existingStartTime = convertToMinutes(range.startTime);
+                    const existingEndTime = convertToMinutes(range.endTime);
+                    const newStartTime = convertToMinutes(newShiftStartTime);
+                    const newEndTime = convertToMinutes(newShiftEndTime);
+
                     return (
-                        (newShiftStartTime >= range.startTime && newShiftStartTime < range.endTime) ||
-                        (newShiftEndTime > range.startTime && newShiftEndTime <= range.endTime) ||
-                        (newShiftStartTime <= range.startTime && newShiftEndTime >= range.endTime)
+                        (newStartTime >= existingStartTime && newStartTime < existingEndTime) ||
+                        (newEndTime > existingStartTime && newEndTime <= existingEndTime)
                     );
                 });
 

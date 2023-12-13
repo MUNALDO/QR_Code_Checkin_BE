@@ -106,8 +106,6 @@ export const salaryCalculate = async (req, res, next) => {
                 if (req.body.c_new !== undefined) c = req.body.c_new;
                 if (req.body.d_new !== undefined) d = req.body.d_new;
 
-                if (!req.body.d_new) d = 0.25;
-
                 // Use the potentially updated values
                 const a = employee.salary[statsIndexPrevious].a_parameter;
                 const b = employee.salary[statsIndexPrevious].b_parameter;
@@ -179,9 +177,7 @@ export const salaryCalculate = async (req, res, next) => {
                 const a = req.body.a_new;
                 const b = req.body.b_new;
                 const c = req.body.c_new;
-                const d = req.body.d_new;
-
-                // if (!req.body.d_new) d = 0.25;
+                const d = req.body.d_new ? req.body.d_new : 0.25;
 
                 // day-off salary
                 const days_off = employee.default_day_off - employee.realistic_day_off;

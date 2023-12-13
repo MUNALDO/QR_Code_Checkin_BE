@@ -5,48 +5,66 @@ import { AuthContext } from "../context/AuthContext";
 
 const ScanQR = () => {
   const {
-    user: { id: userID },
+    user: { id: userID, department_name: departmentName },
   } = useContext(AuthContext);
-
-  const {
-    user: { department_name: departmentName },
-  } = useContext(AuthContext);
-
   const [isAttendanceChecked, setAttendanceChecked] = useState(false);
+
+  const verifyLocation = () => {
+    return new Promise((resolve, reject) => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            // Check if the position is within your expected area
+            // Example: if (position.coords.latitude === expectedLatitude && position.coords.longitude === expectedLongitude)
+            // Adjust the condition to match your requirements
+            console.log(position);
+            resolve(true);
+          },
+          (error) => {
+            console.error("Error getting location:", error);
+            reject(error);
+          }
+        );
+      } else {
+        alert("Geolocation is not supported by this browser.");
+        reject(new Error("Geolocation not supported"));
+      }
+    });
+  };
 
   const handleScan = async (data) => {
     if (data && !isAttendanceChecked) {
-      const timestamp = new Date().toISOString();
-      const expectedQRData = `QR code for department ${departmentName} - ${timestamp}`;
+      try {
+        const isLocationValid = await verifyLocation();
+        if (!isLocationValid) {
+          alert("You are not in the required location.");
+          return;
+        }
 
-      // Check if scanned data matches the expected format
-      if (data === expectedQRData) {
-        try {
-          setAttendanceChecked(true);
+        setAttendanceChecked(true);
+        const timestamp = new Date().toISOString();
+        const expectedQRData = `QR code for department ${departmentName} - ${timestamp}`;
 
+        if (data === expectedQRData) {
           const res = await axios.post(
             "https://qr-code-checkin.vercel.app/api/employee/check-attendance",
-            {
-              employeeID: userID,
-            },
+            { employeeID: userID },
             { withCredentials: true }
           );
 
           if (res.data.success) {
             alert("Attendance checked successfully!");
-            // You can navigate to another page or show a success message here
           } else {
             alert("Expired QR code. Please generate a new QR code.");
           }
-        } catch (error) {
-          console.error("Error checking attendance:", error);
-          alert("An error occurred while checking attendance.");
-        } finally {
-          // Reset the state after the API call
-          setAttendanceChecked(false);
+        } else {
+          alert("Invalid QR code. Please scan the correct QR code.");
         }
-      } else {
-        alert("Invalid QR code. Please scan the correct QR code.");
+      } catch (error) {
+        console.error("Error:", error);
+        alert("An error occurred.");
+      } finally {
+        setAttendanceChecked(false);
       }
     }
   };

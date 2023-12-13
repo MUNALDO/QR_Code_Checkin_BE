@@ -2,10 +2,9 @@ import express from 'express';
 import { verifyUserManager } from '../utils/verifyToken.js';
 import {
     createDateDesignByManager, deleteDateSpecificByManager, getAllDatesByManager,
-    getAllEmployeeAttendanceByManager,
-    getAllEmployees, getDateDesignInMonthByManager, getDateSpecificByManager,
-    getEmployeeAttendanceByManager,
-    getEmployeeSpecific, getEmployeesByDateAndShiftByManager, getEmployeesByDateByManager,
+    getAllEmployeeAttendanceByManager, getAllEmployees, getDateDesignInMonthByManager,
+    getDateSpecificByManager, getEmployeeAttendanceByManager, getEmployeeSpecific,
+    getEmployeesByDateAndShiftByManager, getEmployeesByDateByManager,
 } from '../controllers/managerController.js';
 
 const router = express.Router();

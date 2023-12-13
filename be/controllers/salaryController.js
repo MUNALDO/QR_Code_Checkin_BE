@@ -4,259 +4,136 @@ import EmployeeSchema from "../models/EmployeeSchema.js";
 import { createError } from "../utils/error.js";
 
 export const salaryCalculate = async (req, res, next) => {
-    try {
-        const employeeID = req.params.employeeID;
-        const year = req.query.year;
-        const month = req.query.month;
-        const date = req.query.date;
+    const employeeID = req.params.employeeID;
+    const year = parseInt(req.query.year);
+    const month = parseInt(req.query.month);
+    const date = req.query.date;
 
-        // Ensure valid year, month, and employee ID inputs
-        if (!year || !month || !employeeID) {
-            return res.status(BAD_REQUEST).json({
-                success: false,
-                status: BAD_REQUEST,
-                message: "Year, month, and employee ID are required parameters",
-            });
+    if (!year || !month || !employeeID) {
+        return res.status(BAD_REQUEST).json({
+            success: false,
+            status: BAD_REQUEST,
+            message: "Year, month, and employee ID are required parameters",
+        });
+    }
+
+    const employee = await EmployeeSchema.findOne({ id: employeeID });
+    if (!employee) {
+        return next(createError(NOT_FOUND, "Employee not found!"));
+    }
+
+    const existStat = employee.salary.find(stat => stat.year === year && stat.month === month);
+    let a = req.body.a_new ?? 0;
+    let b = req.body.b_new ?? 0;
+    let c = req.body.c_new ?? 0;
+    let d = req.body.d_new ?? 0.25;
+
+    if (existStat) {
+        a = a ?? existStat.a_parameter;
+        b = b ?? existStat.b_parameter;
+        c = c ?? existStat.c_parameter;
+        d = d ?? existStat.d_parameter;
+    } else if (employee.salary.length === 0) {
+        a = a;
+        b = b;
+        c = c;
+        d = d;
+    } else {
+        const latestSalary = employee.salary[employee.salary.length - 1];
+        a = a ?? latestSalary.a_parameter;
+        b = b ?? latestSalary.b_parameter;
+        c = c ?? latestSalary.c_parameter;
+        d = d ?? latestSalary.d_parameter;
+    }
+
+    // Define the date range based on the presence of the date parameter
+    const dateRange = date
+        ? {
+            $gte: new Date(year, month - 1, date, 0, 0, 0, 0),
+            $lt: new Date(year, month - 1, date, 23, 59, 59, 999),
         }
+        : {
+            $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
+            $lt: new Date(year, month, 0, 23, 59, 59, 999),
+        };
 
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+    // Find employee attendance for the specified date range
+    const employeeAttendance = await AttendanceSchema.find({
+        employee_id: employeeID,
+        date: dateRange,
+    });
 
-        // Find the current year and month in attendance_stats
-        const statsIndex = employee.salary.findIndex(stat =>
-            stat.year === year && stat.month === month + 1
-        );
+    // Initialize variables to calculate hours
+    let hourNormal = 0;
+    let hourOvertime = 0;
+    let kmNumber = 0;
 
-        // Find the current year and previous month in attendance_stats
-        const statsIndexPrevious = employee.salary.findIndex(stat =>
-            stat.year === year && stat.month === month
-        );
-
-        if (statsIndex > -1) {
-            // Update default parameters if new ones are provided
-            if (req.body.a_new !== undefined) employee.salary[statsIndex].a_parameter = req.body.a_new;
-            if (req.body.b_new !== undefined) employee.salary[statsIndex].b_parameter = req.body.b_new;
-            if (req.body.c_new !== undefined) employee.salary[statsIndex].c_parameter = req.body.c_new;
-            if (req.body.d_new !== undefined) employee.salary[statsIndex].d_parameter = req.body.d_new;
-
-            // Use the potentially updated values
-            const a = employee.salary[statsIndex].a_parameter;
-            const b = employee.salary[statsIndex].b_parameter;
-            const c = employee.salary[statsIndex].c_parameter;
-            const d = employee.salary[statsIndex].d_parameter;
-
-            // day-off salary
-            const days_off = employee.default_day_off - employee.realistic_day_off;
-            const salary_day_off = [(b * 3) / 65] * days_off;
-
-            // Define the date range based on the presence of the date parameter
-            const dateRange = date
-                ? {
-                    $gte: new Date(year, month - 1, date, 0, 0, 0, 0),
-                    $lt: new Date(year, month - 1, date, 23, 59, 59, 999),
-                }
-                : {
-                    $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
-                    $lt: new Date(year, month, 0, 23, 59, 59, 999),
-                };
-
-            // Find employee attendance for the specified date range
-            const employeeAttendance = await AttendanceSchema.find({
-                employee_id: employeeID,
-                date: dateRange,
-            });
-
-            // Initialize variables to calculate hours
-            let hourNormal = 0;
-            let hourOvertime = 0;
-            let kmNumber = 0;
-
-            // Calculate hours based on attendance data
-            employeeAttendance.forEach(attendance => {
-                const totalKm = attendance.total_km;
-                kmNumber += totalKm;
-                const totalHour = attendance.shift_info.total_hour;
-                // console.log(totalHour);
-                const totalMinutes = attendance.shift_info.total_minutes / 60;
-                // console.log(totalMinutes);
-                if (attendance.shift_info.shift_type === "normal") {
-                    hourNormal += totalHour + totalMinutes;
-                } else if (attendance.shift_info.shift_type === "overtime") {
-                    hourOvertime += totalHour + totalMinutes;
-                }
-            });
-
-            const salary = (hourNormal + hourOvertime) * a - b - c + salary_day_off - employee.house_rent_money + kmNumber * d;
-            employee.salary[statsIndex].date_calculate = new Date();
-            employee.salary[statsIndex].hour_normal = hourNormal;
-            employee.salary[statsIndex].hour_overtime = hourOvertime;
-            employee.salary[statsIndex].total_salary = salary;
-            await employee.save();
-
-            return res.status(OK).json({
-                success: true,
-                status: OK,
-                message: employee.salary[statsIndex],
-            });
-        } else if (statsIndex === -1) {
-            if (employee.salary.length > 0) {
-                // Update default parameters if new ones are provided
-                if (req.body.a_new !== undefined) a = req.body.a_new;
-                if (req.body.b_new !== undefined) b = req.body.b_new;
-                if (req.body.c_new !== undefined) c = req.body.c_new;
-                if (req.body.d_new !== undefined) d = req.body.d_new;
-
-                // Use the potentially updated values
-                const a = employee.salary[statsIndexPrevious].a_parameter;
-                const b = employee.salary[statsIndexPrevious].b_parameter;
-                const c = employee.salary[statsIndexPrevious].c_parameter;
-                const d = employee.salary[statsIndexPrevious].d_parameter;
-
-                // day-off salary
-                const days_off = employee.default_day_off - employee.realistic_day_off;
-                const salary_day_off = [(b * 3) / 65] * days_off;
-
-                // Define the date range based on the presence of the date parameter
-                const dateRange = date
-                    ? {
-                        $gte: new Date(year, month - 1, date, 0, 0, 0, 0),
-                        $lt: new Date(year, month - 1, date, 23, 59, 59, 999),
-                    }
-                    : {
-                        $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
-                        $lt: new Date(year, month, 0, 23, 59, 59, 999),
-                    };
-
-                // Find employee attendance for the specified date range
-                const employeeAttendance = await AttendanceSchema.find({
-                    employee_id: employeeID,
-                    date: dateRange,
-                });
-
-                // Initialize variables to calculate hours
-                let hourNormal = 0;
-                let hourOvertime = 0;
-                let kmNumber = 0;
-
-                // Calculate hours based on attendance data
-                employeeAttendance.forEach(attendance => {
-                    const totalKm = attendance.total_km;
-                    kmNumber += totalKm;
-                    const totalHour = attendance.shift_info.total_hour;
-                    // console.log(totalHour);
-                    const totalMinutes = attendance.shift_info.total_minutes / 60;
-                    // console.log(totalMinutes);
-                    if (attendance.shift_info.shift_type === "normal") {
-                        hourNormal += totalHour + totalMinutes;
-                    } else if (attendance.shift_info.shift_type === "overtime") {
-                        hourOvertime += totalHour + totalMinutes;
-                    }
-                });
-
-                const salary = (hourNormal + hourOvertime) * a - b - c + salary_day_off - employee.house_rent_money + kmNumber * d;
-                const newSalary = {
-                    year: year,
-                    month: month,
-                    date_calculate: new Date(),
-                    total_salary: salary,
-                    a_parameter: a,
-                    b_parameter: b,
-                    c_parameter: c,
-                    d_parameter: d
-                }
-                employee.salary.push(newSalary);
-                await employee.save();
-
-                return res.status(OK).json({
-                    success: true,
-                    status: OK,
-                    message: newSalary,
-                });
-            } else {
-                // Update default parameters if new ones are provided
-                const a = req.body.a_new;
-                const b = req.body.b_new;
-                const c = req.body.c_new;
-                const d = req.body.d_new ? req.body.d_new : 0.25;
-
-                // day-off salary
-                const days_off = employee.default_day_off - employee.realistic_day_off;
-                const salary_day_off = [(b * 3) / 65] * days_off;
-
-                // Define the date range based on the presence of the date parameter
-                const dateRange = date
-                    ? {
-                        $gte: new Date(year, month - 1, date, 0, 0, 0, 0),
-                        $lt: new Date(year, month - 1, date, 23, 59, 59, 999),
-                    }
-                    : {
-                        $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
-                        $lt: new Date(year, month, 0, 23, 59, 59, 999),
-                    };
-
-                // Find employee attendance for the specified date range
-                const employeeAttendance = await AttendanceSchema.find({
-                    employee_id: employeeID,
-                    date: dateRange,
-                });
-
-                // Initialize variables to calculate hours
-                let hourNormal = 0;
-                let hourOvertime = 0;
-                let kmNumber = 0;
-
-                // Calculate hours based on attendance data
-                employeeAttendance.forEach(attendance => {
-                    const totalKm = attendance.total_km;
-                    kmNumber += totalKm;
-                    const totalHour = attendance.shift_info.total_hour;
-                    // console.log(totalHour);
-                    const totalMinutes = attendance.shift_info.total_minutes / 60;
-                    // console.log(totalMinutes);
-                    if (attendance.shift_info.shift_type === "normal") {
-                        hourNormal += totalHour + totalMinutes;
-                    } else if (attendance.shift_info.shift_type === "overtime") {
-                        hourOvertime += totalHour + totalMinutes;
-                    }
-                });
-
-                const salary = (hourNormal + hourOvertime) * a - b - c + salary_day_off - employee.house_rent_money + kmNumber * d;
-                const newSalary = {
-                    year: year,
-                    month: month,
-                    date_calculate: new Date(),
-                    total_salary: salary,
-                    a_parameter: a,
-                    b_parameter: b,
-                    c_parameter: c,
-                    d_parameter: d
-                }
-                employee.salary.push(newSalary);
-                await employee.save();
-
-                return res.status(OK).json({
-                    success: true,
-                    status: OK,
-                    message: newSalary,
-                });
-            }
-        } else {
-            return res.status(BAD_REQUEST).json({
-                success: true,
-                status: BAD_REQUEST,
-                message: "Err!",
-            });
+    // Calculate hours based on attendance data
+    employeeAttendance.forEach(attendance => {
+        const totalKm = attendance.total_km;
+        kmNumber += totalKm;
+        const totalHour = attendance.shift_info.total_hour;
+        const totalMinutes = attendance.shift_info.total_minutes / 60;
+        if (attendance.shift_info.shift_type === "normal") {
+            hourNormal += totalHour + totalMinutes;
+        } else if (attendance.shift_info.shift_type === "overtime") {
+            hourOvertime += totalHour + totalMinutes;
         }
-    } catch (err) {
-        next(err);
+    });
+
+    // day-off salary calculation
+    const days_off = employee.default_day_off - employee.realistic_day_off;
+    const salary_day_off = [(b * 3) / 65] * days_off;
+
+    // Calculate total salary
+    const salary = (hourNormal + hourOvertime) * a - b - c + salary_day_off - employee.house_rent_money + kmNumber * d;
+
+    if (existStat) {
+        // Update existing record
+        existStat.date_calculate = new Date();
+        existStat.total_salary = salary;
+        existStat.hour_normal = hourNormal;
+        existStat.hour_overtime = hourOvertime;
+        existStat.a_parameter = a;
+        existStat.b_parameter = b;
+        existStat.c_parameter = c;
+        existStat.d_parameter = d;
+
+        await employee.save();
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: existStat
+        });
+    } else {
+        // Create new salary record
+        const newSalary = {
+            year: year,
+            month: month,
+            date_calculate: new Date(),
+            hour_normal: hourNormal,
+            hour_overtime: hourOvertime,
+            total_salary: salary,
+            a_parameter: a,
+            b_parameter: b,
+            c_parameter: c,
+            d_parameter: d
+        };
+        employee.salary.push(newSalary);
+        await employee.save();
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: newSalary
+        });
     }
 };
 
 export const getSalary = async (req, res, next) => {
     try {
         const employeeID = req.params.employeeID;
-        const year = req.query.year;
-        const month = req.query.month;
+        const year = parseInt(req.query.year);
+        const month = parseInt(req.query.month);
 
         if (!year || !month || !employeeID) {
             return res.status(BAD_REQUEST).json({

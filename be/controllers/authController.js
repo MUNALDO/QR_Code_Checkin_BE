@@ -303,7 +303,7 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
             globalDayOff.save();
         })
 
-        newEmployee.default_day_off = newEmployee.realistic_day_off;
+        newEmployee.realistic_day_off = newEmployee.default_day_off;
         await department.save();
         await newEmployee.save();
 
@@ -373,7 +373,7 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
             globalDayOff.save();
         })
 
-        newEmployee.default_day_off = newEmployee.realistic_day_off;
+        newEmployee.realistic_day_off = newEmployee.default_day_off;
         await department.save();
         await newEmployee.save();
 
@@ -442,7 +442,7 @@ export const registerEmployeeByManager = async (req, res, next) => {
             globalDayOff.save();
         })
 
-        newEmployee.default_day_off = newEmployee.realistic_day_off;
+        newEmployee.realistic_day_off = newEmployee.default_day_off;
         await department.save();
         await newEmployee.save();
 

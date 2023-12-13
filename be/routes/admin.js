@@ -1,7 +1,9 @@
 import express from 'express';
 import {
-    deleteEmployeeById, getAllEmployeeAttendance, getAllEmployees, getAllRequests, getEmployeeAttendance, getEmployeeSpecific,
-    getEmployeesByDate, getEmployeesByDateAndShift, getRequestById, handleRequest, searchSpecific, updateEmployee
+    deleteEmployeeById, getAllEmployeeAttendance, getAllEmployees,
+    getAllRequests, getEmployeeAttendance, getEmployeeSpecific,
+    getEmployeesByDate, getEmployeesByDateAndShift, getRequestById,
+    handleRequest, searchSpecific, updateEmployee
 } from '../controllers/adminController.js';
 import {
     addMemberDepartment, createDepartment, deleteDepartmentByName, getAllDepartments,
@@ -12,13 +14,16 @@ import {
     getShiftByCode, getShiftByName, updateShift
 } from '../controllers/shiftController.js';
 import { verifyTokenAdmin, verifyUserAdmin } from '../utils/verifyToken.js';
-import { salaryCalculate } from '../controllers/salaryController.js';
+import { getSalary, salaryCalculate } from '../controllers/salaryController.js';
 import { exportAttendanceToExcel } from '../controllers/xlsxController.js';
 import {
     createDateDesign, deleteDateSpecific,
     getAllDates, getDateDesignInMonth, getDateSpecific
 } from '../controllers/dateDesignController.js';
-import { createDayOff, deleteDayOffById, deleteEmployeeDayOff, getAllGlobalDayOffs, getDayOffById, getEmployeeDayOffs } from '../controllers/dayOffController.js';
+import {
+    createDayOff, deleteDayOffById, deleteEmployeeDayOff,
+    getAllGlobalDayOffs, getDayOffById, getEmployeeDayOffs
+} from '../controllers/dayOffController.js';
 
 const router = express.Router();
 
@@ -74,5 +79,8 @@ router.put('/manage-request/handle/:_id', verifyUserAdmin, handleRequest);
 router.get('/manage-attendance/get-all', verifyUserAdmin, getAllEmployeeAttendance);
 router.get('/manage-attendance/get-specific/:employeeID', verifyUserAdmin, getEmployeeAttendance);
 
+// manage salary
 router.post('/manage-salary/calculate/:employeeID', verifyTokenAdmin, salaryCalculate);
+router.get('/manage-salary/get/:employeeID', verifyTokenAdmin, getSalary);
+
 export default router;

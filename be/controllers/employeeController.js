@@ -1,11 +1,63 @@
-import fs from 'fs';
+// import fs from 'fs';
 import { s3Client } from "../awsConfig.js";
-import { BAD_REQUEST, CREATED, NOT_FOUND, OK, SYSTEM_ERROR } from "../constant/HttpStatus.js";
+import { BAD_REQUEST, CREATED, FORBIDDEN, NOT_FOUND, OK, SYSTEM_ERROR } from "../constant/HttpStatus.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import DayOffSchema from "../models/DayOffSchema.js";
+import DepartmentSchema from "../models/DepartmentSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import RequestSchema from "../models/RequestSchema.js";
 import { createError } from "../utils/error.js";
+import wifi from 'node-wifi';
+
+wifi.init({
+    iface: null,
+});
+
+export const verifyWifi = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+    try {
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found"))
+
+        const department = await DepartmentSchema.findOne({ name: employee.department_name });
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+
+        // Scan for available networks and get the currently connected SSID
+        const currentConnections = await wifi.getCurrentConnections();
+        console.log(currentConnections);
+
+        if (currentConnections.length > 0) {
+            const connectedSSID = currentConnections[0].ssid;
+            const allowedSSID = department.wifi_name;
+
+            if (connectedSSID === allowedSSID) {
+                // console.log(`Device connected to Wi-Fi with SSID: ${allowedSSID}`);
+                res.status(OK).json({
+                    success: true,
+                    status: OK,
+                    message: `Device connected to Wi-Fi with SSID: ${allowedSSID}`
+                });
+            } else {
+                // console.log(`Device is not connected to the allowed Wi-Fi SSID.`);
+                res.status(FORBIDDEN).json({
+                    success: false,
+                    status: FORBIDDEN,
+                    message: `Device is not connected to the allowed Wi-Fi SSID.`
+                });
+            }
+        } else {
+            // console.log(`Device is not connected to any Wi-Fi network.`);
+            res.status(FORBIDDEN).json({
+                success: false,
+                status: FORBIDDEN,
+                message: `Device is not connected to any Wi-Fi network.`
+            });
+        }
+    } catch (err) {
+        console.error('Error checking Wi-Fi SSID:', err);
+        next(err);
+    }
+}
 
 export const autoCheck = async (req, res, next) => {
     const currentTime = new Date();

@@ -1,50 +1,72 @@
-import React, { useEffect, useState } from 'react';
-import QRCode from 'react-qr-code';
+import React, { useContext, useState } from "react";
+import QrScanner from "react-qr-scanner";
+import axios from "axios";
+import { AuthContext } from "../context/AuthContext";
 
-const GenerateQR = () => {
-    const [selectedDepartment, setSelectedDepartment] = useState('');
-    const [qrData, setQRData] = useState(`QR code for department - ${Date.now()}`);
+const ScanQR = () => {
+  const {
+    user: { id: userID },
+  } = useContext(AuthContext);
 
-    useEffect(() => {
-        const updateQRCode = () => {
-            const timestamp = new Date().toISOString();
-            setQRData(`QR code for department ${selectedDepartment} - ${timestamp}`);
-        };
+  const {
+    user: { department_name: departmentName },
+  } = useContext(AuthContext);
 
-        updateQRCode();
+  const [isAttendanceChecked, setAttendanceChecked] = useState(false);
 
-        const intervalId = setInterval(updateQRCode, 20000);
+  const handleScan = async (data) => {
+    if (data && !isAttendanceChecked) {
+      const timestamp = new Date().toISOString();
+      const expectedQRData = `QR code for department ${departmentName} - ${timestamp}`;
 
-        return () => {
-            clearInterval(intervalId);
-        };
-    }, [selectedDepartment]);
+      // Check if scanned data matches the expected format
+      if (data === expectedQRData) {
+        try {
+          setAttendanceChecked(true);
 
-    const handleDepartmentChange = (event) => {
-        setSelectedDepartment(event.target.value);
-    };
+          const res = await axios.post(
+            "https://qr-code-checkin.vercel.app/api/employee/check-attendance",
+            {
+              employeeID: userID,
+            },
+            { withCredentials: true }
+          );
 
-    return (
-        <div className="generate-qr-container">
-            <label htmlFor="department">Choose a department:</label>
-            <select id="department" value={selectedDepartment} onChange={handleDepartmentChange}>
-                <option value="">Select Department</option>
-                <option value="C1">C1</option>
-                <option value="C2">C2</option>
-                <option value="C3">C3</option>
-                <option value="C4">C4</option>
-                <option value="C5">C5</option>
-                <option value="C6">C6</option>
-                <option value="C Ulm">C Ulm</option>
-                <option value="Wabi">Wabi</option>
-                <option value="Buero">Buero</option>
-                <option value="FacTech">FacTech</option>
-            </select>
+          if (res.data.success) {
+            alert("Attendance checked successfully!");
+            // You can navigate to another page or show a success message here
+          } else {
+            alert("Expired QR code. Please generate a new QR code.");
+          }
+        } catch (error) {
+          console.error("Error checking attendance:", error);
+          alert("An error occurred while checking attendance.");
+        } finally {
+          // Reset the state after the API call
+          setAttendanceChecked(false);
+        }
+      } else {
+        alert("Invalid QR code. Please scan the correct QR code.");
+      }
+    }
+  };
 
-            <h2>Your QR Code</h2>
-            {qrData && <QRCode value={qrData} className="qr-code" />}
-        </div>
-    );
+  const handleError = (error) => {
+    console.error("QR code scanning error:", error);
+  };
+
+  return (
+    <div className="scan-qr-container">
+      <h2>Scan QR Code</h2>
+      <QrScanner
+        onScan={handleScan}
+        onError={handleError}
+        style={{ width: "100%" }}
+        key="environment"
+        constraints={{ audio: false, video: { facingMode: "environment" } }}
+      />
+    </div>
+  );
 };
 
-export default GenerateQR;
+export default ScanQR;

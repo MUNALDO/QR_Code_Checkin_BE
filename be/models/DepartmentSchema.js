@@ -9,6 +9,9 @@ const departmentSchema = new mongoose.Schema(
             required: true
         },
         members: [],
+        wifi_name: {
+            type: String
+        }
         // qr_code: {
         //     type: String
         // }

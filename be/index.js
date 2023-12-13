@@ -12,7 +12,6 @@ import authRoute from "./routes/auth.js";
 import inhaberRoute from "./routes/inhaber.js";
 import managerRoute from "./routes/manager.js"
 // import wifi from 'node-wifi'; 
-// import { scanAndUpdateAttendance } from './controllers/adminController.js';
 import { autoCheck } from './controllers/employeeController.js';
 
 process.env.TZ = 'Asia/Ho_Chi_Minh';
@@ -45,7 +44,7 @@ mongoose.connection.on('disconnected', () => {
 //     iface: null, 
 // });
 
-// // Middleware to allow access based on Wi-Fi SSID
+// Middleware to allow access based on Wi-Fi SSID
 // app.use(async (req, res, next) => {
 //     try {
 //         // Scan for available networks and get the currently connected SSID

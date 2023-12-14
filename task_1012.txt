@@ -46,3 +46,6 @@ FacTech
 2. Inhaber sẽ có quyền làm hết trong chi nhánh của mình (xem và sửa toàn bộ nhân viên, thêm shift, xem ngày nghỉ phép, tính lương,...), chỉ được phép add nhân viên có chức vụ thấp hơn mình. không được phép add thêm người có chức vụ ngang bằng. Không xem đc các chi nhánh khác, không thêm được chi nhánh mới
 
 3. Manager Chi nhánh sẽ được phép add hoặc delete một nhân viên vào một ca. được phép add nhân viên có chức vụ thấp hơn.
+
+
+

@@ -37,14 +37,8 @@ mongoose.connection.on('disconnected', () => {
     console.log("Database disconnected");
 });
 
-app.use(cors({
-    origin: ['http://localhost:3000', 'https://qr-code-checkin-be.vercel.app',
-        'https://qr-code-checkin.vercel.app', 'https://qr-code-checkin-thai-nx.vercel.app',
-        'https://3.113.9.36', 'https://www.3.113.9.36.com', 'http://3.113.9.36'],
-    credentials: true,
-}));
-
-app.options('*', cors());
+app.use(cors());
+// app.options('*', cors());
 
 app.use(cookieParser());
 app.use(express.json());
@@ -69,7 +63,7 @@ app.use((err, req, res, next) => {
 async function startApp() {
     await autoChecking();
     await connect();
-    app.listen(443, () => {
+    app.listen(80, () => {
         console.log('Server is running on port 8800');
     });
 }

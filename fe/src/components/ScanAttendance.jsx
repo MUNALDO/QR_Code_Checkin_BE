@@ -5,7 +5,7 @@ import { AuthContext } from "../context/AuthContext";
 
 const ScanQR = () => {
   const {
-    user: { id: userID },
+    user: { id: userID, department_name: departmentName },
   } = useContext(AuthContext);
   const [isAttendanceChecked, setAttendanceChecked] = useState(false);
 
@@ -13,25 +13,28 @@ const ScanQR = () => {
     if (data && !isAttendanceChecked) {
       try {
         setAttendanceChecked(true);
+        const timestamp = new Date().toISOString();
+        const expectedQRData = `QR code for department ${departmentName} - ${timestamp}`;
 
-        const res = await axios.post(
-          "https://qr-code-checkin.vercel.app/api/employee/check-attendance",
-          {
-            employeeID: userID,
-          },
-          { withCredentials: true },
-        );
-        if (res.data.success) {
-          alert("Attendance checked successfully!");
-          // You can navigate to another page or show a success message here
+        if (data === expectedQRData) {
+          const res = await axios.post(
+            "https://qr-code-checkin.vercel.app/api/employee/check-attendance",
+            { employeeID: userID },
+            { withCredentials: true }
+          );
+
+          if (res.data.success) {
+            alert("Attendance checked successfully!");
+          } else {
+            alert("Expired QR code. Please generate a new QR code.");
+          }
         } else {
-          alert("Expired QR code. Please generate a new QR code.");
+          alert("Invalid QR code. Please scan the correct QR code.");
         }
       } catch (error) {
-        console.error("Error checking attendance:", error);
-        alert("An error occurred while checking attendance.");
+        console.error("Error:", error);
+        alert("An error occurred.");
       } finally {
-        // Reset the state after the API call
         setAttendanceChecked(false);
       }
     }

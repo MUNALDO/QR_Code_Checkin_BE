@@ -37,8 +37,11 @@ mongoose.connection.on('disconnected', () => {
     console.log("Database disconnected");
 });
 
-app.use(cors());
-// app.options('*', cors());
+app.use(cors({
+    credentials: true,
+}));
+
+app.options('*', cors());
 
 app.use(cookieParser());
 app.use(express.json());

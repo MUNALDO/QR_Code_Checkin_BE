@@ -40,7 +40,7 @@ mongoose.connection.on('disconnected', () => {
 app.use(cors({
     origin: ['http://localhost:3000', 'https://qr-code-checkin-be.vercel.app',
         'https://qr-code-checkin.vercel.app', 'https://qr-code-checkin-thai-nx.vercel.app',
-        'https://3.113.9.36', 'https://www.3.113.9.36.com', 'http://3.113.9.36'],
+        'https://18.182.87.163', 'https://www.18.182.87.163.com', 'http://18.182.87.163', 'thainxqr.qrapp.com'],
     credentials: true,
 }));
 

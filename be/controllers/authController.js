@@ -35,7 +35,10 @@ export const registerAdmin = async (req, res, next) => {
 
 export const loginAdmin = async (req, res, next) => {
     try {
-        const admin = await AdminSchema.findOne({ name: req.body.name });
+        const admin = await AdminSchema.findOne({
+            name: req.body.name,
+            role: "Admin"
+        });
         if (!admin) return next(createError(NOT_FOUND, "Admin not found!"))
         const isPasswordCorrect = await bcrypt.compare(
             req.body.password,
@@ -105,7 +108,10 @@ export const registerInhaberByAdmin = async (req, res, next) => {
 
 export const loginInhaber = async (req, res, next) => {
     try {
-        const inhaber = await AdminSchema.findOne({ name: req.body.name });
+        const inhaber = await AdminSchema.findOne({
+            name: req.body.name,
+            role: "Inhaber"
+        });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"))
         const isPasswordCorrect = await bcrypt.compare(
             req.body.password,
@@ -219,7 +225,10 @@ export const registerManagerByInhaber = async (req, res, next) => {
 
 export const loginManager = async (req, res, next) => {
     try {
-        const manager = await AdminSchema.findOne({ name: req.body.name });
+        const manager = await AdminSchema.findOne({
+            name: req.body.name,
+            role: "Manager"
+        });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"))
         const isPasswordCorrect = await bcrypt.compare(
             req.body.password,
@@ -316,7 +325,6 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
         next(err);
     }
 };
-
 
 export const registerEmployeeByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;

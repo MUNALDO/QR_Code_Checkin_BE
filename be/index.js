@@ -63,8 +63,8 @@ app.use((err, req, res, next) => {
 async function startApp() {
     await autoChecking();
     await connect();
-    app.listen(8000, () => {
-        console.log('Server is running on port 8000');
+    app.listen(8800, () => {
+        console.log('Server is running on port 8800');
     });
 }
 

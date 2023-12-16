@@ -118,13 +118,13 @@ export const loginInhaber = async (req, res, next) => {
             inhaber.password
         )
         if (!isPasswordCorrect) return next(createError(BAD_REQUEST, "Wrong password!"))
-        const token_admin = jwt.sign(
+        const token_inhaber = jwt.sign(
             { id: inhaber.id, role: inhaber.role == "Inhaber" },
-            process.env.JWT_ADMIN,
+            process.env.JWT_INHABER,
             { expiresIn: "24h" },
         )
         const { password, ...otherDetails } = inhaber._doc;
-        res.cookie("access_token_admin", token_admin, {
+        res.cookie("access_token_inhaber", token_inhaber, {
             httpOnly: true,
             sameSite: "none",
             secure: true,
@@ -135,7 +135,7 @@ export const loginInhaber = async (req, res, next) => {
 };
 
 export const logoutInhaber = (req, res, next) => {
-    res.clearCookie("access_token_admin")
+    res.clearCookie("access_token_inhaber")
         .status(OK)
         .json("Inhaber has been successfully logged out.");
 };
@@ -235,13 +235,13 @@ export const loginManager = async (req, res, next) => {
             manager.password
         )
         if (!isPasswordCorrect) return next(createError(BAD_REQUEST, "Wrong password!"))
-        const token_admin = jwt.sign(
+        const token_manager = jwt.sign(
             { id: manager.id, role: manager.role == "Manager" },
-            process.env.JWT_ADMIN,
+            process.env.JWT_MANAGER,
             { expiresIn: "24h" },
         )
         const { password, ...otherDetails } = manager._doc;
-        res.cookie("access_token_admin", token_admin, {
+        res.cookie("access_token_manager", token_manager, {
             httpOnly: true,
             sameSite: "none",
             secure: true,
@@ -252,7 +252,7 @@ export const loginManager = async (req, res, next) => {
 };
 
 export const logoutManager = (req, res, next) => {
-    res.clearCookie("access_token_admin")
+    res.clearCookie("access_token_manager")
         .status(OK)
         .json("Manager has been successfully logged out.");
 };

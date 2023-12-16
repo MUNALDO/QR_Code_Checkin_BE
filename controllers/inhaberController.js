@@ -673,3 +673,123 @@ export const getEmployeeAttendanceByInhaber = async (req, res, next) => {
         next(err);
     }
 };
+
+export const getSalaryForEmployeeByInhaber = async (req, res, next) => {
+    try {
+        const employeeID = req.params.employeeID;
+        const inhaber_name = req.query.inhaber_name;
+        const year = parseInt(req.query.year);
+        const month = parseInt(req.query.month);
+
+        if (!year || !month || !employeeID || !inhaber_name) {
+            return res.status(BAD_REQUEST).json({
+                success: false,
+                status: BAD_REQUEST,
+                message: "Year, month, employee ID and inhaber name are required parameters",
+            });
+        }
+
+        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+
+        if (inhaber.department_name !== employee.department_name) {
+            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));
+        }
+
+        const salary = employee.salary.find(stat =>
+            stat.year === year && stat.month === month
+        );
+
+        const objectReturn = {
+            employee_id: employee.id,
+            employee_name: employee.name,
+            email: employee.email,
+            department_name: employee.department_name,
+            role: employee.role,
+            position: employee.position,
+            salary: salary
+        }
+
+        if (salary) {
+            return res.status(OK).json({
+                success: true,
+                status: OK,
+                message: objectReturn,
+            });
+        } else {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: "Salary record not found for the specified month and year.",
+            });
+        }
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getSalaryForAllEmployeesByInhaber = async (req, res, next) => {
+    try {
+        const year = parseInt(req.query.year);
+        const month = parseInt(req.query.month);
+        const inhaber_name = req.query.inhaber_name;
+
+        if (!year || !month || !inhaber_name) {
+            return res.status(BAD_REQUEST).json({
+                success: false,
+                status: BAD_REQUEST,
+                message: "Year, month and inhaber name are required parameters",
+            });
+        }
+        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        const employees = await EmployeeSchema.find();
+        if (!employees) return next(createError(NOT_FOUND, "Employees not found!"));
+
+        const matchedEmployees = employees.filter(employee => {
+            return (employee.department_name === inhaber.department_name);
+        })
+
+        let salaries = [];
+
+        for (const employee of matchedEmployees) {
+            const salary = employee.salary.find(stat =>
+                stat.year === year && stat.month === month
+            );
+
+            if (salary) {
+                salaries.push({
+                    employee_id: employee.id,
+                    employee_name: employee.name,
+                    email: employee.email,
+                    department_name: employee.department_name,
+                    role: employee.role,
+                    position: employee.position,
+                    salary: salary
+                });
+            } else {
+                salaries.push({
+                    employee_id: employee.id,
+                    employee_name: employee.name,
+                    email: employee.email,
+                    department_name: employee.department_name,
+                    role: employee.role,
+                    position: employee.position,
+                    salary: null,
+                    message: "Salary record not found for the specified month and year."
+                });
+            }
+        }
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            salaries: salaries,
+        });
+    } catch (err) {
+        next(err);
+    }
+};

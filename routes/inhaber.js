@@ -1,42 +1,49 @@
 import express from 'express';
-import { verifyUserInhaber } from '../utils/verifyToken.js';
 import {
     createDateDesignByInhaber, deleteDateSpecificByInhaber, deleteEmployeeByIdByInhaber,
-    getAllDatesByInhaber, getAllEmployeeAttendanceByInhaber, getAllEmployees, 
+    getAllDatesByInhaber, getAllEmployeeAttendanceByInhaber, getAllEmployees,
     getDateDesignInMonthByInhaber, getDateSpecificByInhaber, getEmployeeAttendanceByInhaber,
-    getEmployeeSpecific, getEmployeesByDateAndShiftByInhaber, getEmployeesByDateByInhaber, updateEmployeeByInhaber
+    getEmployeeSpecific, getEmployeesByDateAndShiftByInhaber, getEmployeesByDateByInhaber,
+    getSalaryForAllEmployeesByInhaber, getSalaryForEmployeeByInhaber, updateEmployeeByInhaber
 } from '../controllers/inhaberController.js';
 import {
     createShift, getAllShifts, getShiftByCode,
     getShiftByName, updateShift
 } from '../controllers/shiftController.js';
+import { salaryCalculate } from '../controllers/salaryController.js';
+import { verifyTokenInhaber } from '../utils/verifyToken.js';
 
 const router = express.Router();
 
 // manage employee
-router.put("/manage-employee/update", verifyUserInhaber, updateEmployeeByInhaber);
-router.delete("/manage-employee/delete-byId", verifyUserInhaber, deleteEmployeeByIdByInhaber);
-router.get("/manage-employee/get-all", verifyUserInhaber, getAllEmployees);
-router.get("/manage-employee/get-specific", verifyUserInhaber, getEmployeeSpecific);
-router.get("/manage-employee/get-by-date", verifyUserInhaber, getEmployeesByDateByInhaber);
-router.get("/manage-employee/get-by-date&shift", verifyUserInhaber, getEmployeesByDateAndShiftByInhaber);
+router.put("/manage-employee/update", verifyTokenInhaber, updateEmployeeByInhaber);
+router.delete("/manage-employee/delete-byId", verifyTokenInhaber, deleteEmployeeByIdByInhaber);
+router.get("/manage-employee/get-all", verifyTokenInhaber, getAllEmployees);
+router.get("/manage-employee/get-specific", verifyTokenInhaber, getEmployeeSpecific);
+router.get("/manage-employee/get-by-date", verifyTokenInhaber, getEmployeesByDateByInhaber);
+router.get("/manage-employee/get-by-date&shift", verifyTokenInhaber, getEmployeesByDateAndShiftByInhaber);
 
 // manage date design
-router.post("/manage-date-design/create", verifyUserInhaber, createDateDesignByInhaber);
-router.get('/manage-date-design/get-all', verifyUserInhaber, getAllDatesByInhaber);
-router.get('/manage-date-design/get-by-month', verifyUserInhaber, getDateDesignInMonthByInhaber);
-router.get('/manage-date-design/get-by-date', verifyUserInhaber, getDateSpecificByInhaber);
-router.delete('/manage-date-design/delete', verifyUserInhaber, deleteDateSpecificByInhaber);
+router.post("/manage-date-design/create", verifyTokenInhaber, createDateDesignByInhaber);
+router.get('/manage-date-design/get-all', verifyTokenInhaber, getAllDatesByInhaber);
+router.get('/manage-date-design/get-by-month', verifyTokenInhaber, getDateDesignInMonthByInhaber);
+router.get('/manage-date-design/get-by-date', verifyTokenInhaber, getDateSpecificByInhaber);
+router.delete('/manage-date-design/delete', verifyTokenInhaber, deleteDateSpecificByInhaber);
 
 // manage shift
-router.post('/manage-shift/create', verifyUserInhaber, createShift);
-router.get('/manage-shift/get-all', verifyUserInhaber, getAllShifts);
-router.get('/manage-shift/get-by-code', verifyUserInhaber, getShiftByCode);
-router.get('/manage-shift/get-by-name', verifyUserInhaber, getShiftByName);
-router.put('/manage-shift/update', verifyUserInhaber, updateShift);
+router.post('/manage-shift/create', verifyTokenInhaber, createShift);
+router.get('/manage-shift/get-all', verifyTokenInhaber, getAllShifts);
+router.get('/manage-shift/get-by-code', verifyTokenInhaber, getShiftByCode);
+router.get('/manage-shift/get-by-name', verifyTokenInhaber, getShiftByName);
+router.put('/manage-shift/update', verifyTokenInhaber, updateShift);
 
 // manage attendance
-router.get('/manage-attendance/get-all', verifyUserInhaber, getAllEmployeeAttendanceByInhaber);
-router.get('/manage-attendance/get-specific/:employeeID', verifyUserInhaber, getEmployeeAttendanceByInhaber);
+router.get('/manage-attendance/get-all', verifyTokenInhaber, getAllEmployeeAttendanceByInhaber);
+router.get('/manage-attendance/get-specific/:employeeID', verifyTokenInhaber, getEmployeeAttendanceByInhaber);
+
+// manage salary
+router.post('/manage-salary/calculate/:employeeID', verifyTokenInhaber, salaryCalculate);
+router.get('/manage-salary/get-single/:employeeID', verifyTokenInhaber, getSalaryForEmployeeByInhaber);
+router.get('/manage-salary/get-all', verifyTokenInhaber, getSalaryForAllEmployeesByInhaber);
 
 export default router;

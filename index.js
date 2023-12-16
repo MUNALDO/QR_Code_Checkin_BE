@@ -13,10 +13,10 @@ import inhaberRoute from "./routes/inhaber.js";
 import managerRoute from "./routes/manager.js"
 import { autoCheck } from './controllers/employeeController.js';
 
-process.env.TZ = 'Asia/Ho_Chi_Minh';
 const app = express();
 dotenv.config();
 mongoose.set('strictQuery', false);
+process.env.TZ = 'Asia/Ho_Chi_Minh';
 
 async function autoChecking() {
     await connect();

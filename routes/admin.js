@@ -14,7 +14,7 @@ import {
     getShiftByCode, getShiftByName, updateShift
 } from '../controllers/shiftController.js';
 import { verifyTokenAdmin, verifyUserAdmin } from '../utils/verifyToken.js';
-import { getSalary, salaryCalculate } from '../controllers/salaryController.js';
+import { getSalaryForAllEmployees, getSalaryForEmployee, salaryCalculate } from '../controllers/salaryController.js';
 import { exportAttendanceToExcel } from '../controllers/xlsxController.js';
 import {
     createDateDesign, deleteDateSpecific,
@@ -81,6 +81,7 @@ router.get('/manage-attendance/get-specific/:employeeID', verifyUserAdmin, getEm
 
 // manage salary
 router.post('/manage-salary/calculate/:employeeID', verifyTokenAdmin, salaryCalculate);
-router.get('/manage-salary/get/:employeeID', verifyTokenAdmin, getSalary);
+router.get('/manage-salary/get-single/:employeeID', verifyTokenAdmin, getSalaryForEmployee);
+router.get('/manage-salary/get-all', verifyTokenAdmin, getSalaryForAllEmployees);
 
 export default router;

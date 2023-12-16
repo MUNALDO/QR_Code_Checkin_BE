@@ -85,11 +85,9 @@ export const salaryCalculate = async (req, res, next) => {
     const days_off = employee.default_day_off - employee.realistic_day_off;
     const salary_day_off = [(b * 3) / 65] * days_off;
 
-    // Calculate total salary
     const salary = (hourNormal + hourOvertime) * a - b - c + salary_day_off - employee.house_rent_money + kmNumber * d;
 
     if (existStat) {
-        // Update existing record
         existStat.date_calculate = new Date();
         existStat.total_salary = salary;
         existStat.hour_normal = hourNormal;
@@ -129,7 +127,7 @@ export const salaryCalculate = async (req, res, next) => {
     }
 };
 
-export const getSalary = async (req, res, next) => {
+export const getSalaryForEmployee = async (req, res, next) => {
     try {
         const employeeID = req.params.employeeID;
         const year = parseInt(req.query.year);
@@ -150,11 +148,21 @@ export const getSalary = async (req, res, next) => {
             stat.year === year && stat.month === month
         );
 
+        const objectReturn = {
+            employee_id: employee.id,
+            employee_name: employee.name,
+            email: employee.email,
+            department_name: employee.department_name,
+            role: employee.role,
+            position: employee.position,
+            salary: salary
+        }
+
         if (salary) {
             return res.status(OK).json({
                 success: true,
                 status: OK,
-                message: salary,
+                message: objectReturn,
             });
         } else {
             return res.status(NOT_FOUND).json({
@@ -163,6 +171,61 @@ export const getSalary = async (req, res, next) => {
                 message: "Salary record not found for the specified month and year.",
             });
         }
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getSalaryForAllEmployees = async (req, res, next) => {
+    try {
+        const year = parseInt(req.query.year);
+        const month = parseInt(req.query.month);
+
+        if (!year || !month) {
+            return res.status(BAD_REQUEST).json({
+                success: false,
+                status: BAD_REQUEST,
+                message: "Year and month are required parameters",
+            });
+        }
+
+        const employees = await EmployeeSchema.find();
+        if (!employees) return next(createError(NOT_FOUND, "Employees not found!"));
+
+        let salaries = [];
+
+        for (const employee of employees) {
+            const salary = employee.salary.find(stat =>
+                stat.year === year && stat.month === month
+            );
+            if (salary) {
+                salaries.push({
+                    employee_id: employee.id,
+                    employee_name: employee.name,
+                    email: employee.email,
+                    department_name: employee.department_name,
+                    role: employee.role,
+                    position: employee.position,
+                    salary: salary
+                });
+            } else {
+                salaries.push({
+                    employee_id: employee.id,
+                    employee_name: employee.name,
+                    email: employee.email,
+                    department_name: employee.department_name,
+                    role: employee.role,
+                    position: employee.position,
+                    salary: null,
+                    message: "Salary record not found for the specified month and year."
+                });
+            }
+        }
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            salaries: salaries,
+        });
     } catch (err) {
         next(err);
     }

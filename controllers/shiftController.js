@@ -4,7 +4,6 @@ import { createError } from "../utils/error.js";
 
 export const createShift = async (req, res, next) => {
     const shift_code = req.body.code;
-
     try {
         const newShift = new ShiftSchema({
             code: shift_code,
@@ -71,7 +70,6 @@ export const getShiftByName = async (req, res, next) => {
 
 export const updateShift = async (req, res, next) => {
     const shift_code = req.query.code;
-
     try {
         const shift = await ShiftSchema.findOne({ code: shift_code });
         if (!shift) return next(createError(NOT_FOUND, "Shift not found!"))
@@ -95,7 +93,6 @@ export const updateShift = async (req, res, next) => {
 
 export const deleteShiftByCode = async (req, res, next) => {
     const shift_code = req.query.code;
-
     try {
         const shift = await ShiftSchema.findOne({ code: shift_code });
         if (!shift) return next(createError(NOT_FOUND, "Shift not found!"))

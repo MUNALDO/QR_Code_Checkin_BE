@@ -4,7 +4,6 @@ import EmployeeSchema from "../models/EmployeeSchema.js";
 import { createError } from "../utils/error.js";
 
 export const createDepartment = async (req, res, next) => {
-
     try {
         const newDepartment = new DepartmentSchema({
             ...req.body,
@@ -50,7 +49,6 @@ export const getDepartmentByName = async (req, res, next) => {
 
 export const getDepartmentSpecific = async (req, res, next) => {
     const query = req.query.query;
-    // console.log(query);
     try {
         if (!query) {
             const department = await DepartmentSchema.find();
@@ -83,7 +81,6 @@ export const getDepartmentSpecific = async (req, res, next) => {
 
 export const updateDepartment = async (req, res, next) => {
     const department_name = req.query.name;
-
     try {
         const department = await DepartmentSchema.findOne({ name: department_name });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"))
@@ -115,7 +112,6 @@ export const updateDepartment = async (req, res, next) => {
 
 export const deleteDepartmentByName = async (req, res, next) => {
     const department_name = req.query.name;
-
     try {
         const department = await DepartmentSchema.findOne({ name: department_name });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"))
@@ -134,7 +130,6 @@ export const deleteDepartmentByName = async (req, res, next) => {
 export const addMemberDepartment = async (req, res, next) => {
     const department_name = req.query.name;
     const employeeID = req.body.employeeID;
-
     try {
         const department = await DepartmentSchema.findOne({ name: department_name });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"))

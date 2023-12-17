@@ -3,7 +3,7 @@ import {
     checkAttendance, createRequest, getAttendanceByCurrentMonth,
     getAttendanceCurrentTime, getDateDesignInMonthByEmployee, updateAttendance, verifyWifi
 } from '../controllers/employeeController.js';
-import { verifyTokenEmployee } from '../utils/verifyToken.js';
+// import { verifyTokenEmployee } from '../utils/verifyToken.js';
 import multer from 'multer';
 
 const storage = multer.memoryStorage();
@@ -11,17 +11,17 @@ const upload = multer({ storage: storage });
 const router = express.Router();
 
 // verify wifi
-router.post('/verify-wifi', verifyTokenEmployee, verifyWifi);
+router.post('/verify-wifi', verifyWifi);
 
 // attendance
-router.post('/check-attendance', verifyTokenEmployee, checkAttendance);
-router.post('/update-attendance', verifyTokenEmployee, upload.single('image'), updateAttendance);
-router.get('/get-attendance-month', verifyTokenEmployee, getAttendanceByCurrentMonth);
-router.get('/get-attendance-now', verifyTokenEmployee, getAttendanceCurrentTime);
+router.post('/check-attendance', checkAttendance);
+router.post('/update-attendance', upload.single('image'), updateAttendance);
+router.get('/get-attendance-month', getAttendanceByCurrentMonth);
+router.get('/get-attendance-now', getAttendanceCurrentTime);
 
 // request
-router.post('/create-request', verifyTokenEmployee, createRequest);
+router.post('/create-request', createRequest);
 
 // schedule
-router.get('/get-schedules', verifyTokenEmployee, getDateDesignInMonthByEmployee);
+router.get('/get-schedules', getDateDesignInMonthByEmployee);
 export default router;

@@ -95,6 +95,7 @@ export const updateDepartment = async (req, res, next) => {
         )
 
         for (const employee of employees) {
+            if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
             employee.department_name = updateDepartment.name;
             await employee.save();
         }

@@ -190,6 +190,7 @@ export const createDateDesignByManager = async (req, res, next) => {
 
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
         if (manager.department_name !== employee.department_name) {
             return next(createError(FORBIDDEN, "Permission denied. manager can only intervention an employee in their department."));

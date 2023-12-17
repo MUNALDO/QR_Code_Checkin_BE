@@ -15,12 +15,6 @@ function calculateDuration(startDate, endDate) {
     return durationInDays;
 }
 
-// // Example usage:
-// const startDate = "2023-12-27T17:00:00.000Z";
-// const endDate = "2024-01-01T17:00:00.000Z";
-
-// const duration = calculateDuration(startDate, endDate);
-
 export const createDayOff = async (req, res, next) => {
     const date_start = req.body.date_start;
     const date_end = req.body.date_end;
@@ -45,6 +39,7 @@ export const createDayOff = async (req, res, next) => {
         if (newDayOff.type === 'specific') {
             const employee = await EmployeeSchema.findOne({ id: employeeID });
             if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+            if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
             employee.dayOff_schedule.push({
                 date_start: newDayOff.date_start,
@@ -68,7 +63,7 @@ export const createDayOff = async (req, res, next) => {
             await employee.save();
         } else if (newDayOff.type === 'global') {
             // Get information of all employees and add to the allowed field
-            const employees = await EmployeeSchema.find();
+            const employees = await EmployeeSchema.find({ status: "active" });
             employees.forEach(employee => {
                 newDayOff.members.push({
                     id: employee.id,

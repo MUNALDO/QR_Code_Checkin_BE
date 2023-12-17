@@ -18,9 +18,8 @@ export const salaryCalculate = async (req, res, next) => {
     }
 
     const employee = await EmployeeSchema.findOne({ id: employeeID });
-    if (!employee) {
-        return next(createError(NOT_FOUND, "Employee not found!"));
-    }
+    if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+    if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
     const existStat = employee.salary.find(stat => stat.year === year && stat.month === month);
     let a = req.body.a_new ?? 0;

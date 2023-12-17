@@ -1,7 +1,7 @@
 import express from 'express';
 import {
     checkAttendance, createRequest, getAttendanceByCurrentMonth,
-    getAttendanceCurrentTime, getDateDesignInMonthByEmployee, updateAttendance, verifyWifi
+    getAttendanceCurrentTime, getDateDesignInMonthByEmployee, updateAttendance
 } from '../controllers/employeeController.js';
 // import { verifyTokenEmployee } from '../utils/verifyToken.js';
 import multer from 'multer';
@@ -11,7 +11,7 @@ const upload = multer({ storage: storage });
 const router = express.Router();
 
 // verify wifi
-router.post('/verify-wifi', verifyWifi);
+// router.post('/verify-wifi', verifyWifi);
 
 // attendance
 router.post('/check-attendance', checkAttendance);

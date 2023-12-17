@@ -12,6 +12,7 @@ export const createDateDesign = async (req, res, next) => {
 
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
         const existingDateInSchedules = employee.schedules.find(schedule => {
             return schedule.date.getTime() === new Date(req.body.date).getTime();
@@ -180,6 +181,7 @@ export const deleteDateSpecific = async (req, res, next) => {
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
         const existingDateIndex = employee.schedules.findIndex(schedule => {
             return schedule.date.getTime() === new Date(req.body.date).getTime();

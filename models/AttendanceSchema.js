@@ -2,6 +2,10 @@ import mongoose from "mongoose";
 
 const attendanceSchema = new mongoose.Schema(
     {
+        department_name: {
+            type: String,
+            required: true
+        },
         date: {
             type: Date,
             required: true,
@@ -64,7 +68,7 @@ const attendanceSchema = new mongoose.Schema(
                 type: String,
                 enum: ['company', 'private']
             },
-            car_name: {
+            car_number: {
                 type: String
             }
         },

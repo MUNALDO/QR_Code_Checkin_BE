@@ -7,6 +7,7 @@ import ShiftSchema from "../models/ShiftSchema.js";
 import DepartmentSchema from "../models/DepartmentSchema.js";
 import RequestSchema from "../models/RequestSchema.js";
 import DayOffSchema from "../models/DayOffSchema.js";
+import cron from 'node-cron';
 
 export const updateEmployee = async (req, res, next) => {
     const employeeID = req.query.employeeID;
@@ -20,6 +21,7 @@ export const updateEmployee = async (req, res, next) => {
         if (!updateEmployee) {
             return next(createError(NOT_FOUND, "Employee not found!"));
         }
+        if (updateEmployee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
         const department = await DepartmentSchema.findOne({ name: updateEmployee.department_name });
         if (!department) {
@@ -57,11 +59,49 @@ export const updateEmployee = async (req, res, next) => {
     }
 };
 
+export const madeEmployeeInactive = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+    try {
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
+
+        const inactiveDate = new Date(req.body.inactive_day);
+        employee.inactive_day = inactiveDate;
+        const currentDate = new Date();
+
+        // Check if the inactive date is in the future
+        if (inactiveDate > currentDate) {
+            const day = inactiveDate.getDate();
+            const month = inactiveDate.getMonth();
+            const year = inactiveDate.getFullYear();
+
+            // Schedule the status update
+            cron.schedule(`0 0 0 ${day} ${month} ${year}`, async () => {
+                employee.inactive_day = inactiveDate;
+                employee.status = "inactive";
+                await employee.save();
+            });
+
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: "Employee will be made inactive on the specified date."
+            });
+        } else {
+            return next(createError(BAD_REQUEST, "Inactive day must be in the future."));
+        }
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const deleteEmployeeById = async (req, res, next) => {
     const employeeID = req.query.employeeID;
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
         const department = await DepartmentSchema.findOne({ name: employee.department_name });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"));
@@ -370,7 +410,7 @@ export const getEmployeesByDateAndShift = async (req, res, next) => {
         if (!shift) return next(createError(NOT_FOUND, "Shift not found!"))
 
         // Find all employees
-        const employees = await EmployeeSchema.find();
+        const employees = await EmployeeSchema.find({ status: "active" });
 
         // Filter employees based on the target date and shift code
         const matchedEmployees = employees.filter(employee => {
@@ -549,6 +589,7 @@ export const handleRequest = async (req, res, next) => {
 
         const employee = await EmployeeSchema.findOne({ id: updateRequest.employee_id });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
         if (updateRequest.answer_status === "approved") {
             day_off.allowed = true;

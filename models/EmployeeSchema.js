@@ -27,9 +27,7 @@ const employeeSchema = new mongoose.Schema(
         gender: {
             type: String,
         },
-        department_name: {
-            type: String,
-        },
+        department_name: [],
         role: {
             type: String,
             default: 'Employee',
@@ -109,6 +107,10 @@ const employeeSchema = new mongoose.Schema(
         ],
         schedules: [
             {
+                department_name: {
+                    type: String,
+                    required: true
+                },
                 date: {
                     type: Date,
                     required: true
@@ -135,6 +137,12 @@ const employeeSchema = new mongoose.Schema(
             type: String,
             enum: ['active', 'inactive'],
             default: 'active',
+        },
+        active_day: {
+            type: Date
+        },
+        inactive_day: {
+            type: Date
         }
     },
     { timestamps: true }

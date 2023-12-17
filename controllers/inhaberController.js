@@ -4,6 +4,7 @@ import EmployeeSchema from "../models/EmployeeSchema.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import AdminSchema from "../models/AdminSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";
+import cron from 'node-cron';
 
 export const updateEmployeeByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
@@ -21,6 +22,7 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
         if (!updateEmployee) {
             return next(createError(NOT_FOUND, "Employee not found!"));
         }
+        if (updateEmployee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
         const department = await DepartmentSchema.findOne({ name: updateEmployee.department_name });
         if (!department) {
@@ -62,6 +64,41 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
     }
 };
 
+export const madeEmployeeInactive = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+    try {
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
+
+        const inactiveDate = new Date(req.body.inactive_day);
+        const currentDate = new Date();
+
+        // Check if the inactive date is in the future
+        if (inactiveDate > currentDate) {
+            const day = inactiveDate.getDate();
+            const month = inactiveDate.getMonth();
+            const year = inactiveDate.getFullYear();
+
+            // Schedule the status update
+            cron.schedule(`0 0 0 ${day} ${month} ${year}`, async () => {
+                employee.status = "inactive";
+                await employee.save();
+            });
+
+            res.status(OK).json({
+                success: true,
+                status: OK,
+                message: "Employee will be made inactive on the specified date."
+            });
+        } else {
+            return next(createError(BAD_REQUEST, "Inactive day must be in the future."));
+        }
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const deleteEmployeeByIdByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
     const employeeID = req.query.employeeID;
@@ -71,6 +108,7 @@ export const deleteEmployeeByIdByInhaber = async (req, res, next) => {
 
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
         const department = await DepartmentSchema.findOne({ name: employee.department_name });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"));
@@ -271,6 +309,7 @@ export const createDateDesignByInhaber = async (req, res, next) => {
 
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
         if (inhaber.department_name !== employee.department_name) {
             return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));

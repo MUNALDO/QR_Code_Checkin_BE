@@ -64,6 +64,9 @@ const employeeSchema = new mongoose.Schema(
                 hour_overtime: {
                     type: Number
                 },
+                total_km: {
+                    type: Number
+                },
                 a_parameter: {
                     type: Number
                 },

@@ -96,7 +96,9 @@ export const salaryCalculate = async (req, res, next) => {
         existStat.b_parameter = b;
         existStat.c_parameter = c;
         existStat.d_parameter = d;
-
+        if (employee.position === "Autofahrer") {
+            existStat.total_km = kmNumber;
+        }
         await employee.save();
         return res.status(OK).json({
             success: true,
@@ -117,6 +119,9 @@ export const salaryCalculate = async (req, res, next) => {
             c_parameter: c,
             d_parameter: d
         };
+        if (employee.position === "Autofahrer") {
+            newSalary.total_km = kmNumber;
+        }
         employee.salary.push(newSalary);
         await employee.save();
         return res.status(OK).json({

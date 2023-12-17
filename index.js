@@ -44,7 +44,6 @@ app.use(cors({
         'qrapp.qxotttabcxyz.online', 'http://192.168.0.102:3000', 'http://localhost:8800'],
     credentials: true,
 }));
-
 app.options('*', cors());
 
 app.use(cookieParser());

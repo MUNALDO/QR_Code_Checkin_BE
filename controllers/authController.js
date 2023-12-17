@@ -480,7 +480,7 @@ export const loginEmployee = async (req, res, next) => {
         res.cookie("access_token_employee", token_employee, {
             httpOnly: true,
             sameSite: "none",
-            secure: true,
+            secure: false,
         }).status(OK).json({ details: { ...otherDetails } })
     } catch (err) {
         next(err)

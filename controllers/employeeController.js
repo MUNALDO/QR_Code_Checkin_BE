@@ -826,7 +826,7 @@ export const getAttendanceCurrentTime = async (req, res, next) => {
 
 export const getDateDesignInMonthByEmployee = async (req, res, next) => {
     const employeeID = req.query.employeeID;
-    const targetMonth = req.body.month;
+    const targetMonth = req.query.month;
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));

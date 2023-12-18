@@ -47,28 +47,28 @@ export const getEmployeeSpecific = async (req, res, next) => {
         const employeePosition = await EmployeeSchema.find({ position: query });
 
         if (employeeName.length !== 0) {
-            const filteredEmployees = employeeName.filter(employee => employee.department_name === manager.department_name);
+            const filteredEmployees = employeeName.filter(employee => employee.department_name.includes(manager.department_name));
             res.status(OK).json({
                 success: true,
                 status: OK,
                 message: filteredEmployees,
             });
         } else if (employeeID.length !== 0) {
-            const filteredEmployees = employeeID.filter(employee => employee.department_name === manager.department_name);
+            const filteredEmployees = employeeID.filter(employee => employee.department_name.includes(manager.department_name));
             res.status(OK).json({
                 success: true,
                 status: OK,
                 message: filteredEmployees,
             });
         } else if (employeeRole.length !== 0) {
-            const filteredEmployees = employeeRole.filter(employee => employee.department_name === manager.department_name);
+            const filteredEmployees = employeeRole.filter(employee => employee.department_name.includes(manager.department_name));
             res.status(OK).json({
                 success: true,
                 status: OK,
                 message: filteredEmployees,
             });
         } else if (employeePosition.length !== 0) {
-            const filteredEmployees = employeePosition.filter(employee => employee.department_name === manager.department_name);
+            const filteredEmployees = employeePosition.filter(employee => employee.department_name.includes(manager.department_name));
             res.status(OK).json({
                 success: true,
                 status: OK,
@@ -106,7 +106,7 @@ export const getEmployeesByDateByManager = async (req, res, next) => {
 
             return (
                 matchedSchedules.length > 0 &&
-                manager.department_name === employee.department_name
+                employee.department_name.includes(manager.department_name)
             );
         });
 
@@ -155,7 +155,7 @@ export const getEmployeesByDateAndShiftByManager = async (req, res, next) => {
 
             return (
                 matchedSchedules.length > 0 &&
-                manager.department_name === employee.department_name
+                employee.department_name.includes(manager.department_name)
             );
         });
 
@@ -192,7 +192,7 @@ export const createDateDesignByManager = async (req, res, next) => {
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
         if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
-        if (manager.department_name !== employee.department_name) {
+        if (!employee.department_name.includes(manager.department_name)) {
             return next(createError(FORBIDDEN, "Permission denied. manager can only intervention an employee in their department."));
         }
 
@@ -289,6 +289,118 @@ export const createDateDesignByManager = async (req, res, next) => {
     }
 };
 
+export const createMultipleDateDesignsByManager = async (req, res, next) => {
+    const manager_name = req.query.manager_name;
+    const shiftCode = req.body.shift_code;
+    const employeeID = req.query.employeeID;
+    const dates = req.body.dates;
+    try {
+        const manager = await AdminSchema.findOne({ name: manager_name });
+        if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
+
+        const shift = await ShiftSchema.findOne({ code: shiftCode });
+        if (!shift) return next(createError(NOT_FOUND, "Shift not found!"));
+
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
+
+        if (!employee.department_name.includes(manager.department_name)) {
+            return next(createError(FORBIDDEN, "Permission denied. Manager can only intervene with an employee in their department."));
+        }
+
+        for (const date of dates) {
+            const dateObj = new Date(date);
+            const existingDateInSchedule = employee.schedules.find(schedule =>
+                schedule.date.getTime() === dateObj.getTime()
+            );
+
+            if (existingDateInSchedule) {
+                // Skip if shift design already exists for this date
+                const existingShiftDesign = existingDateInSchedule.shift_design.find(design =>
+                    design.shift_code === shiftCode
+                );
+                if (existingShiftDesign) {
+                    // Shift design already exists for the day
+                    res.status(BAD_REQUEST).json({
+                        success: false,
+                        status: BAD_REQUEST,
+                        message: "Shift design already exists for the day"
+                    });
+                };
+
+                // Check for time range conflicts
+                const hasConflict = checkForTimeRangeConflict(existingDateInSchedule, shift);
+                if (hasConflict) {
+                    // Time range conflict
+                    res.status(BAD_REQUEST).json({
+                        success: false,
+                        status: BAD_REQUEST,
+                        message: "Time range conflict with existing shifts for the day",
+                    });
+                };
+
+                existingDateInSchedule.shift_design.push({
+                    department_name: manager.department_name,
+                    shift_code: shift.code,
+                    time_slot: shift.time_slot,
+                    shift_type: req.body.shift_type
+                });
+            } else {
+                // Create a new schedule entry for the date
+                employee.schedules.push({
+                    date: dateObj,
+                    shift_design: [{
+                        department_name: manager.department_name,
+                        shift_code: shift.code,
+                        time_slot: shift.time_slot,
+                        shift_type: req.body.shift_type
+                    }]
+                });
+            }
+        }
+
+        await employee.save();
+        const objectReturn = {
+            employee_id: employee.id,
+            employee_name: employee.name,
+            email: employee.email,
+            department_name: employee.department_name,
+            role: employee.role,
+            position: employee.position,
+            schedule: employee.schedules
+        };
+
+        res.status(CREATED).json({
+            success: true,
+            status: CREATED,
+            message: objectReturn
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+function checkForTimeRangeConflict(schedule, shift) {
+    const newShiftStartTime = convertToMinutes(shift.time_slot.detail[0].start_time);
+    const newShiftEndTime = convertToMinutes(shift.time_slot.total_number === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time);
+
+    return schedule.shift_design.some(existingShift => {
+        const existingStartTime = convertToMinutes(existingShift.time_slot.detail[0].start_time);
+        const existingEndTime = convertToMinutes(existingShift.time_slot.total_number === 1 ? existingShift.time_slot.detail[0].end_time : existingShift.time_slot.detail[1].end_time);
+
+        return (
+            (newShiftStartTime >= existingStartTime && newShiftStartTime < existingEndTime) ||
+            (newShiftEndTime > existingStartTime && newShiftEndTime <= existingEndTime)
+        );
+    });
+}
+
+function convertToMinutes(timeString) {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return hours * 60 + minutes;
+}
+
 export const getAllDatesByManager = async (req, res, next) => {
     const employeeID = req.query.employeeID;
     const manager_name = req.query.manager_name;
@@ -297,16 +409,21 @@ export const getAllDatesByManager = async (req, res, next) => {
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
 
         const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
-        if (manager.department_name !== employee.department_name) {
-            return next(createError(FORBIDDEN, "Permission denied. manager can only intervention an employee in their department."));
+        if (!employee.department_name.includes(manager.department_name)) {
+            return next(createError(FORBIDDEN, "Permission denied. manager can only view schedules of an employee in their department."));
         }
+
+        const matchedSchedules = employee.schedules.map(schedule => {
+            const matchedShiftDesigns = schedule.shift_design.filter(design => design.department_name === manager.department_name);
+            return matchedShiftDesigns.length > 0 ? { date: schedule.date, shift_design: matchedShiftDesigns } : null;
+        }).filter(schedule => schedule !== null);
 
         res.status(OK).json({
             success: true,
             status: OK,
-            message: employee.schedules,
+            message: matchedSchedules,
         });
     } catch (err) {
         next(err);
@@ -316,8 +433,7 @@ export const getAllDatesByManager = async (req, res, next) => {
 export const getDateDesignInMonthByManager = async (req, res, next) => {
     const employeeID = req.query.employeeID;
     const manager_name = req.query.manager_name;
-    const targetMonth = req.body.month;
-
+    const targetMonth = req.query.month;
     try {
         const manager = await AdminSchema.findOne({ name: manager_name });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
@@ -325,15 +441,18 @@ export const getDateDesignInMonthByManager = async (req, res, next) => {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
-        if (manager.department_name !== employee.department_name) {
-            return next(createError(FORBIDDEN, "Permission denied. manager can only intervene with an employee in their department."));
+        if (!employee.department_name.includes(manager.department_name)) {
+            return next(createError(FORBIDDEN, "Permission denied. manager can only view schedules of an employee in their department."));
         }
 
-        // Filter schedules for the target month
+        // Filter schedules for the target month and matching department
         const schedulesInMonth = employee.schedules.filter(schedule => {
             const scheduleMonth = schedule.date.getMonth() + 1;
-            return scheduleMonth === targetMonth;
-        });
+            return scheduleMonth == targetMonth;
+        }).map(schedule => {
+            const matchedShiftDesigns = schedule.shift_design.filter(design => design.department_name === manager.department_name);
+            return matchedShiftDesigns.length > 0 ? { date: schedule.date, shift_design: matchedShiftDesigns } : null;
+        }).filter(schedule => schedule !== null);
 
         if (schedulesInMonth.length === 0) {
             return res.status(NOT_FOUND).json({
@@ -356,26 +475,40 @@ export const getDateDesignInMonthByManager = async (req, res, next) => {
 export const getDateSpecificByManager = async (req, res, next) => {
     const employeeID = req.query.employeeID;
     const manager_name = req.query.manager_name;
+    const targetDate = new Date(req.query.date);
     try {
         const manager = await AdminSchema.findOne({ name: manager_name });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
 
         const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
-        if (manager.department_name !== employee.department_name) {
-            return next(createError(FORBIDDEN, "Permission denied. manager can only intervention an employee in their department."));
+        if (!employee.department_name.includes(manager.department_name)) {
+            return next(createError(FORBIDDEN, "Permission denied. manager can only view schedules of an employee in their department."));
         }
 
-        const date = employee.schedules.find(schedule => {
-            return schedule.date.getTime() === new Date(req.body.date).getTime();
+        const specificDateSchedule = employee.schedules.find(schedule => {
+            return schedule.date.getTime() === targetDate.getTime();
         });
-        if (!date) return next(createError(NOT_FOUND, "Date not found!"))
+
+        if (!specificDateSchedule) {
+            return next(createError(NOT_FOUND, "Date not found!"));
+        }
+
+        // Filter the shift designs by the manager's department
+        const filteredShiftDesigns = specificDateSchedule.shift_design.filter(design => {
+            return design.department_name === manager.department_name;
+        });
+
+        const result = {
+            date: specificDateSchedule.date,
+            shift_design: filteredShiftDesigns
+        };
 
         res.status(OK).json({
             success: true,
             status: OK,
-            message: date,
+            message: result,
         });
     } catch (err) {
         next(err);
@@ -391,29 +524,37 @@ export const deleteDateSpecificByManager = async (req, res, next) => {
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
 
         const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
-        if (manager.department_name !== employee.department_name) {
-            return next(createError(FORBIDDEN, "Permission denied. manager can only intervention an employee in their department."));
+        if (!employee.department_name.includes(manager.department_name)) {
+            return next(createError(FORBIDDEN, "Permission denied. manager can only modify schedules of an employee in their department."));
         }
 
-        const existingDateIndex = employee.schedules.findIndex(schedule => {
-            return schedule.date.getTime() === dateToDelete.getTime();
-        });
+        const specificDateSchedule = employee.schedules.find(schedule =>
+            schedule.date.getTime() === dateToDelete.getTime()
+        );
 
-        if (existingDateIndex === -1) {
+        if (!specificDateSchedule) {
             return next(createError(NOT_FOUND, "Date design not found!"));
         }
 
-        // Remove the date design
-        employee.schedules.splice(existingDateIndex, 1);
+        // Filter out the shift design for the manager's department
+        specificDateSchedule.shift_design = specificDateSchedule.shift_design.filter(design =>
+            design.department_name !== manager.department_name
+        );
+
+        // If no shift designs remain for the date, remove the date itself
+        if (specificDateSchedule.shift_design.length === 0) {
+            const index = employee.schedules.indexOf(specificDateSchedule);
+            employee.schedules.splice(index, 1);
+        }
 
         await employee.save();
 
         res.status(OK).json({
             success: true,
             status: OK,
-            message: employee,
+            message: "Shift design deleted successfully",
         });
     } catch (err) {
         next(err);

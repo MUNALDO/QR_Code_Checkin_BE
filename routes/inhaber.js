@@ -1,6 +1,6 @@
 import express from 'express';
 import {
-    createDateDesignByInhaber, deleteDateSpecificByInhaber, deleteEmployeeByIdByInhaber,
+    createDateDesignByInhaber, createMultipleDateDesignsByInhaber, deleteDateSpecificByInhaber, deleteEmployeeByIdByInhaber,
     getAllDatesByInhaber, getAllEmployeeAttendanceByInhaber, getAllEmployees,
     getDateDesignInMonthByInhaber, getDateSpecificByInhaber, getEmployeeAttendanceByInhaber,
     getEmployeeSpecific, getEmployeesByDateAndShiftByInhaber, getEmployeesByDateByInhaber,
@@ -25,7 +25,8 @@ router.get("/manage-employee/get-by-date", verifyTokenInhaber, getEmployeesByDat
 router.get("/manage-employee/get-by-date&shift", verifyTokenInhaber, getEmployeesByDateAndShiftByInhaber);
 
 // manage date design
-router.post("/manage-date-design/create", verifyTokenInhaber, createDateDesignByInhaber);
+router.post("/manage-date-design/create-day", verifyTokenInhaber, createDateDesignByInhaber);
+router.post("/manage-date-design/create-days", verifyTokenInhaber, createMultipleDateDesignsByInhaber);
 router.get('/manage-date-design/get-all', verifyTokenInhaber, getAllDatesByInhaber);
 router.get('/manage-date-design/get-by-month', verifyTokenInhaber, getDateDesignInMonthByInhaber);
 router.get('/manage-date-design/get-by-date', verifyTokenInhaber, getDateSpecificByInhaber);

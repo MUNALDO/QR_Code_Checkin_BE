@@ -64,12 +64,20 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
     }
 };
 
-export const madeEmployeeInactive = async (req, res, next) => {
+export const madeEmployeeInactiveByInhaber = async (req, res, next) => {
+    const inhaber_name = req.query.inhaber_name;
     const employeeID = req.query.employeeID;
     try {
+        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
         if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
+
+        if (inhaber.department_name !== employee.department_name) {
+            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));
+        }
 
         const inactiveDate = new Date(req.body.inactive_day);
         const currentDate = new Date();

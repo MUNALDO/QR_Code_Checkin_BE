@@ -137,10 +137,10 @@ export const autoCheck = async (req, res, next) => {
                             date: date.date,
                             employee_id: employee.id,
                             employee_name: employee.name,
-                            department_name: employee.department_name,
                             role: employee.role,
                             position: employee.position,
                             shift_info: {
+                                department_name: currentShiftDesign.department_name,
                                 shift_code: shift_code,
                                 shift_type: currentShiftDesign.shift_type,
                                 total_hour: 0,
@@ -324,10 +324,10 @@ export const checkAttendance = async (req, res, next) => {
                 date: date.date,
                 employee_id: employeeID,
                 employee_name: employee.name,
-                department_name: employee.department_name,
                 role: employee.role,
                 position: employee.position,
                 shift_info: {
+                    department_name: currentShiftDesign.department_name,
                     shift_code: shift_code,
                     shift_type: currentShiftDesign.shift_type,
                 }

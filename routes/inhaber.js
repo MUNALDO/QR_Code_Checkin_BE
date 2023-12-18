@@ -4,7 +4,7 @@ import {
     getAllDatesByInhaber, getAllEmployeeAttendanceByInhaber, getAllEmployees,
     getDateDesignInMonthByInhaber, getDateSpecificByInhaber, getEmployeeAttendanceByInhaber,
     getEmployeeSpecific, getEmployeesByDateAndShiftByInhaber, getEmployeesByDateByInhaber,
-    getSalaryForAllEmployeesByInhaber, getSalaryForEmployeeByInhaber, updateEmployeeByInhaber
+    getSalaryForAllEmployeesByInhaber, getSalaryForEmployeeByInhaber, madeEmployeeInactiveByInhaber, updateEmployeeByInhaber
 } from '../controllers/inhaberController.js';
 import {
     createShift, getAllShifts, getShiftByCode,
@@ -17,6 +17,7 @@ const router = express.Router();
 
 // manage employee
 router.put("/manage-employee/update", verifyTokenInhaber, updateEmployeeByInhaber);
+router.put('/manage-employee/make-inactive', verifyTokenInhaber, madeEmployeeInactiveByInhaber);
 router.delete("/manage-employee/delete-byId", verifyTokenInhaber, deleteEmployeeByIdByInhaber);
 router.get("/manage-employee/get-all", verifyTokenInhaber, getAllEmployees);
 router.get("/manage-employee/get-specific", verifyTokenInhaber, getEmployeeSpecific);

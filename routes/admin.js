@@ -3,7 +3,7 @@ import {
     deleteEmployeeById, getAllEmployeeAttendance, getAllEmployees,
     getAllRequests, getEmployeeAttendance, getEmployeeSpecific,
     getEmployeesByDate, getEmployeesByDateAndShift, getRequestById,
-    handleRequest, searchSpecific, updateEmployee
+    handleRequest, madeEmployeeInactive, searchSpecific, updateEmployee
 } from '../controllers/adminController.js';
 import {
     addMemberDepartment, createDepartment, deleteDepartmentByName, getAllDepartments,
@@ -17,7 +17,7 @@ import { verifyTokenAdmin } from '../utils/verifyToken.js';
 import { getSalaryForAllEmployees, getSalaryForEmployee, salaryCalculate } from '../controllers/salaryController.js';
 import { exportAttendanceToExcel } from '../controllers/xlsxController.js';
 import {
-    createDateDesign, deleteDateSpecific,
+    createDateDesign, createMultipleDateDesigns, deleteDateSpecific,
     getAllDates, getDateDesignInMonth, getDateSpecific
 } from '../controllers/dateDesignController.js';
 import {
@@ -38,6 +38,7 @@ router.get('/manage-employee/get-by-date&shift', verifyTokenAdmin, getEmployeesB
 router.get('/manage-employee/export-attendance', verifyTokenAdmin, exportAttendanceToExcel);
 router.delete('/manage-employee/delete-byId', verifyTokenAdmin, deleteEmployeeById);
 router.put('/manage-employee/update', verifyTokenAdmin, updateEmployee);
+router.put('/manage-employee/make-inactive', verifyTokenAdmin, madeEmployeeInactive);
 
 // department
 router.post('/manage-department/create', verifyTokenAdmin, createDepartment);
@@ -56,7 +57,8 @@ router.get('/manage-shift/get-by-name', verifyTokenAdmin, getShiftByName);
 router.put('/manage-shift/update', verifyTokenAdmin, updateShift);
 
 // date design
-router.post('/manage-date-design/create', verifyTokenAdmin, createDateDesign);
+router.post('/manage-date-design/create-day', verifyTokenAdmin, createDateDesign);
+router.post('/manage-date-design/create-days', verifyTokenAdmin, createMultipleDateDesigns);
 router.get('/manage-date-design/get-all', verifyTokenAdmin, getAllDates);
 router.get('/manage-date-design/get-by-month', verifyTokenAdmin, getDateDesignInMonth);
 router.get('/manage-date-design/get-by-date', verifyTokenAdmin, getDateSpecific);

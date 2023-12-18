@@ -107,16 +107,16 @@ const employeeSchema = new mongoose.Schema(
         ],
         schedules: [
             {
-                department_name: {
-                    type: String,
-                    required: true
-                },
                 date: {
                     type: Date,
                     required: true
                 },
                 shift_design: [
                     {
+                        department_name: {
+                            type: String,
+                            required: true
+                        },
                         shift_code: {
                             type: String,
                             required: true

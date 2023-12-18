@@ -1,9 +1,12 @@
 To do BE:
-1. fix 1 employee vao duoc nhieu department
-2. status: active => active_day => ngay tao employee
-status: inactive => inactive_day => ngay khoa employee(co the tu chon) => khong thuc hien duoc cac function khac
+1. fix 1 employee vao duoc nhieu department:Done
+2. status: active => active_day => ngay tao employee: Done
+status: inactive => inactive_day => ngay khoa employee(co the tu chon) => khong thuc hien duoc cac function khac:Done
 3. exports: table of all employees basic infor, table of salary follow month for all employees, table of attendance stats + salary follow month of a employee
-4. add shift for employee: co the add shift cho 1 nhieu ngay khac nhau cung 1 shift (Ex: CA1 cho 20/12, 23/12, 30/12,..) nhung phai trong 1 thang
+4. add shift for employee: co the add shift cho 1 nhieu ngay khac nhau cung 1 shift (Ex: CA1 cho 20/12, 23/12, 30/12,..) nhung phai trong 1 thang:Done
+*Note:
+- add shift can them department_name => tu chon options theo department_name cua employee => FE lam
+- add multiples date trong 1 thang: Thoi gian 1 thang FE tu gioi han
 5. day off/request day off: 
 5.1 admin update request day off => update so ngay nghi cua nhan vien
 5.2 duyet/k duyet request => email notification for employee

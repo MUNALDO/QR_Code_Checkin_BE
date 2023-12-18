@@ -2,10 +2,6 @@ import mongoose from "mongoose";
 
 const attendanceSchema = new mongoose.Schema(
     {
-        department_name: {
-            type: String,
-            required: true
-        },
         date: {
             type: Date,
             required: true,
@@ -18,9 +14,6 @@ const attendanceSchema = new mongoose.Schema(
             type: String,
             required: true,
         },
-        department_name: {
-            type: String,
-        },
         role: {
             type: String,
         },
@@ -28,6 +21,10 @@ const attendanceSchema = new mongoose.Schema(
             type: String,
         },
         shift_info: {
+            department_name: {
+                type: String,
+                required: true
+            },
             shift_code: {
                 type: String,
             },

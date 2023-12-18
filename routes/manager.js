@@ -1,9 +1,9 @@
 import express from 'express';
 import {
-    createDateDesignByManager, deleteDateSpecificByManager, getAllDatesByManager,
-    getAllEmployeeAttendanceByManager, getAllEmployees, getDateDesignInMonthByManager,
-    getDateSpecificByManager, getEmployeeAttendanceByManager, getEmployeeSpecific,
-    getEmployeesByDateAndShiftByManager, getEmployeesByDateByManager,
+    createDateDesignByManager, createMultipleDateDesignsByManager, deleteDateSpecificByManager,
+    getAllDatesByManager, getAllEmployeeAttendanceByManager, getAllEmployees,
+    getDateDesignInMonthByManager, getDateSpecificByManager, getEmployeeAttendanceByManager,
+    getEmployeeSpecific, getEmployeesByDateAndShiftByManager, getEmployeesByDateByManager,
 } from '../controllers/managerController.js';
 import { verifyTokenManager } from '../utils/verifyToken.js';
 
@@ -16,7 +16,8 @@ router.get("/manage-employee/get-by-date", verifyTokenManager, getEmployeesByDat
 router.get("/manage-employee/get-by-date&shift", verifyTokenManager, getEmployeesByDateAndShiftByManager);
 
 // manage date design
-router.post("/manage-date-design/create", verifyTokenManager, createDateDesignByManager);
+router.post("/manage-date-design/create-day", verifyTokenManager, createDateDesignByManager);
+router.post("/manage-date-design/create-days", verifyTokenManager, createMultipleDateDesignsByManager);
 router.get('/manage-date-design/get-all', verifyTokenManager, getAllDatesByManager);
 router.get('/manage-date-design/get-by-month', verifyTokenManager, getDateDesignInMonthByManager);
 router.get('/manage-date-design/get-by-date', verifyTokenManager, getDateSpecificByManager);

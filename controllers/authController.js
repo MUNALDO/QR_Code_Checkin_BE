@@ -257,44 +257,37 @@ export const logoutManager = (req, res, next) => {
 };
 
 export const registerEmployeeByAdmin = async (req, res, next) => {
-    const employeeDepartmentNames = req.body.department_name;
     try {
-        const departments = await DepartmentSchema.find({
-            name: { $in: employeeDepartmentNames }
-        });
-
-        if (!departments) {
-            return next(createError(NOT_FOUND, "One or more departments not found!"));
-        }
-
-        for (const department of departments) {
-            if (department.members.some(member => member.name === req.body.name)) {
-                return next(createError(CONFLICT, `Employee already exists in department ${department.name}!`));
-            }
-        }
-
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
 
         const newEmployee = new EmployeeSchema({
             ...req.body,
             password: hash,
-            department_name: employeeDepartmentNames,
             active_day: new Date()
         });
 
-        for (const department of departments) {
-            department.members.push({
-                id: newEmployee.id,
-                name: newEmployee.name,
-                email: newEmployee.email,
-                department_name: department.name,
-                role: newEmployee.role,
-                position: newEmployee.position,
-                status: newEmployee.status
-            });
-            await department.save();
+        const departmentObject = {
+            name: req.body.department_name,
+            position: req.body.position
         }
+
+        const department = await DepartmentSchema.findOne({ name: departmentObject.name });
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+
+        if (department.members.some(member => member.name === req.body.name)) {
+            return next(createError(CONFLICT, `Employee already exists in department ${department.name}!`));
+        }
+
+        department.members.push({
+            id: newEmployee.id,
+            name: newEmployee.name,
+            email: newEmployee.email,
+            role: newEmployee.role,
+            position: departmentObject.position,
+            status: newEmployee.status
+        });
+        await department.save();
 
         const globalDayOffs = await DayOffSchema.find({ type: 'global' });
         globalDayOffs.forEach(globalDayOff => {
@@ -311,7 +304,7 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
                 id: newEmployee.id,
                 name: newEmployee.name,
                 email: newEmployee.email,
-                department_name: newEmployee.department_name,
+                department: newEmployee.department,
                 role: newEmployee.role,
                 position: newEmployee.position,
                 status: newEmployee.status
@@ -319,6 +312,7 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
             globalDayOff.save();
         })
 
+        newEmployee.department.push(departmentObject);
         newEmployee.realistic_day_off = newEmployee.default_day_off;
         await newEmployee.save();
 

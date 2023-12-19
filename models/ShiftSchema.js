@@ -13,25 +13,12 @@ const shiftSchema = new mongoose.Schema(
             required: true
         },
         time_slot: {
-            total_number: {
-                type: Number,
+            start_time: {
+                type: String,
             },
-            time_check: {
-                type: Number,
+            end_time: {
+                type: String,
             },
-            detail: [
-                {
-                    number: {
-                        type: Number,
-                    },
-                    start_time: {
-                        type: String,
-                    },
-                    end_time: {
-                        type: String,
-                    },
-                }
-            ]
         },
     },
     { timestamps: true }

@@ -17,14 +17,13 @@ const attendanceSchema = new mongoose.Schema(
         role: {
             type: String,
         },
+        department_name: {
+            type: String,
+        },
         position: {
             type: String,
         },
         shift_info: {
-            department_name: {
-                type: String,
-                required: true
-            },
             shift_code: {
                 type: String,
             },

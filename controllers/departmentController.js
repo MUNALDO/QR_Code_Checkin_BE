@@ -99,7 +99,7 @@ export const updateDepartment = async (req, res, next) => {
             employee.department_name = updateDepartment.name;
             await employee.save();
         }
-        
+
         await updateDepartment.save();
         res.status(OK).json({
             success: true,
@@ -129,7 +129,7 @@ export const deleteDepartmentByName = async (req, res, next) => {
 };
 
 export const addMemberDepartment = async (req, res, next) => {
-    const department_name = req.query.name;
+    const department_name = req.params.name;
     const employeeID = req.body.employeeID;
     try {
         const department = await DepartmentSchema.findOne({ name: department_name });
@@ -139,10 +139,21 @@ export const addMemberDepartment = async (req, res, next) => {
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
 
         if (department.members.includes(employee)) return next(createError(CONFLICT, "Employee already exists in the department!"));
+        const departmentObject = {
+            name: department_name,
+            position: req.body.position
+        }
 
         // Add the employee ID to the members array
-        department.members.push(employee);
-        employee.department_name = department.name;
+        department.members.push({
+            id: employee.id,
+            name: employee.name,
+            email: employee.email,
+            role: employee.role,
+            position: departmentObject.position,
+            status: employee.status
+        });
+        employee.department.push(departmentObject);
 
         // Save the updated department
         const updateDepartment = await department.save();

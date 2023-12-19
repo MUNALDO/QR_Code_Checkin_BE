@@ -15,10 +15,10 @@ import {
 } from '../controllers/shiftController.js';
 import { verifyTokenAdmin } from '../utils/verifyToken.js';
 import { getSalaryForAllEmployees, getSalaryForEmployee, salaryCalculate } from '../controllers/salaryController.js';
-import { exportAttendanceToExcel } from '../controllers/xlsxController.js';
+import { exportAttendanceToExcel, exportEmployeeDataToExcel, exportEmployeeSalaryDataToExcel } from '../controllers/xlsxController.js';
 import {
     createDateDesign, createMultipleDateDesigns, deleteDateSpecific,
-    getAllDates, getDateDesignInMonth, getDateSpecific
+    getAllDates, getDateDesign, getDateDesignInMonth, getDateSpecific
 } from '../controllers/dateDesignController.js';
 import {
     createDayOff, deleteDayOffById, deleteEmployeeDayOff,
@@ -46,7 +46,7 @@ router.get('/manage-department/get-all', verifyTokenAdmin, getAllDepartments);
 router.get('/manage-department/get-by-name', verifyTokenAdmin, getDepartmentByName);
 router.get('/manage-department/get-specific', verifyTokenAdmin, getDepartmentSpecific);
 router.put('/manage-department/update', verifyTokenAdmin, updateDepartment);
-router.put('/manage-department/add-member', verifyTokenAdmin, addMemberDepartment);
+router.put('/manage-department/add-member/:name', verifyTokenAdmin, addMemberDepartment);
 router.delete('/manage-department/delete', verifyTokenAdmin, deleteDepartmentByName);
 
 // shift
@@ -60,6 +60,7 @@ router.put('/manage-shift/update', verifyTokenAdmin, updateShift);
 router.post('/manage-date-design/create-day', verifyTokenAdmin, createDateDesign);
 router.post('/manage-date-design/create-days', verifyTokenAdmin, createMultipleDateDesigns);
 router.get('/manage-date-design/get-all', verifyTokenAdmin, getAllDates);
+router.get('/manage-date-design/get-by-specific', verifyTokenAdmin, getDateDesign);
 router.get('/manage-date-design/get-by-month', verifyTokenAdmin, getDateDesignInMonth);
 router.get('/manage-date-design/get-by-date', verifyTokenAdmin, getDateSpecific);
 router.delete('/manage-date-design/delete', verifyTokenAdmin, deleteDateSpecific);
@@ -85,5 +86,9 @@ router.get('/manage-attendance/get-specific/:employeeID', verifyTokenAdmin, getE
 router.post('/manage-salary/calculate/:employeeID', verifyTokenAdmin, salaryCalculate);
 router.get('/manage-salary/get-single/:employeeID', verifyTokenAdmin, getSalaryForEmployee);
 router.get('/manage-salary/get-all', verifyTokenAdmin, getSalaryForAllEmployees);
+
+// manage xlsx
+router.get('/manage-xlsx/employee-data', verifyTokenAdmin, exportEmployeeDataToExcel);
+router.get('/manage-xlsx/salary-data', verifyTokenAdmin, exportEmployeeSalaryDataToExcel);
 
 export default router;

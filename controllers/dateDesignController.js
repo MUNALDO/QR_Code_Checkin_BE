@@ -1,4 +1,4 @@
-import { BAD_REQUEST, CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
+import { BAD_REQUEST, CREATED, FORBIDDEN, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import DepartmentSchema from "../models/DepartmentSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";
@@ -131,10 +131,11 @@ export const createDateDesign = async (req, res, next) => {
 export const createMultipleDateDesigns = async (req, res, next) => {
     const shiftCode = req.body.shift_code;
     const employeeID = req.query.employeeID;
+    const departmentName = req.query.department_name;
     const dates = req.body.dates;
     try {
-        const department = await DepartmentSchema.findOne({ name: req.body.department_name });
-        if (!department) return next(createError(NOT_FOUND, "One or more departments not found!"));
+        const department = await DepartmentSchema.findOne({ name: departmentName });
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
 
         const shift = await ShiftSchema.findOne({ code: shiftCode });
         if (!shift) return next(createError(NOT_FOUND, "Shift not found!"));
@@ -143,66 +144,66 @@ export const createMultipleDateDesigns = async (req, res, next) => {
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
         if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
+        const employeeDepartment = employee.department.find(dep => dep.name === departmentName);
+        if (!employeeDepartment) return next(createError(NOT_FOUND, "Employee does not belong to the specified department!"));
+
         for (const date of dates) {
             const dateObj = new Date(date);
-            const existingDateInSchedule = employee.schedules.find(schedule =>
+
+            let shiftExistsInAnyDepartment = false;
+            employee.department.forEach(dep => {
+                const existingDateInSchedule = dep.schedules.find(schedule =>
+                    schedule.date.getTime() === dateObj.getTime()
+                );
+                if (existingDateInSchedule && existingDateInSchedule.shift_design.some(design => design.shift_code === shiftCode)) {
+                    shiftExistsInAnyDepartment = true;
+                }
+            });
+
+            if (shiftExistsInAnyDepartment) {
+                res.status(BAD_REQUEST).json({
+                    success: false,
+                    status: BAD_REQUEST,
+                    message: `Shift already exists for ${date} in one of the departments`
+                });
+                continue;
+            }
+
+            let existingDateInDepartmentSchedule = employeeDepartment.schedules.find(schedule =>
                 schedule.date.getTime() === dateObj.getTime()
             );
 
-            if (existingDateInSchedule) {
-                // Skip if shift design already exists for this date
-                const existingShiftDesign = existingDateInSchedule.shift_design.find(design =>
-                    design.shift_code === shiftCode
-                );
-                if (existingShiftDesign) {
-                    // Shift design already exists for the day
-                    res.status(BAD_REQUEST).json({
-                        success: false,
-                        status: BAD_REQUEST,
-                        message: "Shift design already exists for the day"
-                    });
-                };
-
-                // Check for time range conflicts
-                const hasConflict = checkForTimeRangeConflict(existingDateInSchedule, shift);
-                if (hasConflict) {
-                    // Time range conflict
-                    res.status(BAD_REQUEST).json({
-                        success: false,
-                        status: BAD_REQUEST,
-                        message: "Time range conflict with existing shifts for the day",
-                    });
-                };
-
-                existingDateInSchedule.shift_design.push({
-                    department_name: req.body.department_name,
-                    shift_code: shift.code,
-                    time_slot: shift.time_slot,
-                    shift_type: req.body.shift_type
-                });
-            } else {
-                // Create a new schedule entry for the date
-                employee.schedules.push({
+            if (!existingDateInDepartmentSchedule) {
+                existingDateInDepartmentSchedule = {
                     date: dateObj,
                     shift_design: [{
-                        department_name: req.body.department_name,
+                        position: req.body.position,
                         shift_code: shift.code,
                         time_slot: shift.time_slot,
                         shift_type: req.body.shift_type
                     }]
-                });
+                };
+                employeeDepartment.schedules.push(existingDateInDepartmentSchedule);
             }
+
+            existingDateInDepartmentSchedule.shift_design.push({
+                position: req.body.position,
+                shift_code: shift.code,
+                time_slot: shift.time_slot,
+                shift_type: req.body.shift_type
+            });
         }
 
         await employee.save();
+
         const objectReturn = {
             employee_id: employee.id,
             employee_name: employee.name,
             email: employee.email,
-            department_name: employee.department_name,
+            department_name: departmentName,
             role: employee.role,
-            position: employee.position,
-            schedule: employee.schedules
+            position: req.body.position,
+            schedule: employeeDepartment.schedules
         };
 
         res.status(CREATED).json({
@@ -215,25 +216,6 @@ export const createMultipleDateDesigns = async (req, res, next) => {
     }
 };
 
-function checkForTimeRangeConflict(schedule, shift) {
-    const newShiftStartTime = convertToMinutes(shift.time_slot.detail[0].start_time);
-    const newShiftEndTime = convertToMinutes(shift.time_slot.total_number === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time);
-
-    return schedule.shift_design.some(existingShift => {
-        const existingStartTime = convertToMinutes(existingShift.time_slot.detail[0].start_time);
-        const existingEndTime = convertToMinutes(existingShift.time_slot.total_number === 1 ? existingShift.time_slot.detail[0].end_time : existingShift.time_slot.detail[1].end_time);
-
-        return (
-            (newShiftStartTime >= existingStartTime && newShiftStartTime < existingEndTime) ||
-            (newShiftEndTime > existingStartTime && newShiftEndTime <= existingEndTime)
-        );
-    });
-}
-
-function convertToMinutes(timeString) {
-    const [hours, minutes] = timeString.split(':').map(Number);
-    return hours * 60 + minutes;
-}
 
 export const getAllDates = async (req, res, next) => {
     const employeeID = req.query.employeeID;
@@ -251,32 +233,97 @@ export const getAllDates = async (req, res, next) => {
     }
 };
 
-export const getDateDesignInMonth = async (req, res, next) => {
+export const getDateDesign = async (req, res, next) => {
     const employeeID = req.query.employeeID;
-    const targetMonth = req.body.month;
-
+    const targetYear = parseInt(req.query.year);
+    const targetMonth = parseInt(req.query.month) - 1;
+    const targetDate = req.query.date ? new Date(req.query.date) : null;
+    const departmentName = req.query.department_name;
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
-        // Filter schedules for the target month
-        const schedulesInMonth = employee.schedules.filter(schedule => {
-            const scheduleMonth = schedule.date.getMonth() + 1;
-            return scheduleMonth === targetMonth;
+        const shiftDesigns = [];
+
+        employee.department.forEach(department => {
+            // If department_name query exists and does not match, skip this department
+            if (departmentName && department.name !== departmentName) {
+                return;
+            }
+
+            department.schedules.forEach(schedule => {
+                const scheduleDate = new Date(schedule.date);
+                if (
+                    scheduleDate.getFullYear() === targetYear &&
+                    scheduleDate.getMonth() === targetMonth &&
+                    (!targetDate || scheduleDate.getTime() === targetDate.getTime())
+                ) {
+                    schedule.shift_design.forEach(shift => {
+                        shiftDesigns.push({
+                            date: scheduleDate,
+                            department_name: department.name,
+                            position: shift.position,
+                            shift_code: shift.shift_code,
+                            time_slot: shift.time_slot,
+                            shift_type: shift.shift_type,
+                        });
+                    });
+                }
+            });
         });
 
-        if (schedulesInMonth.length === 0) {
-            return res.status(NOT_FOUND).json({
-                success: false,
-                status: NOT_FOUND,
-                message: `No schedules found for the employee in the specified month.`,
-            });
+        if (shiftDesigns.length === 0) {
+            return next(createError(NOT_FOUND, "No shift designs found for the specified criteria!"));
         }
 
         res.status(OK).json({
             success: true,
             status: OK,
-            message: schedulesInMonth,
+            message: shiftDesigns
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getDateDesignInMonth = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+    const targetYear = parseInt(req.query.year);
+    const targetMonth = parseInt(req.query.month) - 1;
+    const departmentName = req.query.department_name;
+    try {
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+
+        let monthlyShiftDesigns = [];
+
+        employee.department.forEach(department => {
+            // If department_name query exists and does not match, skip this department
+            if (departmentName && department.name !== departmentName) {
+                return;
+            }
+
+            department.schedules.forEach(schedule => {
+                const scheduleDate = new Date(schedule.date);
+                if (scheduleDate.getFullYear() == targetYear && scheduleDate.getMonth() == targetMonth) {
+                    schedule.shift_design.forEach(shift => {
+                        monthlyShiftDesigns.push({
+                            date: scheduleDate,
+                            department_name: department.name,
+                            position: shift.position,
+                            shift_code: shift.shift_code,
+                            time_slot: shift.time_slot,
+                            shift_type: shift.shift_type,
+                        });
+                    });
+                }
+            });
+        });
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: monthlyShiftDesigns
         });
     } catch (err) {
         next(err);
@@ -285,19 +332,49 @@ export const getDateDesignInMonth = async (req, res, next) => {
 
 export const getDateSpecific = async (req, res, next) => {
     const employeeID = req.query.employeeID;
+    const departmentName = req.query.department_name;
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
-        const date = employee.schedules.find(schedule => {
-            return schedule.date.getTime() === new Date(req.body.date).getTime();
+        const targetDate = new Date(req.query.date).getTime();
+        let foundDate = null;
+        let shiftDesigns = [];
+
+        employee.department.forEach(department => {
+            // Skip departments that do not match the query if department_name is provided
+            if (departmentName && department.name !== departmentName) {
+                return;
+            }
+
+            department.schedules.forEach(schedule => {
+                if (schedule.date.getTime() === targetDate) {
+                    foundDate = schedule.date;
+                    schedule.shift_design.forEach(shift => {
+                        shiftDesigns.push({
+                            department_name: department.name,
+                            position: shift.position,
+                            shift_code: shift.shift_code,
+                            time_slot: shift.time_slot,
+                            shift_type: shift.shift_type,
+                            _id: shift._id
+                        });
+                    });
+                }
+            });
         });
-        if (!date) return next(createError(NOT_FOUND, "Date not found!"))
+
+        if (!foundDate) {
+            return next(createError(NOT_FOUND, "Date not found!"));
+        }
 
         res.status(OK).json({
             success: true,
             status: OK,
-            message: date,
+            message: {
+                date: foundDate,
+                shift_design: shiftDesigns
+            }
         });
     } catch (err) {
         next(err);

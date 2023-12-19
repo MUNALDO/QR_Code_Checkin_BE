@@ -27,17 +27,70 @@ const employeeSchema = new mongoose.Schema(
         gender: {
             type: String,
         },
-        department_name: [],
         role: {
             type: String,
             default: 'Employee',
         },
-        position: {
-            type: String,
-            // dịch vụ, quán ba, Phòng bếp, delivery, tài xế
-            enum: ['Service', 'Bar', 'Küche', 'Lito', 'Autofahrer', 'Fahrradfahrer',
-                'Büro', 'Lehrgang für Azubi', 'FacTech GmbH'],
-        },
+        department: [
+            {
+                name: {
+                    type: String,
+                },
+                position: [
+                    {
+                        type: String,
+                        // dịch vụ, quán ba, Phòng bếp, delivery, tài xế
+                        enum: ['Service', 'Bar', 'Küche', 'Lito', 'Autofahrer', 'Fahrradfahrer',
+                            'Büro', 'Lehrgang für Azubi', 'FacTech GmbH'],
+                    }
+                ],
+                schedules: [
+                    {
+                        date: {
+                            type: Date,
+                            required: true
+                        },
+                        shift_design: [
+                            {
+                                position: {
+                                    type: String
+                                },
+                                shift_code: {
+                                    type: String,
+                                    required: true
+                                },
+                                time_slot: {
+                                    type: Object,
+                                },
+                                shift_type: {
+                                    type: String,
+                                    enum: ['normal', 'overtime']
+                                }
+                            }
+                        ],
+                    },
+                ],
+                attendance_stats: [
+                    {
+                        year: {
+                            type: Number
+                        },
+                        month: {
+                            type: Number
+                        },
+                        date_on_time: {
+                            type: Number
+                        },
+                        date_late: {
+                            type: Number
+                        },
+                        date_missing: {
+                            type: Number
+                        },
+                    }
+                ],
+            }
+        ],
         house_rent_money: {
             type: Number,
             default: 0
@@ -86,52 +139,6 @@ const employeeSchema = new mongoose.Schema(
         realistic_day_off: {
             type: Number,
         },
-        attendance_stats: [
-            {
-                year: {
-                    type: Number
-                },
-                month: {
-                    type: Number
-                },
-                date_on_time: {
-                    type: Number
-                },
-                date_late: {
-                    type: Number
-                },
-                date_missing: {
-                    type: Number
-                },
-            }
-        ],
-        schedules: [
-            {
-                date: {
-                    type: Date,
-                    required: true
-                },
-                shift_design: [
-                    {
-                        department_name: {
-                            type: String,
-                            required: true
-                        },
-                        shift_code: {
-                            type: String,
-                            required: true
-                        },
-                        time_slot: {
-                            type: Object,
-                        },
-                        shift_type: {
-                            type: String,
-                            enum: ['normal', 'overtime']
-                        }
-                    }
-                ],
-            },
-        ],
         dayOff_schedule: [],
         status: {
             type: String,

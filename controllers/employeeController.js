@@ -58,369 +58,317 @@ import { createError } from "../utils/error.js";
 //     }
 // }
 
-export const autoCheck = async (req, res, next) => {
-    const currentTime = new Date();
-    const currentYear = currentTime.getFullYear();
-    const currentMonth = currentTime.getMonth();
+// export const autoCheck = async (req, res, next) => {
+//     const currentTime = new Date();
+//     const currentYear = currentTime.getFullYear();
+//     const currentMonth = currentTime.getMonth();
 
-    const employees = await EmployeeSchema.find({ status: "active" });
-    const matchedEmployees = employees.filter(employee => {
-        const matchedSchedules = employee.schedules.filter(schedule => {
-            return schedule.date.toLocaleDateString() == currentTime.toLocaleDateString();
-        });
+//     const employees = await EmployeeSchema.find({ status: "active" });
+//     const matchedEmployees = employees.filter(employee => {
+//         const matchedSchedules = employee.schedules.filter(schedule => {
+//             return schedule.date.toLocaleDateString() == currentTime.toLocaleDateString();
+//         });
 
-        return matchedSchedules.length > 0;
-    });
+//         return matchedSchedules.length > 0;
+//     });
 
-    for (const employee of matchedEmployees) {
-        // console.log(employee);
-        const date = employee.schedules.find(schedule => {
-            return schedule.date.toLocaleDateString() == currentTime.toLocaleDateString();
-        });
-        if (!date) return next(createError(NOT_FOUND, 'Design not found for the current day'));
+//     for (const employee of matchedEmployees) {
+//         // console.log(employee);
+//         const date = employee.schedules.find(schedule => {
+//             return schedule.date.toLocaleDateString() == currentTime.toLocaleDateString();
+//         });
+//         if (!date) return next(createError(NOT_FOUND, 'Design not found for the current day'));
 
-        // Collect time ranges from shift_design
-        const timeRanges = date.shift_design.map(shift => {
-            const totalNumber = shift.time_slot.total_number;
-            const startTime = shift.time_slot.detail[0].start_time;
-            const endTime = totalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
-            return { startTime, endTime };
-        });
+//         // Collect time ranges from shift_design
+//         const timeRanges = date.shift_design.map(shift => {
+//             const totalNumber = shift.time_slot.total_number;
+//             const startTime = shift.time_slot.detail[0].start_time;
+//             const endTime = totalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
+//             return { startTime, endTime };
+//         });
 
-        // Compare the current time with each time range
-        const currentTimestamp = currentTime.getTime();
-        let currentTimeRange = null;
+//         // Compare the current time with each time range
+//         const currentTimestamp = currentTime.getTime();
+//         let currentTimeRange = null;
 
-        for (const timeRange of timeRanges) {
-            const [endHours, endMinutes] = timeRange.endTime.split(':').map(Number);
+//         for (const timeRange of timeRanges) {
+//             const [endHours, endMinutes] = timeRange.endTime.split(':').map(Number);
 
-            const endDateTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
-            const endOfDay = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), 23, 59, 59, 999);
+//             const endDateTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
+//             const endOfDay = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), 23, 59, 59, 999);
 
-            const endTimePlus30 = new Date(endDateTime);
-            endTimePlus30.setMinutes(endTimePlus30.getMinutes() + 30);
+//             const endTimePlus30 = new Date(endDateTime);
+//             endTimePlus30.setMinutes(endTimePlus30.getMinutes() + 30);
 
-            if (endDateTime < endOfDay) {
-                // Compare currentTimestamp with the adjusted time range
-                if (currentTimestamp > endTimePlus30.getTime()) {
-                    currentTimeRange = timeRange;
-                    // Find the corresponding shift_design based on currentTimeRange
-                    const currentShiftDesign = date.shift_design.find(shift => {
-                        const totalNumber = shift.time_slot.total_number;
-                        const startTime = shift.time_slot.detail[0].start_time;
-                        const endTime = totalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
+//             if (endDateTime < endOfDay) {
+//                 // Compare currentTimestamp with the adjusted time range
+//                 if (currentTimestamp > endTimePlus30.getTime()) {
+//                     currentTimeRange = timeRange;
+//                     // Find the corresponding shift_design based on currentTimeRange
+//                     const currentShiftDesign = date.shift_design.find(shift => {
+//                         const totalNumber = shift.time_slot.total_number;
+//                         const startTime = shift.time_slot.detail[0].start_time;
+//                         const endTime = totalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
 
-                        return startTime === currentTimeRange.startTime && endTime === currentTimeRange.endTime;
-                    });
+//                         return startTime === currentTimeRange.startTime && endTime === currentTimeRange.endTime;
+//                     });
 
-                    if (!currentShiftDesign) {
-                        return next(createError(NOT_FOUND, 'No matching shift design for the current time range'));
-                    }
+//                     if (!currentShiftDesign) {
+//                         return next(createError(NOT_FOUND, 'No matching shift design for the current time range'));
+//                     }
 
-                    // console.log(currentShiftDesign);
+//                     // console.log(currentShiftDesign);
 
-                    const existingAttendance = await AttendanceSchema.findOne({
-                        employee_id: employee.id,
-                        date: {
-                            $gte: new Date().setHours(0, 0, 0, 0),
-                            $lt: new Date().setHours(23, 59, 59, 999),
-                        },
-                        'shift_info.shift_code': currentShiftDesign.shift_code,
-                    });
+//                     const existingAttendance = await AttendanceSchema.findOne({
+//                         employee_id: employee.id,
+//                         date: {
+//                             $gte: new Date().setHours(0, 0, 0, 0),
+//                             $lt: new Date().setHours(23, 59, 59, 999),
+//                         },
+//                         'shift_info.shift_code': currentShiftDesign.shift_code,
+//                     });
 
-                    // console.log(existingAttendance);
+//                     // console.log(existingAttendance);
 
-                    const shift_code = currentShiftDesign.shift_code;
-                    // const time_slot = currentShiftDesign.time_slot;
-                    if (!existingAttendance) {
-                        const newAttendance = new AttendanceSchema({
-                            date: date.date,
-                            employee_id: employee.id,
-                            employee_name: employee.name,
-                            role: employee.role,
-                            position: employee.position,
-                            shift_info: {
-                                department_name: currentShiftDesign.department_name,
-                                shift_code: shift_code,
-                                shift_type: currentShiftDesign.shift_type,
-                                total_hour: 0,
-                                total_minutes: 0
-                            },
-                            status: "missing"
-                        });
-                        await newAttendance.save();
-                        console.log("Attendance create successfully!");
+//                     const shift_code = currentShiftDesign.shift_code;
+//                     // const time_slot = currentShiftDesign.time_slot;
+//                     if (!existingAttendance) {
+//                         const newAttendance = new AttendanceSchema({
+//                             date: date.date,
+//                             employee_id: employee.id,
+//                             employee_name: employee.name,
+//                             role: employee.role,
+//                             position: employee.position,
+//                             shift_info: {
+//                                 department_name: currentShiftDesign.department_name,
+//                                 shift_code: shift_code,
+//                                 shift_type: currentShiftDesign.shift_type,
+//                                 total_hour: 0,
+//                                 total_minutes: 0
+//                             },
+//                             status: "missing"
+//                         });
+//                         await newAttendance.save();
+//                         console.log("Attendance create successfully!");
 
-                        // Find the current year and month in attendance_stats
-                        const statsIndex = employee.attendance_stats.findIndex(stat =>
-                            stat.year === currentYear && stat.month === currentMonth + 1
-                        );
+//                         // Find the current year and month in attendance_stats
+//                         const statsIndex = employee.attendance_stats.findIndex(stat =>
+//                             stat.year === currentYear && stat.month === currentMonth + 1
+//                         );
 
-                        if (statsIndex > -1) {
-                            employee.attendance_stats[statsIndex].date_missing += 1;
-                        } else {
-                            // Create a new attendance_stats object for the current month and year
-                            employee.attendance_stats.push({
-                                year: currentYear,
-                                month: currentMonth + 1,
-                                date_on_time: 0,
-                                date_late: 0,
-                                date_missing: 1,
-                            });
-                        }
-                        await employee.save();
-                    } else {
-                        if (existingAttendance.shift_info.time_slot.check_in == true && existingAttendance.shift_info.time_slot.check_out != true) {
-                            const checkInTimeString = existingAttendance.shift_info.time_slot.check_in_time;
-                            const checkInTime = new Date(`${currentTime.toDateString()} ${checkInTimeString}`);
+//                         if (statsIndex > -1) {
+//                             employee.attendance_stats[statsIndex].date_missing += 1;
+//                         } else {
+//                             // Create a new attendance_stats object for the current month and year
+//                             employee.attendance_stats.push({
+//                                 year: currentYear,
+//                                 month: currentMonth + 1,
+//                                 date_on_time: 0,
+//                                 date_late: 0,
+//                                 date_missing: 1,
+//                             });
+//                         }
+//                         await employee.save();
+//                     } else {
+//                         if (existingAttendance.shift_info.time_slot.check_in == true && existingAttendance.shift_info.time_slot.check_out != true) {
+//                             const checkInTimeString = existingAttendance.shift_info.time_slot.check_in_time;
+//                             const checkInTime = new Date(`${currentTime.toDateString()} ${checkInTimeString}`);
 
-                            if (isNaN(checkInTime)) {
-                                // Handle the case where parsing fails
-                                return res.status(BAD_REQUEST).json({
-                                    success: false,
-                                    status: BAD_REQUEST,
-                                    message: `Error parsing check-in time: ${checkInTimeString}`,
-                                });
-                            }
-                            // check out late
-                            existingAttendance.shift_info.time_slot.check_out = true;
-                            existingAttendance.shift_info.time_slot.check_out_time = `${endHours}: 0${endMinutes}`;
-                            existingAttendance.shift_info.time_slot.check_out_status = 'late';
-                            existingAttendance.status = 'checked';
-                            const checkOutTimeString = existingAttendance.shift_info.time_slot.check_out_time;
-                            const checkOutTime = new Date(`${currentTime.toDateString()} ${checkOutTimeString}`);
+//                             if (isNaN(checkInTime)) {
+//                                 // Handle the case where parsing fails
+//                                 return res.status(BAD_REQUEST).json({
+//                                     success: false,
+//                                     status: BAD_REQUEST,
+//                                     message: `Error parsing check-in time: ${checkInTimeString}`,
+//                                 });
+//                             }
+//                             // check out late
+//                             existingAttendance.shift_info.time_slot.check_out = true;
+//                             existingAttendance.shift_info.time_slot.check_out_time = `${endHours}: 0${endMinutes}`;
+//                             existingAttendance.shift_info.time_slot.check_out_status = 'late';
+//                             existingAttendance.status = 'checked';
+//                             const checkOutTimeString = existingAttendance.shift_info.time_slot.check_out_time;
+//                             const checkOutTime = new Date(`${currentTime.toDateString()} ${checkOutTimeString}`);
 
-                            if (isNaN(checkOutTime)) {
-                                // Handle the case where parsing fails
-                                return res.status(BAD_REQUEST).json({
-                                    success: false,
-                                    status: BAD_REQUEST,
-                                    message: `Error parsing check-in time: ${checkOutTimeString}`,
-                                });
-                            }
-                            const timeDifference = checkOutTime - checkInTime;
-                            const totalHours = Math.floor(timeDifference / (1000 * 60 * 60));
-                            const totalMinutes = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
-                            existingAttendance.shift_info.total_hour = totalHours;
-                            existingAttendance.shift_info.total_minutes = totalMinutes;
-                            await existingAttendance.save();
-                            console.log("Attendance update successfully!");
+//                             if (isNaN(checkOutTime)) {
+//                                 // Handle the case where parsing fails
+//                                 return res.status(BAD_REQUEST).json({
+//                                     success: false,
+//                                     status: BAD_REQUEST,
+//                                     message: `Error parsing check-in time: ${checkOutTimeString}`,
+//                                 });
+//                             }
+//                             const timeDifference = checkOutTime - checkInTime;
+//                             const totalHours = Math.floor(timeDifference / (1000 * 60 * 60));
+//                             const totalMinutes = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
+//                             existingAttendance.shift_info.total_hour = totalHours;
+//                             existingAttendance.shift_info.total_minutes = totalMinutes;
+//                             await existingAttendance.save();
+//                             console.log("Attendance update successfully!");
 
-                            // Find the current year and month in attendance_stats
-                            const statsIndex = employee.attendance_stats.findIndex(stat =>
-                                stat.year === currentYear && stat.month === currentMonth + 1
-                            );
+//                             // Find the current year and month in attendance_stats
+//                             const statsIndex = employee.attendance_stats.findIndex(stat =>
+//                                 stat.year === currentYear && stat.month === currentMonth + 1
+//                             );
 
-                            if (statsIndex > -1) {
-                                employee.attendance_stats[statsIndex].date_late += 1;
-                            } else {
-                                // Create a new attendance_stats object for the current month and year
-                                employee.attendance_stats.push({
-                                    year: currentYear,
-                                    month: currentMonth + 1,
-                                    date_on_time: 0,
-                                    date_late: 1,
-                                    date_missing: 0,
-                                });
-                            }
-                            await employee.save();
-                        } else {
-                            console.log("Nothing to create or update!");
-                        }
-                    }
-                }
-            } else {
-                console.log("Nothing to create or update!");
-            }
-        }
-    }
-}
+//                             if (statsIndex > -1) {
+//                                 employee.attendance_stats[statsIndex].date_late += 1;
+//                             } else {
+//                                 // Create a new attendance_stats object for the current month and year
+//                                 employee.attendance_stats.push({
+//                                     year: currentYear,
+//                                     month: currentMonth + 1,
+//                                     date_on_time: 0,
+//                                     date_late: 1,
+//                                     date_missing: 0,
+//                                 });
+//                             }
+//                             await employee.save();
+//                         } else {
+//                             console.log("Nothing to create or update!");
+//                         }
+//                     }
+//                 }
+//             } else {
+//                 console.log("Nothing to create or update!");
+//             }
+//         }
+//     }
+// }
 
 export const checkAttendance = async (req, res, next) => {
     const employeeID = req.body.employeeID;
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found"))
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found"));
         if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
         const currentTime = new Date();
-        const currentYear = currentTime.getFullYear();
-        const currentMonth = currentTime.getMonth();
+        let currentShiftDesign = null;
+        let currentDepartment = null;
+        let currentDateDesign = null;
 
-        const date = employee.schedules.find(schedule => {
-            return schedule.date.toLocaleDateString() == currentTime.toLocaleDateString();
-        });
-        if (!date) return next(createError(NOT_FOUND, 'Design not found for the current day'));
+        // Iterate over each department to find schedule for current day
+        for (const department of employee.department) {
+            const dateDesign = department.schedules.find(schedule =>
+                schedule.date.toDateString() === currentTime.toDateString()
+            );
 
-        // Collect time ranges from shift_design
-        const timeRanges = date.shift_design.map(shift => {
-            const totalNumber = shift.time_slot.total_number;
-            const startTime = shift.time_slot.detail[0].start_time;
-            const endTime = totalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
-            return { startTime, endTime };
-        });
+            if (dateDesign) {
+                // Collect time ranges from shift_design
+                for (const shift of dateDesign.shift_design) {
+                    const [startHours, startMinutes] = shift.time_slot.start_time.split(':').map(Number);
+                    const [endHours, endMinutes] = shift.time_slot.end_time.split(':').map(Number);
 
-        // Compare the current time with each time range
-        const currentTimestamp = currentTime.getTime();
-        let currentTimeRange = null;
+                    const shiftStartTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), startHours, startMinutes);
+                    const shiftEndTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
+                    const endOfDay = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), 23, 59, 59, 999);
 
-        for (const timeRange of timeRanges) {
-            const [startHours, startMinutes] = timeRange.startTime.split(':').map(Number);
-            const [endHours, endMinutes] = timeRange.endTime.split(':').map(Number);
+                    const startTimeMinus30 = new Date(shiftStartTime);
+                    startTimeMinus30.setMinutes(shiftStartTime.getMinutes() - 30);
 
-            const startDateTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), startHours, startMinutes);
-            const endDateTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
-            const endOfDay = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), 23, 59, 59, 999);
+                    const endTimePlus30 = new Date(shiftEndTime);
+                    endTimePlus30.setMinutes(endTimePlus30.getMinutes() + 30);
+                    if (shiftEndTime < endOfDay) {
+                        // Compare currentTimestamp with the adjusted time range
+                        if (currentTime.getTime() >= startTimeMinus30.getTime() && currentTime.getTime() <= endTimePlus30) {
+                            currentShiftDesign = shift;
+                            currentDepartment = department.name;
+                            currentDateDesign = dateDesign;
+                            break;
+                        }
+                    } else {
+                        return res.status(BAD_REQUEST).json({
+                            success: false,
+                            status: BAD_REQUEST,
+                            message: `Err!`,
+                        });
+                    }
+                }
 
-            // Calculate startTime - 30 minutes
-            const startTimeMinus30 = new Date(startDateTime);
-            startTimeMinus30.setMinutes(startDateTime.getMinutes() - 30);
-
-            const endTimePlus30 = new Date(endDateTime);
-            endTimePlus30.setMinutes(endTimePlus30.getMinutes() + 30);
-
-            if (endDateTime < endOfDay) {
-                // Compare currentTimestamp with the adjusted time range
-                if (currentTimestamp >= startTimeMinus30.getTime() && currentTimestamp <= endTimePlus30) {
-                    currentTimeRange = timeRange;
+                if (currentShiftDesign) {
                     break;
                 }
-            } else {
-                return res.status(BAD_REQUEST).json({
-                    success: false,
-                    status: BAD_REQUEST,
-                    message: `Err!`,
-                });
             }
         }
 
-        // Find the corresponding shift_design based on currentTimeRange
-        const currentShiftDesign = date.shift_design.find(shift => {
-            const totalNumber = shift.time_slot.total_number;
-            const startTime = shift.time_slot.detail[0].start_time;
-            const endTime = totalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
+        // console.log(currentShiftDesign);
+        if (!currentShiftDesign) return next(createError(NOT_FOUND, 'No matching shift design found for current time'));
 
-            return startTime === currentTimeRange.startTime && endTime === currentTimeRange.endTime;
-        });
-        if (!currentShiftDesign) {
-            return next(createError(NOT_FOUND, 'No matching shift design for the current time range'));
-        }
 
+        // Check if attendance already exists for this shift on current day
         const existingAttendance = await AttendanceSchema.findOne({
             employee_id: employee.id,
             date: {
-                $gte: new Date().setHours(0, 0, 0, 0),
-                $lt: new Date().setHours(23, 59, 59, 999),
+                $gte: new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), 0, 0, 0, 0),
+                $lt: new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), 23, 59, 59, 999),
             },
             'shift_info.shift_code': currentShiftDesign.shift_code,
         });
 
-        const shift_code = currentShiftDesign.shift_code;
+        // console.log(existingAttendance);
+
+        // const shift_code = currentShiftDesign.shift_code;
         const time_slot = currentShiftDesign.time_slot;
 
         if (!existingAttendance) {
             // only check in
             const newAttendance = new AttendanceSchema({
-                date: date.date,
+                date: currentDateDesign.date,
                 employee_id: employeeID,
                 employee_name: employee.name,
                 role: employee.role,
-                position: employee.position,
+                department_name: currentDepartment,
+                position: currentShiftDesign.position,
                 shift_info: {
-                    department_name: currentShiftDesign.department_name,
-                    shift_code: shift_code,
+                    shift_code: currentShiftDesign.shift_code,
                     shift_type: currentShiftDesign.shift_type,
                 }
             });
-            if (time_slot.total_number == 1) {
-                const [endHours, endMinutes] = time_slot.detail[0].end_time.split(':').map(Number);
-                const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
-                const [startHours, startMinutes] = time_slot.detail[0].start_time.split(':').map(Number);
-                const startTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), startHours, startMinutes);
-                // Calculate startTime - 30 minutes
-                const startTimeMinus30 = new Date(startTime);
-                startTimeMinus30.setMinutes(startTime.getMinutes() - 30);
+            const [endHours, endMinutes] = time_slot.end_time.split(':').map(Number);
+            const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
+            const [startHours, startMinutes] = time_slot.start_time.split(':').map(Number);
+            const startTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), startHours, startMinutes);
+            // Calculate startTime - 30 minutes
+            const startTimeMinus30 = new Date(startTime);
+            startTimeMinus30.setMinutes(startTime.getMinutes() - 30);
 
-                // Calculate startTime
-                const startTimeOrigin = new Date(startTime);
-                startTimeOrigin.setMinutes(startTime.getMinutes());
-                if (currentTime > startTimeMinus30 && currentTime < startTimeOrigin) {
-                    // check in on time
-                    newAttendance.shift_info.time_slot.check_in = true;
-                    newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString()}`;
-                    newAttendance.shift_info.time_slot.check_in_status = 'on time';
-                    await newAttendance.save();
-                    return res.status(CREATED).json({
-                        success: true,
-                        status: CREATED,
-                        message: newAttendance,
-                        log: `${currentTime}`,
-                    });
-                } else if (currentTime > startTimeOrigin && currentTime < endTime) {
-                    // check in late
-                    newAttendance.shift_info.time_slot.check_in = true;
-                    newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString()}`;
-                    newAttendance.shift_info.time_slot.check_in_status = 'late';
-                    await newAttendance.save();
-                    return res.status(CREATED).json({
-                        success: true,
-                        status: CREATED,
-                        message: newAttendance,
-                        log: `${currentTime}`,
-                    });
-                } else if (currentTime < startTimeMinus30) {
-                    // check in too soon
-                    return res.status(BAD_REQUEST).json({
-                        success: false,
-                        status: BAD_REQUEST,
-                        message: `You can not check in at this time ${currentTime.toLocaleTimeString()}`,
-                    });
-                }
-            } else if (time_slot.total_number == 2) {
-                const [endHours, endMinutes] = time_slot.detail[1].end_time.split(':').map(Number);
-                const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
-                const [startHours, startMinutes] = time_slot.detail[0].start_time.split(':').map(Number);
-                const startTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), startHours, startMinutes);
-                // Calculate startTime - 30 minutes
-                const startTimeMinus30 = new Date(startTime);
-                startTimeMinus30.setMinutes(startTime.getMinutes() - 30);
-
-                // Calculate startTime
-                const startTimeOrigin = new Date(startTime);
-                startTimeOrigin.setMinutes(startTime.getMinutes());
-                if (currentTime > startTimeMinus30 && currentTime < startTimeOrigin) {
-                    // check in on time
-                    newAttendance.shift_info.time_slot.check_in = true;
-                    newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString()}`;
-                    newAttendance.shift_info.time_slot.check_in_status = 'on time';
-                    await newAttendance.save();
-                    return res.status(CREATED).json({
-                        success: true,
-                        status: CREATED,
-                        message: newAttendance,
-                        log: `${currentTime}`,
-                    });
-                } else if (currentTime > startTimeOrigin && currentTime < endTime) {
-                    // check in late
-                    newAttendance.shift_info.time_slot.check_in = true;
-                    newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString()}`;
-                    newAttendance.shift_info.time_slot.check_in_status = 'late';
-                    await newAttendance.save();
-                    return res.status(CREATED).json({
-                        success: true,
-                        status: CREATED,
-                        message: newAttendance,
-                        log: `${currentTime}`,
-                    });
-                } else if (currentTime < startTimeMinus30 || currentTime > endTime) {
-                    // check in too soon or too late
-                    return res.status(BAD_REQUEST).json({
-                        success: false,
-                        status: BAD_REQUEST,
-                        message: `You can not check in at this time ${currentTime.toLocaleTimeString()}`,
-                    });
-                }
+            // Calculate startTime
+            const startTimeOrigin = new Date(startTime);
+            startTimeOrigin.setMinutes(startTime.getMinutes());
+            if (currentTime > startTimeMinus30 && currentTime < startTimeOrigin) {
+                // check in on time
+                newAttendance.shift_info.time_slot.check_in = true;
+                newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString()}`;
+                newAttendance.shift_info.time_slot.check_in_status = 'on time';
+                await newAttendance.save();
+                return res.status(CREATED).json({
+                    success: true,
+                    status: CREATED,
+                    message: newAttendance,
+                    log: `${currentTime}`,
+                });
+            } else if (currentTime > startTimeOrigin && currentTime < endTime) {
+                // check in late
+                newAttendance.shift_info.time_slot.check_in = true;
+                newAttendance.shift_info.time_slot.check_in_time = `${currentTime.toLocaleTimeString()}`;
+                newAttendance.shift_info.time_slot.check_in_status = 'late';
+                await newAttendance.save();
+                return res.status(CREATED).json({
+                    success: true,
+                    status: CREATED,
+                    message: newAttendance,
+                    log: `${currentTime}`,
+                });
+            } else if (currentTime < startTimeMinus30) {
+                // check in too soon
+                return res.status(BAD_REQUEST).json({
+                    success: false,
+                    status: BAD_REQUEST,
+                    message: `You can not check in at this time ${currentTime.toLocaleTimeString()}`,
+                });
             }
+
         } else {
             // only check out
             if (existingAttendance.shift_info.time_slot.check_in != true) {
@@ -432,7 +380,6 @@ export const checkAttendance = async (req, res, next) => {
             } else if (existingAttendance.shift_info.time_slot.check_in == true && existingAttendance.shift_info.time_slot.check_out != true) {
                 const checkInTimeString = existingAttendance.shift_info.time_slot.check_in_time;
                 const checkInTime = new Date(`${currentTime.toDateString()} ${checkInTimeString}`);
-
                 if (isNaN(checkInTime)) {
                     // Handle the case where parsing fails
                     return res.status(BAD_REQUEST).json({
@@ -441,166 +388,69 @@ export const checkAttendance = async (req, res, next) => {
                         message: `Error parsing check-in time: ${checkInTimeString}`,
                     });
                 }
-                if (time_slot.total_number == 1) {
-                    const [endHours, endMinutes] = time_slot.detail[0].end_time.split(':').map(Number);
-                    const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
+                const [endHours, endMinutes] = time_slot.end_time.split(':').map(Number);
+                const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
+                // Calculate endTime + 30 minutes
+                const endTimePlus30 = new Date(endTime);
+                endTimePlus30.setMinutes(endTime.getMinutes() + 30);
+                const departmentIndex = employee.department.findIndex(dep => dep.name === currentDepartment);
+                const currentYear = currentTime.getFullYear();
+                const currentMonth = currentTime.getMonth() + 1;
+                if (currentTime > endTime && currentTime < endTimePlus30) {
+                    // check out on time
+                    existingAttendance.shift_info.time_slot.check_out = true;
+                    existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString()}`;
+                    existingAttendance.shift_info.time_slot.check_out_status = 'on time';
+                    existingAttendance.status = 'checked';
+                    const timeDifference = currentTime - checkInTime;
+                    const totalHours = Math.floor(timeDifference / (1000 * 60 * 60));
+                    const totalMinutes = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
+                    existingAttendance.shift_info.total_hour = totalHours;
+                    existingAttendance.shift_info.total_minutes = totalMinutes;
+                    await existingAttendance.save();
 
-                    // Calculate endTime + 30 minutes
-                    const endTimePlus30 = new Date(endTime);
-                    endTimePlus30.setMinutes(endTime.getMinutes() + 30);
-                    if (currentTime > endTime && currentTime < endTimePlus30) {
-                        // check out on time
-                        existingAttendance.shift_info.time_slot.check_out = true;
-                        existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString()}`;
-                        existingAttendance.shift_info.time_slot.check_out_status = 'on time';
-                        existingAttendance.status = 'checked';
-                        const timeDifference = currentTime - checkInTime;
-                        const totalHours = Math.floor(timeDifference / (1000 * 60 * 60));
-                        const totalMinutes = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
-                        existingAttendance.shift_info.total_hour = totalHours;
-                        existingAttendance.shift_info.total_minutes = totalMinutes;
-                        await existingAttendance.save();
+                    // Find the current year and month in attendance_stats of the department
+                    const statsIndex = employee.department[departmentIndex].attendance_stats.findIndex(stat =>
+                        stat.year === currentYear && stat.month === currentMonth
+                    );
 
+                    if (statsIndex > -1) {
+                        // Update existing stats
                         if (existingAttendance.shift_info.time_slot.check_in_status === "on time") {
-                            // Find the current year and month in attendance_stats
-                            const statsIndex = employee.attendance_stats.findIndex(stat =>
-                                stat.year === currentYear && stat.month === currentMonth + 1
-                            );
-
-                            if (statsIndex > -1) {
-                                employee.attendance_stats[statsIndex].date_on_time += 1;
-                            } else {
-                                // Create a new attendance_stats object for the current month and year
-                                employee.attendance_stats.push({
-                                    year: currentYear,
-                                    month: currentMonth + 1,
-                                    date_on_time: 1,
-                                    date_late: 0,
-                                    date_missing: 0,
-                                });
-                            }
-                            await employee.save();
+                            employee.department[departmentIndex].attendance_stats[statsIndex].date_on_time += 1;
                         } else {
-                            // Find the current year and month in attendance_stats
-                            const statsIndex = employee.attendance_stats.findIndex(stat =>
-                                stat.year === currentYear && stat.month === currentMonth + 1
-                            );
-
-                            if (statsIndex > -1) {
-                                employee.attendance_stats[statsIndex].date_late += 1;
-                            } else {
-                                // Create a new attendance_stats object for the current month and year
-                                employee.attendance_stats.push({
-                                    year: currentYear,
-                                    month: currentMonth + 1,
-                                    date_on_time: 0,
-                                    date_late: 1,
-                                    date_missing: 0,
-                                });
-                            }
-                            await employee.save();
+                            employee.department[departmentIndex].attendance_stats[statsIndex].date_late += 1;
                         }
-
-                        return res.status(OK).json({
-                            success: true,
-                            status: OK,
-                            message: existingAttendance,
-                            log: `${currentTime}`,
-                        });
-                    } else if (currentTime < endTime) {
-                        // check out too soon
-                        return res.status(BAD_REQUEST).json({
-                            success: false,
-                            status: BAD_REQUEST,
-                            message: `You can not check out at this time ${currentTime.toLocaleTimeString()}`,
-                        });
                     } else {
-                        return res.status(BAD_REQUEST).json({
-                            success: false,
-                            status: BAD_REQUEST,
-                            message: `Err!`,
-                        });
+                        // Create a new attendance_stats object for the current month and year
+                        const newStat = {
+                            year: currentYear,
+                            month: currentMonth,
+                            date_on_time: existingAttendance.shift_info.time_slot.check_in_status === "on time" ? 1 : 0,
+                            date_late: existingAttendance.shift_info.time_slot.check_in_status === "late" ? 1 : 0,
+                            date_missing: 0,
+                        };
+                        employee.department[departmentIndex].attendance_stats.push(newStat);
                     }
-                } else if (time_slot.total_number == 2) {
-                    const [endHours, endMinutes] = time_slot.detail[1].end_time.split(':').map(Number);
-                    const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
-                    // Calculate endTime + 30 minutes
-                    const endTimePlus30 = new Date(endTime);
-                    endTimePlus30.setMinutes(endTime.getMinutes() + 30);
-                    if (currentTime > endTime && currentTime < endTimePlus30) {
-                        // check out on time
-                        existingAttendance.shift_info.time_slot.check_out = true;
-                        existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString()}`;
-                        existingAttendance.shift_info.time_slot.check_out_status = 'on time';
-                        existingAttendance.status = 'checked';
-                        const timeDifference = currentTime - checkInTime;
-                        const totalHours = Math.floor(timeDifference / (1000 * 60 * 60));
-                        const totalMinutes = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
-                        existingAttendance.shift_info.total_hour = totalHours;
-                        existingAttendance.shift_info.total_minutes = totalMinutes;
-                        await existingAttendance.save();
+                    await employee.save();
 
-                        if (existingAttendance.shift_info.time_slot.check_in_status === "on time") {
-                            // Find the current year and month in attendance_stats
-                            const statsIndex = employee.attendance_stats.findIndex(stat =>
-                                stat.year === currentYear && stat.month === currentMonth + 1
-                            );
-
-                            if (statsIndex > -1) {
-                                employee.attendance_stats[statsIndex].date_on_time += 1;
-                            } else {
-                                // Create a new attendance_stats object for the current month and year
-                                employee.attendance_stats.push({
-                                    year: currentYear,
-                                    month: currentMonth + 1,
-                                    date_on_time: 1,
-                                    date_late: 0,
-                                    date_missing: 0,
-                                });
-                            }
-                            await employee.save();
-                        } else {
-                            // Find the current year and month in attendance_stats
-                            const statsIndex = employee.attendance_stats.findIndex(stat =>
-                                stat.year === currentYear && stat.month === currentMonth + 1
-                            );
-
-                            if (statsIndex > -1) {
-                                employee.attendance_stats[statsIndex].date_late += 1;
-                            } else {
-                                // Create a new attendance_stats object for the current month and year
-                                employee.attendance_stats.push({
-                                    year: currentYear,
-                                    month: currentMonth + 1,
-                                    date_on_time: 0,
-                                    date_late: 1,
-                                    date_missing: 0,
-                                });
-                            }
-                            await employee.save();
-                        }
-
-                        return res.status(OK).json({
-                            success: true,
-                            status: OK,
-                            message: existingAttendance,
-                            log: `${currentTime}`,
-                        });
-                    } else if (currentTime < endTime) {
-                        // check out too soon
-                        return res.status(BAD_REQUEST).json({
-                            success: false,
-                            status: BAD_REQUEST,
-                            message: `You can not check out at this time ${currentTime.toLocaleTimeString()}`,
-                        });
-                    }
-                    else {
-                        return res.status(BAD_REQUEST).json({
-                            success: false,
-                            status: BAD_REQUEST,
-                            message: `Err!`,
-                        });
-                    }
+                    return res.status(OK).json({
+                        success: true,
+                        status: OK,
+                        message: existingAttendance,
+                    });
+                } else if (currentTime < endTime) {
+                    return res.status(BAD_REQUEST).json({
+                        success: false,
+                        status: BAD_REQUEST,
+                        message: `You can not check out at this time ${currentTime.toLocaleTimeString()}`,
+                    });
+                } else {
+                    return res.status(BAD_REQUEST).json({
+                        success: false,
+                        status: BAD_REQUEST,
+                        message: `Err!`,
+                    });
                 }
             } else if (existingAttendance.shift_info.time_slot.check_in == true && existingAttendance.shift_info.time_slot.check_out == true) {
                 return res.status(BAD_REQUEST).json({

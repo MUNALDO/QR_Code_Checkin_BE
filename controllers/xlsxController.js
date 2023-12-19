@@ -2,6 +2,7 @@ import { NOT_FOUND, SYSTEM_ERROR } from "../constant/HttpStatus.js";
 import ExcelJS from 'exceljs';
 import fs from 'fs';
 import AttendanceSchema from "../models/AttendanceSchema.js";
+import EmployeeSchema from "../models/EmployeeSchema.js";
 
 async function getAttendance(year, month) {
 
@@ -121,7 +122,7 @@ export const exportAttendanceToExcel = async (req, res, next) => {
         // Generate the Excel file in memory
         const buffer = await workbook.xlsx.writeBuffer();
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', 'attachment; filename=orders.xlsx');
+        res.setHeader('Content-Disposition', 'attachment; filename=attendance.xlsx');
 
         // Send the buffer as the response
         res.send(buffer);
@@ -183,4 +184,149 @@ function groupByMonth(attendanceList) {
     return Array.from(groupedData)
         .map(([key, monthData]) => monthData)
         .sort((a, b) => new Date(a.year, a.month) - new Date(b.year, b.month));
+};
+
+export const exportEmployeeDataToExcel = async (req, res, next) => {
+    try {
+        const employees = await EmployeeSchema.find();
+
+        if (!employees || employees.length === 0) {
+            return res.status(NOT_FOUND).json({ error: "No employee data found" });
+        }
+
+        const fileName = `Employee_Data.xlsx`;
+        const filePath = `../${fileName}`;
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Employee Data');
+
+        const columns = [
+            { header: 'ID', key: 'id', width: 20 },
+            { header: 'Name', key: 'name', width: 20 },
+            { header: 'Email', key: 'email', width: 30 },
+            { header: 'Address', key: 'address', width: 30 },
+            { header: 'DOB', key: 'dob', width: 15 },
+            { header: 'Gender', key: 'gender', width: 10 },
+            { header: 'Department Names', key: 'department_name', width: 30 },
+            { header: 'Role', key: 'role', width: 15 },
+            { header: 'Position', key: 'position', width: 20 },
+            { header: 'Default Day Off', key: 'default_day_off', width: 15 },
+            { header: 'Realistic Day Off', key: 'realistic_day_off', width: 15 },
+            { header: 'House Rent', key: 'house_rent_money', width: 15 },
+            { header: 'Status', key: 'status', width: 10 },
+            { header: 'Active Day', key: 'active_day', width: 15 },
+            { header: 'Inactive Day', key: 'inactive_day', width: 15 },
+        ];
+
+        worksheet.columns = columns;
+
+        employees.forEach(employee => {
+            worksheet.addRow({
+                id: employee.id,
+                name: employee.name,
+                email: employee.email,
+                address: employee.address || '',
+                dob: employee.dob || '',
+                gender: employee.gender || '',
+                department_name: employee.department_name.join(', ') || '',
+                role: employee.role || '',
+                position: employee.position || '',
+                default_day_off: employee.default_day_off || '',
+                realistic_day_off: employee.realistic_day_off || '',
+                house_rent_money: employee.house_rent_money || '',
+                status: employee.status || '',
+                active_day: employee.active_day || '',
+                inactive_day: employee.inactive_day || '',
+            });
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename=Employee_Data.xlsx');
+        res.send(buffer);
+
+        // Save the buffer to the file path
+        try {
+            fs.writeFileSync(filePath, buffer);
+            console.log(`Excel file saved to ${filePath}`);
+        } catch (error) {
+            next(error);
+        }
+    } catch (error) {
+        console.error('Error exporting employee data to Excel:', error);
+        return res.status(SYSTEM_ERROR).json({ error: 'Internal server error' });
+    }
+};
+
+export const exportEmployeeSalaryDataToExcel = async (req, res, next) => {
+    const { year, month } = req.query;
+
+    try {
+        const employees = await EmployeeSchema.find();
+
+        if (!employees || employees.length === 0) {
+            return res.status(NOT_FOUND).json({ error: "No salary data found for the specified month and year" });
+        }
+
+        const fileName = `Employee_Salary_Data_${year}_${month}.xlsx`;
+        const filePath = `../${fileName}`;
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Employee Salary Data');
+
+        const columns = [
+            { header: 'ID', key: 'id', width: 20 },
+            { header: 'Name', key: 'name', width: 20 },
+            { header: 'Department Names', key: 'department_name', width: 30 },
+            { header: 'Position', key: 'position', width: 20 },
+            { header: 'Date Calculate', key: 'date_calculate', width: 15 },
+            { header: 'Total Salary', key: 'total_salary', width: 15 },
+            { header: 'Normal Hours', key: 'hour_normal', width: 15 },
+            { header: 'Overtime Hours', key: 'hour_overtime', width: 15 },
+            { header: 'Total KM', key: 'total_km', width: 10 },
+            { header: 'a Parameter', key: 'a_parameter', width: 15 },
+            { header: 'b Parameter', key: 'b_parameter', width: 15 },
+            { header: 'c Parameter', key: 'c_parameter', width: 15 },
+            { header: 'd Parameter', key: 'd_parameter', width: 15 },
+        ];
+
+        worksheet.columns = columns;
+
+        employees.forEach(employee => {
+            const salaryData = employee.salary.find(s => s.year === year && s.month === month);
+            if (salaryData) {
+                worksheet.addRow({
+                    id: employee.id,
+                    name: employee.name,
+                    department_name: employee.department_name.join(', '),
+                    position: employee.position,
+                    date_calculate: salaryData.date_calculate,
+                    total_salary: salaryData.total_salary,
+                    hour_normal: salaryData.hour_normal,
+                    hour_overtime: salaryData.hour_overtime,
+                    total_km: salaryData.total_km,
+                    a_parameter: salaryData.a_parameter,
+                    b_parameter: salaryData.b_parameter,
+                    c_parameter: salaryData.c_parameter,
+                    d_parameter: salaryData.d_parameter_parameter,
+                });
+            }
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+        res.send(buffer);
+
+        // Optionally save the buffer to a file
+        try {
+            fs.writeFileSync(filePath, buffer);
+            console.log(`Excel file saved to ${filePath}`);
+        } catch (error) {
+            next(error);
+        }
+    } catch (error) {
+        console.error('Error exporting salary data to Excel:', error);
+        return res.status(SYSTEM_ERROR).json({ error: 'Internal server error' });
+    }
 };

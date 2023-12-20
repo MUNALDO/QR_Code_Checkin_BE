@@ -1,30 +1,19 @@
 import express from 'express';
-import {
-    createDateDesignByManager, createMultipleDateDesignsByManager, deleteDateSpecificByManager,
-    getAllDatesByManager, getAllEmployeeAttendanceByManager, getAllEmployees,
-    getDateDesignInMonthByManager, getDateSpecificByManager, getEmployeeAttendanceByManager,
-    getEmployeeSpecific, getEmployeesByDateAndShiftByManager, getEmployeesByDateByManager,
-} from '../controllers/managerController.js';
 import { verifyTokenManager } from '../utils/verifyToken.js';
+import {
+    createMultipleDateDesignsByManager, deleteDateSpecificByManager,
+    getDateDesignForManager, getEmployeesSchedulesByManager, searchSpecificForManager
+} from '../controllers/managerController.js';
 
 const router = express.Router();
 
 // manage employee
-router.get("/manage-employee/get-all", verifyTokenManager, getAllEmployees);
-router.get("/manage-employee/get-specific", verifyTokenManager, getEmployeeSpecific);
-router.get("/manage-employee/get-by-date", verifyTokenManager, getEmployeesByDateByManager);
-router.get("/manage-employee/get-by-date&shift", verifyTokenManager, getEmployeesByDateAndShiftByManager);
+router.get("/manage-employee/search-specific", verifyTokenManager, searchSpecificForManager);
+router.get("/manage-employee/get-all-schedules", verifyTokenManager, getEmployeesSchedulesByManager);
 
 // manage date design
-router.post("/manage-date-design/create-day", verifyTokenManager, createDateDesignByManager);
 router.post("/manage-date-design/create-days", verifyTokenManager, createMultipleDateDesignsByManager);
-router.get('/manage-date-design/get-all', verifyTokenManager, getAllDatesByManager);
-router.get('/manage-date-design/get-by-month', verifyTokenManager, getDateDesignInMonthByManager);
-router.get('/manage-date-design/get-by-date', verifyTokenManager, getDateSpecificByManager);
+router.get('/manage-date-design/get-by-specific', verifyTokenManager, getDateDesignForManager);
 router.delete('/manage-date-design/delete', verifyTokenManager, deleteDateSpecificByManager);
-
-// manage attendance
-router.get('/manage-attendance/get-all', verifyTokenManager, getAllEmployeeAttendanceByManager);
-router.get('/manage-attendance/get-specific/:employeeID', verifyTokenManager, getEmployeeAttendanceByManager);
 
 export default router;

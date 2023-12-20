@@ -17,8 +17,7 @@ import { verifyTokenAdmin } from '../utils/verifyToken.js';
 import { getSalaryForAllEmployees, getSalaryForEmployee, salaryCalculate } from '../controllers/salaryController.js';
 import { exportAttendanceToExcel, exportEmployeeDataToExcel, exportEmployeeSalaryDataToExcel } from '../controllers/xlsxController.js';
 import {
-    createMultipleDateDesigns, deleteDateSpecific,
-    getAllDates, getDateDesign, getDateDesignInMonth, getDateSpecific
+    createMultipleDateDesigns, deleteDateSpecific, getDateDesign
 } from '../controllers/dateDesignController.js';
 import {
     createDayOff, deleteDayOffById, deleteEmployeeDayOff,
@@ -58,10 +57,7 @@ router.put('/manage-shift/update', verifyTokenAdmin, updateShift);
 
 // date design
 router.post('/manage-date-design/create-days', verifyTokenAdmin, createMultipleDateDesigns);
-router.get('/manage-date-design/get-all', verifyTokenAdmin, getAllDates);
 router.get('/manage-date-design/get-by-specific', verifyTokenAdmin, getDateDesign);
-router.get('/manage-date-design/get-by-month', verifyTokenAdmin, getDateDesignInMonth);
-router.get('/manage-date-design/get-by-date', verifyTokenAdmin, getDateSpecific);
 router.delete('/manage-date-design/delete', verifyTokenAdmin, deleteDateSpecific);
 
 // day off

@@ -1,10 +1,9 @@
 import express from 'express';
 import {
     createMultipleDateDesignsByInhaber, deleteDateSpecificByInhaber, deleteEmployeeByIdByInhaber,
-    getAllDatesByInhaber, getAllEmployeeAttendanceByInhaber, getAllEmployees, getDateDesignInMonthByInhaber,
-    getDateSpecificByInhaber, getEmployeeAttendanceByInhaber, getEmployeesByDateAndShiftByInhaber,
-    getEmployeesByDateByInhaber, getEmployeesSchedulesByInhaber, getSalaryForAllEmployeesByInhaber,
-    getSalaryForEmployeeByInhaber, madeEmployeeInactiveByInhaber, searchSpecificForInhaber, updateEmployeeByInhaber
+    getAllEmployeeAttendanceByInhaber, getDateDesignForInhaber, getEmployeeAttendanceByInhaber,
+    getEmployeesSchedulesByInhaber, getSalaryForAllEmployeesByInhaber, getSalaryForEmployeeByInhaber,
+    madeEmployeeInactiveByInhaber, searchSpecificForInhaber, updateEmployeeByInhaber
 } from '../controllers/inhaberController.js';
 import {
     createShift, getAllShifts, getShiftByCode,
@@ -19,17 +18,12 @@ const router = express.Router();
 router.put("/manage-employee/update", verifyTokenInhaber, updateEmployeeByInhaber);
 router.put('/manage-employee/make-inactive', verifyTokenInhaber, madeEmployeeInactiveByInhaber);
 router.delete("/manage-employee/delete-byId", verifyTokenInhaber, deleteEmployeeByIdByInhaber);
-router.get("/manage-employee/get-all", verifyTokenInhaber, getAllEmployees);
 router.get("/manage-employee/search-specific", verifyTokenInhaber, searchSpecificForInhaber);
 router.get("/manage-employee/get-all-schedules", verifyTokenInhaber, getEmployeesSchedulesByInhaber);
-router.get("/manage-employee/get-by-date", verifyTokenInhaber, getEmployeesByDateByInhaber);
-router.get("/manage-employee/get-by-date&shift", verifyTokenInhaber, getEmployeesByDateAndShiftByInhaber);
 
 // manage date design
 router.post("/manage-date-design/create-days", verifyTokenInhaber, createMultipleDateDesignsByInhaber);
-router.get('/manage-date-design/get-all', verifyTokenInhaber, getAllDatesByInhaber);
-router.get('/manage-date-design/get-by-month', verifyTokenInhaber, getDateDesignInMonthByInhaber);
-router.get('/manage-date-design/get-by-date', verifyTokenInhaber, getDateSpecificByInhaber);
+router.get('/manage-date-design/get-by-specific', verifyTokenInhaber, getDateDesignForInhaber);
 router.delete('/manage-date-design/delete', verifyTokenInhaber, deleteDateSpecificByInhaber);
 
 // manage shift

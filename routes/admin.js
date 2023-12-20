@@ -1,9 +1,9 @@
 import express from 'express';
 import {
     deleteEmployeeById, getAllEmployeeAttendance, getAllEmployees,
-    getAllRequests, getEmployeeAttendance, getEmployeeSpecific,
+    getAllEmployeesSchedules, getAllRequests, getEmployeeAttendance,
     getEmployeesByDate, getEmployeesByDateAndShift, getRequestById,
-    handleRequest, madeEmployeeInactive, searchSpecific, updateEmployee
+    handleRequest, madeEmployeeInactive, searchSpecific, updateEmployeeBasicInfor
 } from '../controllers/adminController.js';
 import {
     addMemberDepartment, createDepartment, deleteDepartmentByName, getAllDepartments,
@@ -17,7 +17,7 @@ import { verifyTokenAdmin } from '../utils/verifyToken.js';
 import { getSalaryForAllEmployees, getSalaryForEmployee, salaryCalculate } from '../controllers/salaryController.js';
 import { exportAttendanceToExcel, exportEmployeeDataToExcel, exportEmployeeSalaryDataToExcel } from '../controllers/xlsxController.js';
 import {
-    createDateDesign, createMultipleDateDesigns, deleteDateSpecific,
+    createMultipleDateDesigns, deleteDateSpecific,
     getAllDates, getDateDesign, getDateDesignInMonth, getDateSpecific
 } from '../controllers/dateDesignController.js';
 import {
@@ -32,12 +32,12 @@ router.get('/manage-all/search-specific', verifyTokenAdmin, searchSpecific);
 
 // employee
 router.get('/manage-employee/get-all', verifyTokenAdmin, getAllEmployees);
-router.get('/manage-employee/get-specific', verifyTokenAdmin, getEmployeeSpecific);
+router.get('/manage-employee/get-all-schedules', verifyTokenAdmin, getAllEmployeesSchedules);
 router.get('/manage-employee/get-by-date', verifyTokenAdmin, getEmployeesByDate);
 router.get('/manage-employee/get-by-date&shift', verifyTokenAdmin, getEmployeesByDateAndShift);
 router.get('/manage-employee/export-attendance', verifyTokenAdmin, exportAttendanceToExcel);
 router.delete('/manage-employee/delete-byId', verifyTokenAdmin, deleteEmployeeById);
-router.put('/manage-employee/update', verifyTokenAdmin, updateEmployee);
+router.put('/manage-employee/update-basic', verifyTokenAdmin, updateEmployeeBasicInfor);
 router.put('/manage-employee/make-inactive', verifyTokenAdmin, madeEmployeeInactive);
 
 // department
@@ -57,7 +57,6 @@ router.get('/manage-shift/get-by-name', verifyTokenAdmin, getShiftByName);
 router.put('/manage-shift/update', verifyTokenAdmin, updateShift);
 
 // date design
-router.post('/manage-date-design/create-day', verifyTokenAdmin, createDateDesign);
 router.post('/manage-date-design/create-days', verifyTokenAdmin, createMultipleDateDesigns);
 router.get('/manage-date-design/get-all', verifyTokenAdmin, getAllDates);
 router.get('/manage-date-design/get-by-specific', verifyTokenAdmin, getDateDesign);

@@ -9,51 +9,63 @@ import RequestSchema from "../models/RequestSchema.js";
 import DayOffSchema from "../models/DayOffSchema.js";
 import cron from 'node-cron';
 
-export const updateEmployee = async (req, res, next) => {
+export const updateEmployeeBasicInfor = async (req, res, next) => {
     const employeeID = req.query.employeeID;
     try {
-        const updateEmployee = await EmployeeSchema.findOneAndUpdate(
+        const { department, ...updateData } = req.body;
+
+        const updatedEmployee = await EmployeeSchema.findOneAndUpdate(
             { id: employeeID },
-            { $set: req.body },
+            { $set: updateData },
             { new: true }
         );
 
-        if (!updateEmployee) {
+        if (!updatedEmployee) {
             return next(createError(NOT_FOUND, "Employee not found!"));
         }
-        if (updateEmployee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
-
-        const department = await DepartmentSchema.findOne({ name: updateEmployee.department_name });
-        if (!department) {
-            return next(createError(NOT_FOUND, "Department not found!"));
+        if (updatedEmployee.status === "inactive") {
+            return next(createError(NOT_FOUND, "Employee not active!"));
         }
 
-        const employeeIndex = department.members.findIndex(member => member.id === updateEmployee.id);
-        if (employeeIndex !== -1) {
-            department.members[employeeIndex] = {
-                id: updateEmployee.id,
-                name: updateEmployee.name,
-                email: updateEmployee.email,
-                department_name: updateEmployee.department_name,
-                role: updateEmployee.role,
-                position: updateEmployee.position,
-                status: updateEmployee.status,
-            };
-
-            await department.save();
-            await updateEmployee.save();
-            res.status(OK).json({
-                success: true,
-                status: OK,
-                message: updateEmployee,
-            });
-        } else {
-            res.status(NOT_FOUND).json({
-                success: true,
-                status: OK,
-                message: "Can not found employee in department",
-            });
+        // Update employee information in each department
+        for (let departmentObject of updatedEmployee.department) {
+            const department = await DepartmentSchema.findOne({ name: departmentObject.name });
+            if (department) {
+                const memberIndex = department.members.findIndex(member => member.id === updatedEmployee.id);
+                if (memberIndex !== -1) {
+                    const originalPosition = department.members[memberIndex].position;
+                    department.members[memberIndex] = {
+                        ...department.members[memberIndex],
+                        id: updatedEmployee.id,
+                        name: updatedEmployee.name,
+                        email: updatedEmployee.email,
+                        role: updatedEmployee.role,
+                        position: originalPosition,
+                    };
+                    await department.save();
+                }
+            }
         }
+
+        // Update employee information in day off records
+        await DayOffSchema.updateMany(
+            { 'members.id': updatedEmployee.id },
+            {
+                $set: {
+                    'members.$.id': updatedEmployee.id,
+                    'members.$.name': updatedEmployee.name,
+                    'members.$.email': updatedEmployee.email,
+                    'members.$.role': updatedEmployee.role,
+                }
+            }
+        );
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: updatedEmployee,
+        });
+
     } catch (err) {
         next(err);
     }
@@ -64,33 +76,47 @@ export const madeEmployeeInactive = async (req, res, next) => {
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
-        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
+        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee already inactive!"));
 
         const inactiveDate = new Date(req.body.inactive_day);
-        employee.inactive_day = inactiveDate;
         const currentDate = new Date();
 
         // Check if the inactive date is in the future
-        if (inactiveDate > currentDate) {
-            const day = inactiveDate.getDate();
-            const month = inactiveDate.getMonth();
-            const year = inactiveDate.getFullYear();
-
-            // Schedule the status update
-            cron.schedule(`0 0 0 ${day} ${month} ${year}`, async () => {
-                employee.inactive_day = inactiveDate;
-                employee.status = "inactive";
-                await employee.save();
-            });
-
-            res.status(OK).json({
-                success: true,
-                status: OK,
-                message: "Employee will be made inactive on the specified date."
-            });
-        } else {
+        if (inactiveDate <= currentDate) {
             return next(createError(BAD_REQUEST, "Inactive day must be in the future."));
         }
+
+        // Schedule the status update
+        cron.schedule(`0 0 0 ${inactiveDate.getDate()} ${inactiveDate.getMonth()} ${inactiveDate.getFullYear()}`, async () => {
+            employee.inactive_day = inactiveDate;
+            employee.status = "inactive";
+
+            // Update status in departments
+            for (let departmentObject of employee.department) {
+                const department = await DepartmentSchema.findOne({ name: departmentObject.name });
+                if (department) {
+                    const memberIndex = department.members.findIndex(member => member.id === employee.id);
+                    if (memberIndex !== -1) {
+                        department.members[memberIndex].status = "inactive";
+                        await department.save();
+                    }
+                }
+            }
+
+            // Update status in day off records
+            await DayOffSchema.updateMany(
+                { 'members.id': employeeID },
+                { $set: { 'members.$.status': "inactive" } }
+            );
+
+            await employee.save();
+        });
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: "Employee will be made inactive on the specified date."
+        });
     } catch (err) {
         next(err);
     }
@@ -101,14 +127,23 @@ export const deleteEmployeeById = async (req, res, next) => {
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
-        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
-        const department = await DepartmentSchema.findOne({ name: employee.department_name });
-        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+        // Remove the employee from all departments
+        for (let departmentObject of employee.department) {
+            const department = await DepartmentSchema.findOne({ name: departmentObject.name });
+            if (department) {
+                department.members = department.members.filter(member => member.id !== employee.id);
+                await department.save();
+            }
+        }
 
-        department.members = department.members.filter(member => member.id !== employee.id);
-        await department.save();
+        // Remove the employee from all day off records
+        await DayOffSchema.updateMany(
+            { 'members.id': employeeID },
+            { $pull: { members: { id: employeeID } } }
+        );
 
+        // Finally, delete the employee record
         await EmployeeSchema.findOneAndDelete({ id: employeeID });
         res.status(OK).json({
             success: true,
@@ -119,7 +154,6 @@ export const deleteEmployeeById = async (req, res, next) => {
         next(err);
     }
 };
-
 
 export const getAllEmployees = async (req, res, next) => {
     try {
@@ -136,240 +170,113 @@ export const getAllEmployees = async (req, res, next) => {
 };
 
 export const searchSpecific = async (req, res, next) => {
-    const role = req.query.role;
-    const department = req.query.department;
-    const details = req.query.details;
+    const { role, department, details, status } = req.query;
     try {
         const regex = new RegExp(details, 'i');
-        const managements = await AdminSchema.find();
-        // console.log(managements);
-        const matchedManagement = managements.filter(management => {
-            return (management.role === "Inhaber" || management.role === "Manager");
-        });
-        if (matchedManagement.length === 0) {
+        let managementQueryCriteria = { 'role': { $in: ['Inhaber', 'Manager'] } }; // Default to 'Inhaber' and 'Manager'
+        let employeeQueryCriteria = {};
+
+        if (role) {
+            if (role === 'Employee') {
+                employeeQueryCriteria['role'] = role;
+            } else {
+                managementQueryCriteria['role'] = role;
+                employeeQueryCriteria['role'] = role; // Include for employee if role is other than 'Employee'
+            }
+        }
+
+        if (status) {
+            managementQueryCriteria['status'] = status;
+            employeeQueryCriteria['status'] = status;
+        }
+
+        if (details) {
+            managementQueryCriteria['$or'] = [
+                { id: regex },
+                { name: regex }
+            ];
+            employeeQueryCriteria['$or'] = [
+                { id: regex },
+                { name: regex },
+                { 'department.position': regex }
+            ];
+        }
+
+        if (department) {
+            managementQueryCriteria['department_name'] = department;
+            employeeQueryCriteria['department.name'] = department;
+        }
+
+        const managements = await AdminSchema.find(managementQueryCriteria);
+        const employees = await EmployeeSchema.find(employeeQueryCriteria);
+
+        const result = [...managements, ...employees];
+
+        if (result.length === 0) {
             return res.status(NOT_FOUND).json({
                 success: false,
                 status: NOT_FOUND,
-                message: "No managements found for the specified criteria.",
+                message: "No matching records found.",
             });
         }
 
-        const employees = await EmployeeSchema.find();
-        if (!employees) return next(createError(NOT_FOUND, "Employees not found!"))
-
-        let all_roles = [];
-        all_roles.push(matchedManagement);
-        all_roles.push(employees);
-        const flattenedRoles = all_roles.flat();
-
-        if (!role && !department && !details) {
-            res.status(OK).json({
-                success: true,
-                status: OK,
-                message: all_roles
-            });
-        }
-        if (role && department && details) {
-            const matchValue = flattenedRoles.filter(match_value => {
-                const id = regex.test(match_value.id);
-                const name = regex.test(match_value.name);
-                const position = regex.test(match_value.position);
-
-                return (
-                    match_value.role === role &&
-                    match_value.department_name === department &&
-                    (id || name || position)
-                );
-            })
-            if (matchValue !== 0) {
-                res.status(OK).json({
-                    success: true,
-                    status: OK,
-                    message: matchValue,
-                });
-            } else {
-                res.status(OK).json({
-                    success: true,
-                    status: OK,
-                    message: [],
-                });
-            }
-        } else if (role && !department && details) {
-            const matchValue = flattenedRoles.filter(match_value => {
-                const id = regex.test(match_value.id);
-                const name = regex.test(match_value.name);
-                const position = regex.test(match_value.position);
-                return (
-                    match_value.role === role &&
-                    (id || name || position)
-                );
-            })
-            if (matchValue !== 0) {
-                res.status(OK).json({
-                    success: true,
-                    status: OK,
-                    message: matchValue,
-                });
-            } else {
-                res.status(OK).json({
-                    success: true,
-                    status: OK,
-                    message: [],
-                });
-            }
-        } else if (!role && department && details) {
-            const matchValue = flattenedRoles.filter(match_value => {
-                const id = regex.test(match_value.id);
-                const name = regex.test(match_value.name);
-                const position = regex.test(match_value.position);
-                return (
-                    match_value.department_name === department &&
-                    (id || name || position)
-                );
-            })
-            if (matchValue !== 0) {
-                res.status(OK).json({
-                    success: true,
-                    status: OK,
-                    message: matchValue,
-                });
-            } else {
-                res.status(OK).json({
-                    success: true,
-                    status: OK,
-                    message: [],
-                });
-            }
-        } else if (role && department && !details) {
-            const matchValue = flattenedRoles.filter(match_value => {
-                return (match_value.role === role && match_value.department_name === department);
-            })
-            if (matchValue !== 0) {
-                res.status(OK).json({
-                    success: true,
-                    status: OK,
-                    message: matchValue,
-                });
-            } else {
-                res.status(OK).json({
-                    success: true,
-                    status: OK,
-                    message: [],
-                });
-            }
-        } else if (role && !department && !details) {
-            const matchRole = flattenedRoles.filter(match_value => {
-                return (match_value.role === role)
-            });
-
-            if (matchRole.length !== 0) {
-                res.status(OK).json({
-                    success: true,
-                    status: OK,
-                    message: matchRole,
-                });
-            } else {
-                res.status(OK).json({
-                    success: true,
-                    status: OK,
-                    message: [],
-                });
-            }
-        } else if (!role && department && !details) {
-            const matchDepartment = flattenedRoles.filter(match_value => {
-                return (match_value.department_name === department)
-            });
-
-            if (matchDepartment.length !== 0) {
-                res.status(OK).json({
-                    success: true,
-                    status: OK,
-                    message: matchDepartment,
-                });
-            } else {
-                res.status(OK).json({
-                    success: true,
-                    status: OK,
-                    message: [],
-                });
-            }
-        } else if (!role && !department && details) {
-            const matchDetails = flattenedRoles.filter(match_value => {
-                const id = regex.test(match_value.id);
-                const name = regex.test(match_value.name);
-                const position = regex.test(match_value.position);
-                return (id || name || position);
-            });
-
-            if (matchDetails !== 0) {
-                res.status(OK).json({
-                    success: true,
-                    status: OK,
-                    message: matchDetails,
-                });
-            } else {
-                res.status(OK).json({
-                    success: true,
-                    status: OK,
-                    message: [],
-                });
-            }
-        }
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: result,
+        });
     } catch (err) {
         next(err);
     }
 };
 
-export const getEmployeeSpecific = async (req, res, next) => {
-    const query = req.query.query;
+export const getAllEmployeesSchedules = async (req, res, next) => {
+    const targetYear = parseInt(req.query.year);
+    const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null; // Month is optional
+    const targetDate = req.query.date ? new Date(req.query.date) : null; // Specific date is optional
     try {
-        if (!query) {
-            const employee = await EmployeeSchema.find();
-            if (!employee) return next(createError(NOT_FOUND, "Employees not found!"))
+        const employees = await EmployeeSchema.find();
+        const schedules = [];
 
-            res.status(OK).json({
-                success: true,
-                status: OK,
-                message: employee,
+        employees.forEach(employee => {
+            employee.department.forEach(department => {
+                department.schedules.forEach(schedule => {
+                    const scheduleDate = new Date(schedule.date);
+
+                    if (scheduleDate.getFullYear() === targetYear && 
+                        (targetMonth === null || scheduleDate.getMonth() === targetMonth) &&
+                        (!targetDate || scheduleDate.toISOString().split('T')[0] === targetDate.toISOString().split('T')[0])) {
+
+                        schedule.shift_design.forEach(shift => {
+                            schedules.push({
+                                employee_id: employee.id,
+                                employee_name: employee.name,
+                                department_name: department.name,
+                                date: scheduleDate,
+                                shift_code: shift.shift_code,
+                                position: shift.position,
+                                time_slot: shift.time_slot,
+                                shift_type: shift.shift_type
+                            });
+                        });
+                    }
+                });
+            });
+        });
+
+        if (schedules.length === 0) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: "No schedules found for the specified criteria."
             });
         }
-        const regex = new RegExp(query, 'i');
-        const employeeName = await EmployeeSchema.find({ name: regex });
-        const employeeID = await EmployeeSchema.find({ id: regex });
-        const employeeRole = await EmployeeSchema.find({ role: query });
-        const employeePosition = await EmployeeSchema.find({ position: query });
 
-        if (employeeName.length !== 0) {
-            res.status(OK).json({
-                success: true,
-                status: OK,
-                message: employeeName,
-            });
-        } else if (employeeID.length !== 0) {
-            res.status(OK).json({
-                success: true,
-                status: OK,
-                message: employeeID,
-            });
-        } else if (employeeRole.length !== 0) {
-            res.status(OK).json({
-                success: true,
-                status: OK,
-                message: employeeRole,
-            });
-        } else if (employeePosition.length !== 0) {
-            res.status(OK).json({
-                success: true,
-                status: OK,
-                message: employeePosition,
-            });
-        } else {
-            res.status(OK).json({
-                success: true,
-                status: OK,
-                message: [],
-            });
-        }
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: schedules
+        });
     } catch (err) {
         next(err);
     }

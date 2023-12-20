@@ -2,7 +2,6 @@ import { s3Client } from "../awsConfig.js";
 import { BAD_REQUEST, CREATED, NOT_FOUND, OK, SYSTEM_ERROR } from "../constant/HttpStatus.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import DayOffSchema from "../models/DayOffSchema.js";
-// import DepartmentSchema from "../models/DepartmentSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import RequestSchema from "../models/RequestSchema.js";
 import { createError } from "../utils/error.js";
@@ -53,7 +52,8 @@ const getShiftTimes = (currentDateTime, timeSlot) => {
 
     return {
         shiftStartTime: new Date(currentDateTime.getFullYear(), currentDateTime.getMonth(), currentDateTime.getDate(), startHours, startMinutes),
-        shiftEndTime: new Date(currentDateTime.getFullYear(), currentDateTime.getMonth(), currentDateTime.getDate(), endHours, endMinutes)
+        shiftEndTime: new Date(currentDateTime.getFullYear(), currentDateTime.getMonth(), currentDateTime.getDate(), endHours, endMinutes),
+        endHours, endMinutes
     };
 };
 
@@ -73,7 +73,7 @@ const checkAndUpdateAttendance = async (employee, department, schedule, shift, s
     if (!existingAttendance) {
         await createMissingAttendance(employee, department, schedule, shift);
     } else {
-        await updateExistingAttendance(existingAttendance, shiftTimes);
+        await updateExistingAttendance(employee, department, existingAttendance, shiftTimes);
     }
 };
 
@@ -118,9 +118,63 @@ const createMissingAttendance = async (employee, department, schedule, shift) =>
     console.log('Missing attendance created for employee:', employee.id);
 };
 
-const updateExistingAttendance = async (attendance, shiftTimes) => {
+const updateExistingAttendance = async (employee, department, attendance, shiftTimes) => {
+    const currentTime = new Date();
+    const currentYear = currentTime.getFullYear();
+    const currentMonth = currentTime.getMonth() + 1;
     if (attendance.shift_info.time_slot.check_in && !attendance.shift_info.time_slot.check_out) {
-        // Update logic for existing attendance
+        const checkInTimeString = attendance.shift_info.time_slot.check_in_time;
+        const checkInTime = new Date(`${currentTime.toDateString()} ${checkInTimeString}`);
+
+        if (isNaN(checkInTime)) {
+            // Handle the case where parsing fails
+            return res.status(BAD_REQUEST).json({
+                success: false,
+                status: BAD_REQUEST,
+                message: `Error parsing check-in time: ${checkInTimeString}`,
+            });
+        }
+        // check out late
+        attendance.shift_info.time_slot.check_out = true;
+        attendance.shift_info.time_slot.check_out_time = `${shiftTimes.endHours}: ${shiftTimes.endMinutes}`;
+        attendance.shift_info.time_slot.check_out_status = 'late';
+        attendance.status = 'checked';
+        const checkOutTimeString = attendance.shift_info.time_slot.check_out_time;
+        const checkOutTime = new Date(`${currentTime.toDateString()} ${checkOutTimeString}`);
+
+        if (isNaN(checkOutTime)) {
+            // Handle the case where parsing fails
+            return res.status(BAD_REQUEST).json({
+                success: false,
+                status: BAD_REQUEST,
+                message: `Error parsing check-in time: ${checkOutTimeString}`,
+            });
+        }
+        const timeDifference = checkOutTime - checkInTime;
+        const totalHours = Math.floor(timeDifference / (1000 * 60 * 60));
+        const totalMinutes = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
+        attendance.shift_info.total_hour = totalHours;
+        attendance.shift_info.total_minutes = totalMinutes;
+
+        const departmentIndex = employee.department.findIndex(dep => dep.name === department.name);
+        const statsIndex = employee.department[departmentIndex].attendance_stats.findIndex(stat =>
+            stat.year === currentYear && stat.month === currentMonth
+        );
+
+        if (statsIndex > -1) {
+            employee.department[departmentIndex].attendance_stats[statsIndex].date_late += 1;
+        } else {
+            const newStat = {
+                year: currentYear,
+                month: currentMonth,
+                date_on_time: 0,
+                date_late: 1,
+                date_missing: 0,
+            };
+            employee.department[departmentIndex].attendance_stats.push(newStat);
+        }
+        await attendance.save();
+        await employee.save();
         console.log('Attendance updated for employee:', attendance.employee_id);
     } else {
         console.log('No update required for employee:', attendance.employee_id);

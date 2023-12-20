@@ -1,11 +1,10 @@
 import express from 'express';
 import {
-    createDateDesignByInhaber, createMultipleDateDesignsByInhaber, deleteDateSpecificByInhaber,
-    deleteEmployeeByIdByInhaber, getAllDatesByInhaber, getAllEmployeeAttendanceByInhaber,
-    getAllEmployees, getDateDesignInMonthByInhaber, getDateSpecificByInhaber,
-    getEmployeeAttendanceByInhaber, getEmployeesByDateAndShiftByInhaber, getEmployeesByDateByInhaber,
-    getSalaryForAllEmployeesByInhaber, getSalaryForEmployeeByInhaber, madeEmployeeInactiveByInhaber,
-    searchSpecificForInhaber, updateEmployeeByInhaber
+    createMultipleDateDesignsByInhaber, deleteDateSpecificByInhaber, deleteEmployeeByIdByInhaber,
+    getAllDatesByInhaber, getAllEmployeeAttendanceByInhaber, getAllEmployees, getDateDesignInMonthByInhaber,
+    getDateSpecificByInhaber, getEmployeeAttendanceByInhaber, getEmployeesByDateAndShiftByInhaber,
+    getEmployeesByDateByInhaber, getEmployeesSchedulesByInhaber, getSalaryForAllEmployeesByInhaber,
+    getSalaryForEmployeeByInhaber, madeEmployeeInactiveByInhaber, searchSpecificForInhaber, updateEmployeeByInhaber
 } from '../controllers/inhaberController.js';
 import {
     createShift, getAllShifts, getShiftByCode,
@@ -22,11 +21,11 @@ router.put('/manage-employee/make-inactive', verifyTokenInhaber, madeEmployeeIna
 router.delete("/manage-employee/delete-byId", verifyTokenInhaber, deleteEmployeeByIdByInhaber);
 router.get("/manage-employee/get-all", verifyTokenInhaber, getAllEmployees);
 router.get("/manage-employee/search-specific", verifyTokenInhaber, searchSpecificForInhaber);
+router.get("/manage-employee/get-all-schedules", verifyTokenInhaber, getEmployeesSchedulesByInhaber);
 router.get("/manage-employee/get-by-date", verifyTokenInhaber, getEmployeesByDateByInhaber);
 router.get("/manage-employee/get-by-date&shift", verifyTokenInhaber, getEmployeesByDateAndShiftByInhaber);
 
 // manage date design
-router.post("/manage-date-design/create-day", verifyTokenInhaber, createDateDesignByInhaber);
 router.post("/manage-date-design/create-days", verifyTokenInhaber, createMultipleDateDesignsByInhaber);
 router.get('/manage-date-design/get-all', verifyTokenInhaber, getAllDatesByInhaber);
 router.get('/manage-date-design/get-by-month', verifyTokenInhaber, getDateDesignInMonthByInhaber);

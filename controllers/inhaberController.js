@@ -215,9 +215,9 @@ export const searchSpecificForInhaber = async (req, res, next) => {
 
         if (role) {
             if (role === 'Manager') {
-                employeeQueryCriteria = {}; 
+                employeeQueryCriteria = {};
             } else if (role === 'Employee') {
-                managementQueryCriteria = {}; 
+                managementQueryCriteria = {};
             }
         }
 
@@ -237,6 +237,68 @@ export const searchSpecificForInhaber = async (req, res, next) => {
             success: true,
             status: OK,
             message: result,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getEmployeesSchedulesByInhaber = async (req, res, next) => {
+    const inhaber_name = req.query.inhaber_name;
+    const targetYear = parseInt(req.query.year);
+    const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null;
+    const targetDate = req.query.date ? new Date(req.query.date) : null;
+    try {
+        // Find the Inhaber and get their department name
+        const inhaber = await AdminSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        const departmentName = inhaber.department_name;
+
+        // Find all employees in the Inhaber's department
+        const employees = await EmployeeSchema.find({ 'department.name': departmentName });
+
+        const schedules = [];
+        employees.forEach(employee => {
+            employee.department.forEach(department => {
+                if (department.name === departmentName) {
+                    department.schedules.forEach(schedule => {
+                        const scheduleDate = new Date(schedule.date);
+
+                        if (scheduleDate.getFullYear() === targetYear &&
+                            (targetMonth === null || scheduleDate.getMonth() === targetMonth) &&
+                            (!targetDate || scheduleDate.toISOString().split('T')[0] === targetDate.toISOString().split('T')[0])) {
+
+                            schedule.shift_design.forEach(shift => {
+                                schedules.push({
+                                    employee_id: employee.id,
+                                    employee_name: employee.name,
+                                    department_name: department.name,
+                                    date: scheduleDate,
+                                    shift_code: shift.shift_code,
+                                    position: shift.position,
+                                    time_slot: shift.time_slot,
+                                    shift_type: shift.shift_type
+                                });
+                            });
+                        }
+                    });
+                }
+            });
+        });
+
+        if (schedules.length === 0) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: "No schedules found for the specified criteria in your department."
+            });
+        }
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: schedules
         });
     } catch (err) {
         next(err);
@@ -325,269 +387,98 @@ export const getEmployeesByDateAndShiftByInhaber = async (req, res, next) => {
     }
 };
 
-export const createDateDesignByInhaber = async (req, res, next) => {
-    const inhaber_name = req.query.inhaber_name;
-    const shiftCode = req.body.shift_code;
-    const employeeID = req.query.employeeID;
-    try {
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
-        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
-
-        const shift = await ShiftSchema.findOne({ code: shiftCode });
-        if (!shift) return next(createError(NOT_FOUND, "Shift not found!"))
-
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
-        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
-
-        if (!employee.department_name.includes(inhaber.department_name)) {
-            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervene with an employee in their department."));
-        }
-
-        const existingDateInSchedules = employee.schedules.find(schedule => {
-            return schedule.date.getTime() === new Date(req.body.date).getTime();
-        });
-
-        if (!existingDateInSchedules) {
-            // date not exists
-            employee.schedules.push({
-                date: new Date(req.body.date),
-                shift_design: [{
-                    shift_code: shift.code,
-                    time_slot: shift.time_slot,
-                    shift_type: req.body.shift_type
-                }]
-            });
-            await employee.save();
-            res.status(CREATED).json({
-                success: true,
-                status: CREATED,
-                message: employee,
-            });
-        } else {
-            // date exists
-            const existingShiftDesign = existingDateInSchedules.shift_design.find(design => {
-                return design.shift_code === shiftCode
-            });
-
-            if (existingShiftDesign) {
-                // Shift design already exists for the day
-                res.status(BAD_REQUEST).json({
-                    success: false,
-                    status: BAD_REQUEST,
-                    message: "Shift design already exists for the day"
-                });
-            } else {
-                // If there is no existing shift_design with the same shiftCode, create a new shift_design
-                const existsTimeRanges = existingDateInSchedules.shift_design.map(shift => {
-                    const totalNumber = shift.time_slot.total_number;
-                    const startTime = shift.time_slot.detail[0].start_time;
-                    const endTime = totalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
-                    return { startTime, endTime };
-                });
-
-                const newShiftTotalNumber = shift.time_slot.total_number;
-                const newShiftStartTime = shift.time_slot.detail[0].start_time;
-                const newShiftEndTime = newShiftTotalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
-                // const newShiftTimeRange = { newShiftStartTime, newShiftEndTime };
-                // console.log(newShiftTimeRange);
-
-                const convertToMinutes = (timeString) => {
-                    const [hours, minutes] = timeString.split(':').map(Number);
-                    return hours * 60 + minutes;
-                };
-
-                const hasConflict = existsTimeRanges.some(range => {
-                    const existingStartTime = convertToMinutes(range.startTime);
-                    const existingEndTime = convertToMinutes(range.endTime);
-                    const newStartTime = convertToMinutes(newShiftStartTime);
-                    const newEndTime = convertToMinutes(newShiftEndTime);
-
-                    return (
-                        (newStartTime >= existingStartTime && newStartTime < existingEndTime) ||
-                        (newEndTime > existingStartTime && newEndTime <= existingEndTime)
-                    );
-                });
-
-                if (hasConflict) {
-                    // Time range conflict
-                    res.status(BAD_REQUEST).json({
-                        success: false,
-                        status: BAD_REQUEST,
-                        message: "Time range conflict with existing shifts for the day",
-                    });
-                } else {
-                    // If there is no existing shift_design with the same shiftCode, create a new shift_design
-                    const existsTimeRanges = existingDateInSchedules.shift_design.map(shift => {
-                        const totalNumber = shift.time_slot.total_number;
-                        const startTime = shift.time_slot.detail[0].start_time;
-                        const endTime = totalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
-                        return { startTime, endTime };
-                    });
-
-                    const newShiftTotalNumber = shift.time_slot.total_number;
-                    const newShiftStartTime = shift.time_slot.detail[0].start_time;
-                    const newShiftEndTime = newShiftTotalNumber === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time;
-                    // const newShiftTimeRange = { newShiftStartTime, newShiftEndTime };
-                    // console.log(newShiftTimeRange);
-
-                    const convertToMinutes = (timeString) => {
-                        const [hours, minutes] = timeString.split(':').map(Number);
-                        return hours * 60 + minutes;
-                    };
-
-                    const hasConflict = existsTimeRanges.some(range => {
-                        const existingStartTime = convertToMinutes(range.startTime);
-                        const existingEndTime = convertToMinutes(range.endTime);
-                        const newStartTime = convertToMinutes(newShiftStartTime);
-                        const newEndTime = convertToMinutes(newShiftEndTime);
-
-                        return (
-                            (newStartTime >= existingStartTime && newStartTime < existingEndTime) ||
-                            (newEndTime > existingStartTime && newEndTime <= existingEndTime)
-                        );
-                    });
-
-                    if (hasConflict) {
-                        // Time range conflict
-                        res.status(BAD_REQUEST).json({
-                            success: false,
-                            status: BAD_REQUEST,
-                            message: "Time range conflict with existing shifts for the day",
-                        });
-                    } else {
-                        // No time range conflict, add the new shift design
-                        existingDateInSchedules.shift_design.push({
-                            shift_code: shift.code,
-                            time_slot: shift.time_slot,
-                            shift_type: req.body.shift_type
-                        });
-                        await employee.save();
-                        res.status(CREATED).json({
-                            success: true,
-                            status: CREATED,
-                            message: employee,
-                        });
-                    }
-                }
-            }
-        }
-    } catch (err) {
-        next(err);
-    }
-};
-
 export const createMultipleDateDesignsByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
+    const specificEmployeeID = req.query.employeeID;
     const shiftCode = req.body.shift_code;
-    const employeeID = req.query.employeeID;
     const dates = req.body.dates;
     try {
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        const inhaber = await AdminSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+        const departmentName = inhaber.department_name;
 
         const shift = await ShiftSchema.findOne({ code: shiftCode });
         if (!shift) return next(createError(NOT_FOUND, "Shift not found!"));
 
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
-        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
-
-        if (!employee.department_name.includes(inhaber.department_name)) {
-            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervene with an employee in their department."));
+        let employees;
+        if (specificEmployeeID) {
+            const employee = await EmployeeSchema.findOne({ id: specificEmployeeID, 'department.name': departmentName });
+            if (!employee) return next(createError(NOT_FOUND, "Employee not found in the Inhaber's department!"));
+            employees = [employee];
+        } else {
+            employees = await EmployeeSchema.find({ 'department.name': departmentName });
         }
 
-        for (const date of dates) {
-            const dateObj = new Date(date);
-            const existingDateInSchedule = employee.schedules.find(schedule =>
-                schedule.date.getTime() === dateObj.getTime()
-            );
+        const results = [];
+        for (const employee of employees) {
+            const employeeDepartment = employee.department.find(dep => dep.name === departmentName);
+            if (!employeeDepartment) continue;
 
-            if (existingDateInSchedule) {
-                // Skip if shift design already exists for this date
-                const existingShiftDesign = existingDateInSchedule.shift_design.find(design =>
-                    design.shift_code === shiftCode
+            for (const date of dates) {
+                const dateObj = new Date(date);
+                let existingDateInDepartmentSchedule = employeeDepartment.schedules.find(schedule =>
+                    schedule.date.getTime() === dateObj.getTime()
                 );
-                if (existingShiftDesign) {
-                    // Shift design already exists for the day
-                    res.status(BAD_REQUEST).json({
+
+                if (existingDateInDepartmentSchedule && existingDateInDepartmentSchedule.shift_design.some(design => design.shift_code === shiftCode)) {
+                    return res.status(BAD_REQUEST).json({
                         success: false,
                         status: BAD_REQUEST,
-                        message: "Shift design already exists for the day"
+                        message: `Shift with code ${shiftCode} already exists for ${date} in the employee's department.`
                     });
-                };
+                }
 
-                // Check for time range conflicts
-                const hasConflict = checkForTimeRangeConflict(existingDateInSchedule, shift);
-                if (hasConflict) {
-                    // Time range conflict
-                    res.status(BAD_REQUEST).json({
-                        success: false,
-                        status: BAD_REQUEST,
-                        message: "Time range conflict with existing shifts for the day",
-                    });
-                };
+                if (!existingDateInDepartmentSchedule) {
+                    existingDateInDepartmentSchedule = {
+                        date: dateObj,
+                        shift_design: [{
+                            position: req.body.position,
+                            shift_code: shift.code,
+                            time_slot: shift.time_slot,
+                            shift_type: req.body.shift_type
+                        }]
+                    };
+                    employeeDepartment.schedules.push(existingDateInDepartmentSchedule);
+                }
 
-                existingDateInSchedule.shift_design.push({
-                    department_name: inhaber.department_name,
+                existingDateInDepartmentSchedule.shift_design.push({
+                    position: req.body.position,
                     shift_code: shift.code,
                     time_slot: shift.time_slot,
                     shift_type: req.body.shift_type
                 });
-            } else {
-                // Create a new schedule entry for the date
-                employee.schedules.push({
-                    date: dateObj,
-                    shift_design: [{
-                        department_name: inhaber.department_name,
-                        shift_code: shift.code,
-                        time_slot: shift.time_slot,
-                        shift_type: req.body.shift_type
-                    }]
-                });
             }
+
+            await employee.save();
+
+            results.push({
+                employee_id: employee.id,
+                employee_name: employee.name,
+                email: employee.email,
+                department_name: departmentName,
+                role: employee.role,
+                position: req.body.position,
+                schedule: employeeDepartment.schedules
+            });
         }
 
-        await employee.save();
-        const objectReturn = {
-            employee_id: employee.id,
-            employee_name: employee.name,
-            email: employee.email,
-            department_name: employee.department_name,
-            role: employee.role,
-            position: employee.position,
-            schedule: employee.schedules
-        };
+        if (results.length === 0) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: "No schedules created. No employees found in the Inhaber's department."
+            });
+        }
 
         res.status(CREATED).json({
             success: true,
             status: CREATED,
-            message: objectReturn
+            message: results
         });
     } catch (err) {
         next(err);
     }
 };
-
-function checkForTimeRangeConflict(schedule, shift) {
-    const newShiftStartTime = convertToMinutes(shift.time_slot.detail[0].start_time);
-    const newShiftEndTime = convertToMinutes(shift.time_slot.total_number === 1 ? shift.time_slot.detail[0].end_time : shift.time_slot.detail[1].end_time);
-
-    return schedule.shift_design.some(existingShift => {
-        const existingStartTime = convertToMinutes(existingShift.time_slot.detail[0].start_time);
-        const existingEndTime = convertToMinutes(existingShift.time_slot.total_number === 1 ? existingShift.time_slot.detail[0].end_time : existingShift.time_slot.detail[1].end_time);
-
-        return (
-            (newShiftStartTime >= existingStartTime && newShiftStartTime < existingEndTime) ||
-            (newShiftEndTime > existingStartTime && newShiftEndTime <= existingEndTime)
-        );
-    });
-}
-
-function convertToMinutes(timeString) {
-    const [hours, minutes] = timeString.split(':').map(Number);
-    return hours * 60 + minutes;
-}
 
 export const getAllDatesByInhaber = async (req, res, next) => {
     const employeeID = req.query.employeeID;

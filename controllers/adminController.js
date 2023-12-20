@@ -187,6 +187,7 @@ export const searchSpecific = async (req, res, next) => {
         } else {
             // Default to 'Inhaber' and 'Manager' for management search
             managementQueryCriteria['role'] = { $in: ['Inhaber', 'Manager'] };
+            employeeQueryCriteria['role'] = 'Employee';
         }
 
         if (status) {
@@ -240,33 +241,36 @@ export const getAllEmployeesSchedules = async (req, res, next) => {
     const targetYear = parseInt(req.query.year);
     const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null; // Month is optional
     const targetDate = req.query.date ? new Date(req.query.date) : null; // Specific date is optional
+    const departmentFilter = req.query.department_name;
     try {
         const employees = await EmployeeSchema.find();
         const schedules = [];
 
         employees.forEach(employee => {
             employee.department.forEach(department => {
-                department.schedules.forEach(schedule => {
-                    const scheduleDate = new Date(schedule.date);
+                // Check if department matches the filter (if provided)
+                if (!departmentFilter || department.name === departmentFilter) {
+                    department.schedules.forEach(schedule => {
+                        const scheduleDate = new Date(schedule.date);
 
-                    if (scheduleDate.getFullYear() === targetYear &&
-                        (targetMonth === null || scheduleDate.getMonth() === targetMonth) &&
-                        (!targetDate || scheduleDate.toISOString().split('T')[0] === targetDate.toISOString().split('T')[0])) {
-
-                        schedule.shift_design.forEach(shift => {
-                            schedules.push({
-                                employee_id: employee.id,
-                                employee_name: employee.name,
-                                department_name: department.name,
-                                date: scheduleDate,
-                                shift_code: shift.shift_code,
-                                position: shift.position,
-                                time_slot: shift.time_slot,
-                                shift_type: shift.shift_type
+                        if (scheduleDate.getFullYear() === targetYear &&
+                            (targetMonth === null || scheduleDate.getMonth() === targetMonth) &&
+                            (!targetDate || scheduleDate.toISOString().split('T')[0] === targetDate.toISOString().split('T')[0])) {
+                            schedule.shift_design.forEach(shift => {
+                                schedules.push({
+                                    employee_id: employee.id,
+                                    employee_name: employee.name,
+                                    department_name: department.name,
+                                    date: scheduleDate,
+                                    shift_code: shift.shift_code,
+                                    position: shift.position,
+                                    time_slot: shift.time_slot,
+                                    shift_type: shift.shift_type
+                                });
                             });
-                        });
-                    }
-                });
+                        }
+                    });
+                }
             });
         });
 

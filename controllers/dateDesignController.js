@@ -92,7 +92,6 @@ export const createMultipleDateDesigns = async (req, res, next) => {
     }
 };
 
-
 export const getAllDates = async (req, res, next) => {
     const employeeID = req.query.employeeID;
     try {
@@ -111,8 +110,8 @@ export const getAllDates = async (req, res, next) => {
 
 export const getDateDesign = async (req, res, next) => {
     const employeeID = req.query.employeeID;
-    const targetYear = parseInt(req.query.year);
-    const targetMonth = parseInt(req.query.month) - 1;
+    const targetYear = req.query.year ? parseInt(req.query.year) : null;
+    const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null;
     const targetDate = req.query.date ? new Date(req.query.date) : null;
     const departmentName = req.query.department_name;
     try {
@@ -122,18 +121,16 @@ export const getDateDesign = async (req, res, next) => {
         const shiftDesigns = [];
 
         employee.department.forEach(department => {
-            // If department_name query exists and does not match, skip this department
             if (departmentName && department.name !== departmentName) {
                 return;
             }
 
             department.schedules.forEach(schedule => {
                 const scheduleDate = new Date(schedule.date);
-                if (
-                    scheduleDate.getFullYear() === targetYear &&
-                    scheduleDate.getMonth() === targetMonth &&
-                    (!targetDate || scheduleDate.getTime() === targetDate.getTime())
-                ) {
+                if ((!targetYear || scheduleDate.getFullYear() === targetYear) &&
+                    (!targetMonth || scheduleDate.getMonth() === targetMonth) &&
+                    (!targetDate || scheduleDate.getTime() === targetDate.getTime())) {
+
                     schedule.shift_design.forEach(shift => {
                         shiftDesigns.push({
                             date: scheduleDate,
@@ -161,6 +158,7 @@ export const getDateDesign = async (req, res, next) => {
         next(err);
     }
 };
+
 
 export const getDateDesignInMonth = async (req, res, next) => {
     const employeeID = req.query.employeeID;

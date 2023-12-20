@@ -306,7 +306,6 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
                 email: newEmployee.email,
                 department: newEmployee.department,
                 role: newEmployee.role,
-                position: newEmployee.position,
                 status: newEmployee.status
             });
             globalDayOff.save();
@@ -339,6 +338,11 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
             return next(createError(CONFLICT, "This Employee already exists in the department!"));
         }
 
+        const departmentObject = {
+            name: department.name,
+            position: req.body.position
+        }
+
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
 
@@ -352,9 +356,8 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
             id: newEmployee.id,
             name: newEmployee.name,
             email: newEmployee.email,
-            department_name: department.name,
             role: newEmployee.role,
-            position: newEmployee.position,
+            position: departmentObject.position,
             status: newEmployee.status
         });
         const globalDayOffs = await DayOffSchema.find({ type: 'global' });
@@ -372,15 +375,14 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
                 id: newEmployee.id,
                 name: newEmployee.name,
                 email: newEmployee.email,
-                department_name: newEmployee.department_name,
+                department: newEmployee.department,
                 role: newEmployee.role,
-                position: newEmployee.position,
                 status: newEmployee.status
             });
             globalDayOff.save();
         })
 
-        newEmployee.department_name.push(department.name);
+        newEmployee.department.push(departmentObject);
         newEmployee.realistic_day_off = newEmployee.default_day_off;
         await department.save();
         await newEmployee.save();
@@ -408,6 +410,11 @@ export const registerEmployeeByManager = async (req, res, next) => {
             return next(createError(CONFLICT, "This Employee already exists in the department!"));
         }
 
+        const departmentObject = {
+            name: department.name,
+            position: req.body.position
+        }
+
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
 
@@ -421,9 +428,8 @@ export const registerEmployeeByManager = async (req, res, next) => {
             id: newEmployee.id,
             name: newEmployee.name,
             email: newEmployee.email,
-            department_name: department.name,
             role: newEmployee.role,
-            position: newEmployee.position,
+            position: departmentObject.position,
             status: newEmployee.status
         });
         const globalDayOffs = await DayOffSchema.find({ type: 'global' });
@@ -441,15 +447,14 @@ export const registerEmployeeByManager = async (req, res, next) => {
                 id: newEmployee.id,
                 name: newEmployee.name,
                 email: newEmployee.email,
-                department_name: newEmployee.department_name,
+                department: newEmployee.department,
                 role: newEmployee.role,
-                position: newEmployee.position,
                 status: newEmployee.status
             });
             globalDayOff.save();
         })
 
-        newEmployee.department_name.push(department.name);
+        newEmployee.department.push(departmentObject);
         newEmployee.realistic_day_off = newEmployee.default_day_off;
         await department.save();
         await newEmployee.save();

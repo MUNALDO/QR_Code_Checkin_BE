@@ -10,7 +10,7 @@ status: inactive => inactive_day => ngay khoa employee(co the tu chon) => khong 
 5. day off/request day off: 
 5.1 admin update request day off => update so ngay nghi cua nhan vien
 5.2 duyet/k duyet request => email notification for employee
-6. add schedules for employee: choose department
+6. add schedules for employee: choose department:Done
 7. role: tai xe => checkin success => chon xe + nhap km: Done
    chon xe: 1. xe cong ty (tu nhap infor)
             2. xe private: tinh tong so km chay xe private cua 1 nguoi

@@ -1,10 +1,11 @@
 import express from 'express';
 import {
-    createDateDesignByInhaber, createMultipleDateDesignsByInhaber, deleteDateSpecificByInhaber, deleteEmployeeByIdByInhaber,
-    getAllDatesByInhaber, getAllEmployeeAttendanceByInhaber, getAllEmployees,
-    getDateDesignInMonthByInhaber, getDateSpecificByInhaber, getEmployeeAttendanceByInhaber,
-    getEmployeeSpecific, getEmployeesByDateAndShiftByInhaber, getEmployeesByDateByInhaber,
-    getSalaryForAllEmployeesByInhaber, getSalaryForEmployeeByInhaber, madeEmployeeInactiveByInhaber, updateEmployeeByInhaber
+    createDateDesignByInhaber, createMultipleDateDesignsByInhaber, deleteDateSpecificByInhaber,
+    deleteEmployeeByIdByInhaber, getAllDatesByInhaber, getAllEmployeeAttendanceByInhaber,
+    getAllEmployees, getDateDesignInMonthByInhaber, getDateSpecificByInhaber,
+    getEmployeeAttendanceByInhaber, getEmployeesByDateAndShiftByInhaber, getEmployeesByDateByInhaber,
+    getSalaryForAllEmployeesByInhaber, getSalaryForEmployeeByInhaber, madeEmployeeInactiveByInhaber,
+    searchSpecificForInhaber, updateEmployeeByInhaber
 } from '../controllers/inhaberController.js';
 import {
     createShift, getAllShifts, getShiftByCode,
@@ -20,7 +21,7 @@ router.put("/manage-employee/update", verifyTokenInhaber, updateEmployeeByInhabe
 router.put('/manage-employee/make-inactive', verifyTokenInhaber, madeEmployeeInactiveByInhaber);
 router.delete("/manage-employee/delete-byId", verifyTokenInhaber, deleteEmployeeByIdByInhaber);
 router.get("/manage-employee/get-all", verifyTokenInhaber, getAllEmployees);
-router.get("/manage-employee/get-specific", verifyTokenInhaber, getEmployeeSpecific);
+router.get("/manage-employee/search-specific", verifyTokenInhaber, searchSpecificForInhaber);
 router.get("/manage-employee/get-by-date", verifyTokenInhaber, getEmployeesByDateByInhaber);
 router.get("/manage-employee/get-by-date&shift", verifyTokenInhaber, getEmployeesByDateAndShiftByInhaber);
 

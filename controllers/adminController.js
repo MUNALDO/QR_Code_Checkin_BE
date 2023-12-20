@@ -12,11 +12,9 @@ import cron from 'node-cron';
 export const updateEmployeeBasicInfor = async (req, res, next) => {
     const employeeID = req.query.employeeID;
     try {
-        const { department, ...updateData } = req.body;
-
         const updatedEmployee = await EmployeeSchema.findOneAndUpdate(
             { id: employeeID },
-            { $set: updateData },
+            { $set: req.body },
             { new: true }
         );
 
@@ -65,7 +63,6 @@ export const updateEmployeeBasicInfor = async (req, res, next) => {
             status: OK,
             message: updatedEmployee,
         });
-
     } catch (err) {
         next(err);
     }
@@ -173,42 +170,51 @@ export const searchSpecific = async (req, res, next) => {
     const { role, department, details, status } = req.query;
     try {
         const regex = new RegExp(details, 'i');
-        let managementQueryCriteria = { 'role': { $in: ['Inhaber', 'Manager'] } }; // Default to 'Inhaber' and 'Manager'
+        let managementQueryCriteria = {};
         let employeeQueryCriteria = {};
 
         if (role) {
             if (role === 'Employee') {
-                employeeQueryCriteria['role'] = role;
+                // When role is specifically 'Employee', exclude management search
+                managementQueryCriteria = null;
+                employeeQueryCriteria['role'] = 'Employee';
             } else {
+                // For other roles, include them in management search
                 managementQueryCriteria['role'] = role;
-                employeeQueryCriteria['role'] = role; // Include for employee if role is other than 'Employee'
+                // Include for employees if role is specified and not 'Employee'
+                employeeQueryCriteria['role'] = role;
             }
+        } else {
+            // Default to 'Inhaber' and 'Manager' for management search
+            managementQueryCriteria['role'] = { $in: ['Inhaber', 'Manager'] };
         }
 
         if (status) {
-            managementQueryCriteria['status'] = status;
+            if (managementQueryCriteria) managementQueryCriteria['status'] = status;
             employeeQueryCriteria['status'] = status;
         }
 
         if (details) {
-            managementQueryCriteria['$or'] = [
-                { id: regex },
-                { name: regex }
-            ];
-            employeeQueryCriteria['$or'] = [
-                { id: regex },
-                { name: regex },
-                { 'department.position': regex }
-            ];
+            if (managementQueryCriteria) {
+                managementQueryCriteria['$or'] = [{ id: regex }, { name: regex }];
+            }
+            employeeQueryCriteria['$or'] = [{ id: regex }, { name: regex }, { 'department.position': regex }];
         }
 
         if (department) {
-            managementQueryCriteria['department_name'] = department;
+            if (managementQueryCriteria) managementQueryCriteria['department_name'] = department;
             employeeQueryCriteria['department.name'] = department;
         }
 
-        const managements = await AdminSchema.find(managementQueryCriteria);
-        const employees = await EmployeeSchema.find(employeeQueryCriteria);
+        let managements = [];
+        let employees = [];
+
+        if (managementQueryCriteria) {
+            managements = await AdminSchema.find(managementQueryCriteria);
+        }
+        if (Object.keys(employeeQueryCriteria).length > 0) {
+            employees = await EmployeeSchema.find(employeeQueryCriteria);
+        }
 
         const result = [...managements, ...employees];
 
@@ -243,7 +249,7 @@ export const getAllEmployeesSchedules = async (req, res, next) => {
                 department.schedules.forEach(schedule => {
                     const scheduleDate = new Date(schedule.date);
 
-                    if (scheduleDate.getFullYear() === targetYear && 
+                    if (scheduleDate.getFullYear() === targetYear &&
                         (targetMonth === null || scheduleDate.getMonth() === targetMonth) &&
                         (!targetDate || scheduleDate.toISOString().split('T')[0] === targetDate.toISOString().split('T')[0])) {
 

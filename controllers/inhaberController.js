@@ -371,43 +371,48 @@ export const getDateDesignForInhaber = async (req, res, next) => {
     const targetYear = req.query.year ? parseInt(req.query.year) : null;
     const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null;
     const targetDate = req.query.date ? new Date(req.query.date) : null;
+
     try {
-        // Find the Inhaber and get their department name
         const inhaber = await AdminSchema.findOne({ name: inhaberName, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
         const departmentName = inhaber.department_name;
 
         const shiftDesigns = [];
-
         const employees = await EmployeeSchema.find({ 'department.name': departmentName });
+
         employees.forEach(employee => {
-            const employeeDepartment = employee.department.find(dep => dep.name === departmentName);
-            if (!employeeDepartment) return;
+            employee.department.forEach(department => {
+                if (department.name === departmentName) {
+                    department.schedules.forEach(schedule => {
+                        const scheduleDate = new Date(schedule.date);
 
-            employeeDepartment.schedules.forEach(schedule => {
-                const scheduleDate = new Date(schedule.date);
-                if ((!targetYear || scheduleDate.getFullYear() === targetYear) &&
-                    (!targetMonth || scheduleDate.getMonth() === targetMonth) &&
-                    (!targetDate || scheduleDate.getTime() === targetDate.getTime())) {
+                        // Include the schedule based on the target year, month, and date or include all if no time queries
+                        const shouldIncludeSchedule = (!targetYear && !targetMonth && !targetDate) || 
+                                                      (targetYear === null || scheduleDate.getFullYear() === targetYear) &&
+                                                      (targetMonth === null || scheduleDate.getMonth() === targetMonth) &&
+                                                      (targetDate === null || scheduleDate.toISOString().split('T')[0] === targetDate.toISOString().split('T')[0]);
 
-                    schedule.shift_design.forEach(shift => {
-                        shiftDesigns.push({
-                            employee_id: employee.id,
-                            employee_name: employee.name,
-                            date: scheduleDate,
-                            department_name: departmentName,
-                            position: shift.position,
-                            shift_code: shift.shift_code,
-                            time_slot: shift.time_slot,
-                            shift_type: shift.shift_type,
-                        });
+                        if (shouldIncludeSchedule) {
+                            schedule.shift_design.forEach(shift => {
+                                shiftDesigns.push({
+                                    employee_id: employee.id,
+                                    employee_name: employee.name,
+                                    date: scheduleDate,
+                                    department_name: department.name,
+                                    position: shift.position,
+                                    shift_code: shift.shift_code,
+                                    time_slot: shift.time_slot,
+                                    shift_type: shift.shift_type,
+                                });
+                            });
+                        }
                     });
                 }
             });
         });
 
         if (shiftDesigns.length === 0) {
-            return next(createError(NOT_FOUND, "No shift designs found for the specified criteria in your department."));
+            return next(createError(NOT_FOUND, "No shift designs found for your department."));
         }
 
         res.status(OK).json({

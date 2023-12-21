@@ -271,7 +271,6 @@ export const exportEmployeeDataToExcel = async (req, res, next) => {
     }
 };
 
-
 export const exportEmployeeSalaryDataToExcel = async (req, res, next) => {
     const { year, month } = req.query;
 
@@ -291,40 +290,40 @@ export const exportEmployeeSalaryDataToExcel = async (req, res, next) => {
         const columns = [
             { header: 'ID', key: 'id', width: 20 },
             { header: 'Name', key: 'name', width: 20 },
-            { header: 'Department Names', key: 'department_name', width: 30 },
-            { header: 'Position', key: 'position', width: 20 },
             { header: 'Date Calculate', key: 'date_calculate', width: 15 },
             { header: 'Total Salary', key: 'total_salary', width: 15 },
-            { header: 'Normal Hours', key: 'hour_normal', width: 15 },
-            { header: 'Overtime Hours', key: 'hour_overtime', width: 15 },
+            { header: 'Normal Hours', key: 'hour_normal', width: 25 },
+            { header: 'Overtime Hours', key: 'hour_overtime', width: 25 },
             { header: 'Total KM', key: 'total_km', width: 10 },
             { header: 'a Parameter', key: 'a_parameter', width: 15 },
             { header: 'b Parameter', key: 'b_parameter', width: 15 },
             { header: 'c Parameter', key: 'c_parameter', width: 15 },
             { header: 'd Parameter', key: 'd_parameter', width: 15 },
         ];
-
         worksheet.columns = columns;
 
         employees.forEach(employee => {
-            const salaryData = employee.salary.find(s => s.year === year && s.month === month);
+            const salaryData = employee.salary.find(s => s.year === parseInt(year) && s.month === parseInt(month));
+
+            let normalHoursDetails, overtimeHoursDetails;
             if (salaryData) {
-                worksheet.addRow({
-                    id: employee.id,
-                    name: employee.name,
-                    department_name: employee.department_name.join(', '),
-                    position: employee.position,
-                    date_calculate: salaryData.date_calculate,
-                    total_salary: salaryData.total_salary,
-                    hour_normal: salaryData.hour_normal,
-                    hour_overtime: salaryData.hour_overtime,
-                    total_km: salaryData.total_km,
-                    a_parameter: salaryData.a_parameter,
-                    b_parameter: salaryData.b_parameter,
-                    c_parameter: salaryData.c_parameter,
-                    d_parameter: salaryData.d_parameter_parameter,
-                });
+                normalHoursDetails = salaryData.hour_normal.map(h => `${h.department_name}: ${h.total_hour}h ${h.total_minutes}m`).join('; ');
+                overtimeHoursDetails = salaryData.hour_overtime.map(h => `${h.department_name}: ${h.total_hour}h ${h.total_minutes}m`).join('; ');
             }
+
+            worksheet.addRow({
+                id: employee.id || '',
+                name: employee.name || '',
+                date_calculate: salaryData ? salaryData.date_calculate : '',
+                total_salary: salaryData ? salaryData.total_salary : '',
+                hour_normal: normalHoursDetails || '',
+                hour_overtime: overtimeHoursDetails || '',
+                total_km: salaryData ? salaryData.total_km : '',
+                a_parameter: salaryData ? salaryData.a_parameter : '',
+                b_parameter: salaryData ? salaryData.b_parameter : '',
+                c_parameter: salaryData ? salaryData.c_parameter : '',
+                d_parameter: salaryData ? salaryData.d_parameter : '',
+            });
         });
 
         const buffer = await workbook.xlsx.writeBuffer();
@@ -332,7 +331,6 @@ export const exportEmployeeSalaryDataToExcel = async (req, res, next) => {
         res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
         res.send(buffer);
 
-        // Optionally save the buffer to a file
         try {
             fs.writeFileSync(filePath, buffer);
             console.log(`Excel file saved to ${filePath}`);

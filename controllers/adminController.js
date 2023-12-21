@@ -286,39 +286,37 @@ export const getAttendance = async (req, res, next) => {
         const month = req.query.month;
         const dateString = req.query.date;
 
-        // Validate year and month inputs
-        if (!year || !month) {
-            return res.status(BAD_REQUEST).json({
-                success: false,
-                status: BAD_REQUEST,
-                message: "Year and month are required parameters",
-            });
-        }
-
-        // Parse date if provided
         let date = null;
-        if (dateString) {
-            date = new Date(dateString);
-            if (isNaN(date.getTime())) {
-                return res.status(BAD_REQUEST).json({
-                    success: false,
-                    status: BAD_REQUEST,
-                    message: "Invalid date format",
-                });
+        let dateRange = {};
+
+        // Only parse date if year and month are provided
+        if (year && month) {
+            if (dateString) {
+                date = new Date(dateString);
+                if (isNaN(date.getTime())) {
+                    return res.status(BAD_REQUEST).json({
+                        success: false,
+                        status: BAD_REQUEST,
+                        message: "Invalid date format",
+                    });
+                }
             }
+
+            dateRange = date
+                ? {
+                    $gte: new Date(year, month - 1, date.getDate(), 0, 0, 0, 0),
+                    $lt: new Date(year, month - 1, date.getDate() + 1, 0, 0, 0, 0),
+                }
+                : {
+                    $gte: new Date(year, month - 1, 1),
+                    $lt: new Date(year, month, 1),
+                };
         }
 
-        const dateRange = date
-            ? {
-                $gte: new Date(year, month - 1, date.getDate(), 0, 0, 0, 0),
-                $lt: new Date(year, month - 1, date.getDate() + 1, 0, 0, 0, 0),
-            }
-            : {
-                $gte: new Date(year, month - 1, 1),
-                $lt: new Date(year, month, 1),
-            };
-
-        let query = { date: dateRange };
+        let query = {};
+        if (Object.keys(dateRange).length > 0) {
+            query.date = dateRange;
+        }
 
         if (employeeID) {
             query.employee_id = employeeID;

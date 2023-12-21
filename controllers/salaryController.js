@@ -130,21 +130,12 @@ export const salaryCalculate = async (req, res, next) => {
 export const getSalary = async (req, res, next) => {
     try {
         const employeeID = req.query.employeeID;
-        const year = parseInt(req.query.year);
-        const month = parseInt(req.query.month);
-
-        // Validate year and month inputs
-        if (!year || !month) {
-            return res.status(BAD_REQUEST).json({
-                success: false,
-                status: BAD_REQUEST,
-                message: "Year and month are required parameters",
-            });
-        }
+        const year = req.query.year ? parseInt(req.query.year) : null;
+        const month = req.query.month ? parseInt(req.query.month) : null;
 
         let employees;
         if (employeeID) {
-            // Find one employee
+            // Find one specific employee
             employees = await EmployeeSchema.find({ id: employeeID });
         } else {
             // Find all employees
@@ -152,13 +143,21 @@ export const getSalary = async (req, res, next) => {
         }
 
         const salaries = employees.map(employee => {
-            const salary = employee.salary.find(s => s.year === year && s.month === month);
+            let salary;
+            if (year && month) {
+                // Find salary for the specific year and month
+                salary = employee.salary.find(s => s.year === year && s.month === month);
+            } else {
+                // Get the latest salary record if year and month are not specified
+                salary = employee.salary.length > 0 ? employee.salary[employee.salary.length - 1] : null;
+            }
+
             return {
                 employee_id: employee.id,
                 employee_name: employee.name,
                 email: employee.email,
                 department_name: employee.department.map(d => d.name).join(', '),
-                position: employee.department.map(d => d.position.join('/')).join(', '),
+                position: employee.department.flatMap(d => d.position.join('/')).join(', '),
                 salary: salary || null
             };
         }).filter(emp => emp.salary !== null);
@@ -173,7 +172,7 @@ export const getSalary = async (req, res, next) => {
             return res.status(NOT_FOUND).json({
                 success: false,
                 status: NOT_FOUND,
-                message: "No salary records found for the specified month and year.",
+                message: "No salary records found.",
             });
         }
     } catch (err) {

@@ -1,7 +1,7 @@
 import express from 'express';
 import {
-    deleteEmployeeById, getAllEmployeeAttendance, getAllEmployeesSchedules,
-    getAllRequests, getAttendance, getEmployeeAttendance, getRequestById, handleRequest,
+    deleteEmployeeById, getAllEmployeesSchedules,
+    getAllRequests, getAttendance, getRequestById, handleRequest,
     madeEmployeeInactive, searchSpecific, updateEmployeeBasicInfor
 } from '../controllers/adminController.js';
 import {
@@ -13,7 +13,7 @@ import {
     getShiftByCode, getShiftByName, updateShift
 } from '../controllers/shiftController.js';
 import { verifyTokenAdmin } from '../utils/verifyToken.js';
-import { getSalaryForAllEmployees, getSalaryForEmployee, salaryCalculate } from '../controllers/salaryController.js';
+import { getSalary, getSalaryForAllEmployees, salaryCalculate } from '../controllers/salaryController.js';
 import { exportAttendanceToExcel, exportEmployeeDataToExcel, exportEmployeeSalaryDataToExcel } from '../controllers/xlsxController.js';
 import {
     createMultipleDateDesigns, deleteDateSpecific, getDateDesign
@@ -71,12 +71,10 @@ router.put('/manage-request/handle/:_id', verifyTokenAdmin, handleRequest);
 
 // manage attendance
 router.get('/manage-attendance/get-by-specific', verifyTokenAdmin, getAttendance);
-router.get('/manage-attendance/get-all', verifyTokenAdmin, getAllEmployeeAttendance);
-router.get('/manage-attendance/get-specific/:employeeID', verifyTokenAdmin, getEmployeeAttendance);
 
 // manage salary
 router.post('/manage-salary/calculate/:employeeID', verifyTokenAdmin, salaryCalculate);
-router.get('/manage-salary/get-single/:employeeID', verifyTokenAdmin, getSalaryForEmployee);
+router.get('/manage-salary/get-by-specific', verifyTokenAdmin, getSalary);
 router.get('/manage-salary/get-all', verifyTokenAdmin, getSalaryForAllEmployees);
 
 // manage xlsx

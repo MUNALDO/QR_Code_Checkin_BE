@@ -379,9 +379,7 @@ export const getDateDesignForInhaber = async (req, res, next) => {
 
         const shiftDesigns = [];
 
-        // Find all employees in the Inhaber's department
         const employees = await EmployeeSchema.find({ 'department.name': departmentName });
-
         employees.forEach(employee => {
             const employeeDepartment = employee.department.find(dep => dep.name === departmentName);
             if (!employeeDepartment) return;
@@ -476,7 +474,6 @@ export const getAttendanceForInhaber = async (req, res, next) => {
         const month = req.query.month;
         const dateString = req.query.date;
 
-        // Ensure valid year and month inputs
         if (!year || !month || !inhaber_name) {
             return res.status(BAD_REQUEST).json({
                 success: false,
@@ -485,7 +482,6 @@ export const getAttendanceForInhaber = async (req, res, next) => {
             });
         }
 
-        // Find the Inhaber's department name
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
         const departmentName = inhaber.department_name;
@@ -529,147 +525,12 @@ export const getAttendanceForInhaber = async (req, res, next) => {
             query.employee_id = employeeID;
         }
 
-        // Fetch attendance based on the constructed query
         const attendances = await AttendanceSchema.find(query);
 
         return res.status(OK).json({
             success: true,
             status: OK,
             message: attendances,
-        });
-    } catch (err) {
-        next(err);
-    }
-};
-
-export const getAllEmployeeAttendanceByInhaber = async (req, res, next) => {
-    try {
-        const inhaber_name = req.query.inhaber_name;
-        const year = req.query.year;
-        const month = req.query.month;
-        const dateString = req.query.date;
-
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
-        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
-
-        // Ensure valid year and month inputs
-        if (!year || !month) {
-            return res.status(BAD_REQUEST).json({
-                success: false,
-                status: BAD_REQUEST,
-                message: "Year and month are required parameters",
-            });
-        }
-
-        let date = null;
-
-        if (dateString) {
-            date = new Date(dateString);
-
-            // Check if the date is valid
-            if (isNaN(date.getTime())) {
-                return res.status(BAD_REQUEST).json({
-                    success: false,
-                    status: BAD_REQUEST,
-                    message: "Invalid date format",
-                });
-            }
-        }
-
-        // Define the date range based on the presence of the date parameter
-        const dateRange = date
-            ? {
-                $gte: new Date(year, month - 1, date, 0, 0, 0, 0),
-                $lt: new Date(year, month - 1, date, 23, 59, 59, 999),
-            }
-            : {
-                $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
-                $lt: new Date(year, month, 0, 23, 59, 59, 999),
-            };
-
-        // Find all employee attendance for the specified date range
-        const employeeAttendance = await AttendanceSchema.find({
-            date: dateRange,
-        });
-
-        const matchedAttendances = employeeAttendance.filter(attendance => {
-            const matchedDepartment = attendance.department_name;
-
-            return (inhaber.department_name === matchedDepartment);
-        });
-
-        return res.status(OK).json({
-            success: true,
-            status: OK,
-            message: matchedAttendances,
-        });
-    } catch (err) {
-        next(err);
-    }
-};
-
-export const getEmployeeAttendanceByInhaber = async (req, res, next) => {
-    try {
-        const employeeID = req.params.employeeID;
-        const inhaber_name = req.query.inhaber_name;
-        const year = req.query.year;
-        const month = req.query.month;
-        const dateString = req.query.date;
-
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
-        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
-
-        // Ensure valid year, month, and employee ID inputs
-        if (!year || !month || !employeeID) {
-            return res.status(BAD_REQUEST).json({
-                success: false,
-                status: BAD_REQUEST,
-                message: "Year, month, and employee ID are required parameters",
-            });
-        }
-
-        let date = null;
-
-        if (dateString) {
-            date = new Date(dateString);
-
-            // Check if the date is valid
-            if (isNaN(date.getTime())) {
-                return res.status(BAD_REQUEST).json({
-                    success: false,
-                    status: BAD_REQUEST,
-                    message: "Invalid date format",
-                });
-            }
-        }
-
-        // Define the date range based on the presence of the date parameter
-        const dateRange = date
-            ? {
-                $gte: new Date(year, month - 1, date, 0, 0, 0, 0),
-                $lt: new Date(year, month - 1, date, 23, 59, 59, 999),
-            }
-            : {
-                $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
-                $lt: new Date(year, month, 0, 23, 59, 59, 999),
-            };
-
-        // Find employee attendance for the specified date range
-        const employeeAttendance = await AttendanceSchema.find({
-            employee_id: employeeID,
-            date: dateRange,
-        });
-
-        const matchedAttendances = employeeAttendance.filter(attendance => {
-            const matchedDepartment = attendance.department_name;
-
-            return (inhaber.department_name === matchedDepartment);
-        });
-
-        return res.status(OK).json({
-            success: true,
-            status: OK,
-            message: matchedAttendances,
         });
     } catch (err) {
         next(err);
@@ -749,16 +610,15 @@ export const getSalaryForAllEmployeesByInhaber = async (req, res, next) => {
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
-        const employees = await EmployeeSchema.find();
-        if (!employees) return next(createError(NOT_FOUND, "Employees not found!"));
+        const department = await DepartmentSchema.findOne({ name: inhaber.department_name });
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
 
-        const matchedEmployees = employees.filter(employee => {
-            return (employee.department_name.includes(inhaber.department_name));
-        })
+        const employees = await EmployeeSchema.find({ 'department.name': department.name });
+        if (!employees) return next(createError(NOT_FOUND, "Can not found any Employees in the department!"));
 
         let salaries = [];
 
-        for (const employee of matchedEmployees) {
+        for (const employee of employees) {
             const salary = employee.salary.find(stat =>
                 stat.year === year && stat.month === month
             );
@@ -768,7 +628,7 @@ export const getSalaryForAllEmployeesByInhaber = async (req, res, next) => {
                     employee_id: employee.id,
                     employee_name: employee.name,
                     email: employee.email,
-                    department_name: employee.department_name,
+                    department_name: inhaber.department_name,
                     role: employee.role,
                     position: employee.position,
                     salary: salary

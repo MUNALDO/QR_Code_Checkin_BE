@@ -3,7 +3,7 @@ import { BAD_REQUEST, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import AdminSchema from "../models/AdminSchema.js";
-import ShiftSchema from "../models/ShiftSchema.js";
+// import ShiftSchema from "../models/ShiftSchema.js";
 import DepartmentSchema from "../models/DepartmentSchema.js";
 import RequestSchema from "../models/RequestSchema.js";
 import DayOffSchema from "../models/DayOffSchema.js";
@@ -281,7 +281,7 @@ export const getAllEmployeesSchedules = async (req, res, next) => {
 export const getAttendance = async (req, res, next) => {
     try {
         const employeeID = req.query.employeeID;
-        const departmentName = req.query.department_name; // New parameter
+        const departmentName = req.query.department_name;
         const year = req.query.year;
         const month = req.query.month;
         const dateString = req.query.date;
@@ -308,7 +308,6 @@ export const getAttendance = async (req, res, next) => {
             }
         }
 
-        // Construct date range
         const dateRange = date
             ? {
                 $gte: new Date(year, month - 1, date.getDate(), 0, 0, 0, 0),
@@ -319,15 +318,12 @@ export const getAttendance = async (req, res, next) => {
                 $lt: new Date(year, month, 1),
             };
 
-        // Construct the query object
         let query = { date: dateRange };
-        
-        // Add employeeID to the query if provided
+
         if (employeeID) {
             query.employee_id = employeeID;
         }
-        
-        // Add department_name to the query if provided
+
         if (departmentName) {
             query['department_name'] = departmentName;
         }
@@ -340,115 +336,6 @@ export const getAttendance = async (req, res, next) => {
             success: true,
             status: OK,
             message: attendances,
-        });
-    } catch (err) {
-        next(err);
-    }
-};
-
-export const getAllEmployeeAttendance = async (req, res, next) => {
-    try {
-        const year = req.query.year;
-        const month = req.query.month;
-        const dateString = req.query.date;
-
-        // Ensure valid year and month inputs
-        if (!year || !month) {
-            return res.status(BAD_REQUEST).json({
-                success: false,
-                status: BAD_REQUEST,
-                message: "Year and month are required parameters",
-            });
-        }
-
-        let date = null;
-
-        if (dateString) {
-            date = new Date(dateString);
-
-            // Check if the date is valid
-            if (isNaN(date.getTime())) {
-                return res.status(BAD_REQUEST).json({
-                    success: false,
-                    status: BAD_REQUEST,
-                    message: "Invalid date format",
-                });
-            }
-        }
-
-        const dateRange = date
-            ? {
-                $gte: new Date(year, month - 1, date.getDate(), 0, 0, 0, 0),
-                $lt: new Date(year, month - 1, date.getDate(), 23, 59, 59, 999),
-            }
-            : {
-                $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
-                $lt: new Date(year, month, 0, 23, 59, 59, 999),
-            };
-
-        const employeeAttendance = await AttendanceSchema.find({
-            date: dateRange,
-        });
-
-        return res.status(OK).json({
-            success: true,
-            status: OK,
-            message: employeeAttendance,
-        });
-    } catch (err) {
-        next(err);
-    }
-};
-
-export const getEmployeeAttendance = async (req, res, next) => {
-    try {
-        const employeeID = req.params.employeeID;
-        const year = req.query.year;
-        const month = req.query.month;
-        const dateString = req.query.date;
-
-        // Ensure valid year, month, and employee ID inputs
-        if (!year || !month || !employeeID) {
-            return res.status(BAD_REQUEST).json({
-                success: false,
-                status: BAD_REQUEST,
-                message: "Year, month, and employee ID are required parameters",
-            });
-        }
-
-        let date = null;
-
-        if (dateString) {
-            date = new Date(dateString);
-
-            if (isNaN(date.getTime())) {
-                return res.status(BAD_REQUEST).json({
-                    success: false,
-                    status: BAD_REQUEST,
-                    message: "Invalid date format",
-                });
-            }
-        }
-
-        const dateRange = date
-            ? {
-                $gte: new Date(year, month - 1, date.getDate(), 0, 0, 0, 0),
-                $lt: new Date(year, month - 1, date.getDate(), 23, 59, 59, 999),
-            }
-            : {
-                $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
-                $lt: new Date(year, month, 0, 23, 59, 59, 999),
-            };
-
-        const employeeAttendance = await AttendanceSchema.find({
-            employee_id: employeeID,
-            date: dateRange,
-        });
-
-        return res.status(OK).json({
-            success: true,
-            status: OK,
-            message: employeeAttendance,
         });
     } catch (err) {
         next(err);

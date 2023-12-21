@@ -7,7 +7,6 @@ export const salaryCalculate = async (req, res, next) => {
     const employeeID = req.params.employeeID;
     const year = parseInt(req.query.year);
     const month = parseInt(req.query.month);
-    const date = req.query.date;
 
     if (!year || !month || !employeeID) {
         return res.status(BAD_REQUEST).json({
@@ -22,22 +21,23 @@ export const salaryCalculate = async (req, res, next) => {
     if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
     const existStat = employee.salary.find(stat => stat.year === year && stat.month === month);
+
+    // Initialize parameters for calculation
     let a = req.body.a_new ?? 0;
     let b = req.body.b_new ?? 0;
     let c = req.body.c_new ?? 0;
     let d = req.body.d_new ?? 0.25;
 
+    // Use existing parameters if they exist
     if (existStat) {
         a = a ?? existStat.a_parameter;
         b = b ?? existStat.b_parameter;
         c = c ?? existStat.c_parameter;
         d = d ?? existStat.d_parameter;
     } else if (employee.salary.length === 0) {
-        a = a;
-        b = b;
-        c = c;
-        d = d;
+        // Use provided parameters
     } else {
+        // Use the latest salary record's parameters
         const latestSalary = employee.salary[employee.salary.length - 1];
         a = a ?? latestSalary.a_parameter;
         b = b ?? latestSalary.b_parameter;
@@ -45,16 +45,11 @@ export const salaryCalculate = async (req, res, next) => {
         d = d ?? latestSalary.d_parameter;
     }
 
-    // Define the date range based on the presence of the date parameter
-    const dateRange = date
-        ? {
-            $gte: new Date(year, month - 1, date, 0, 0, 0, 0),
-            $lt: new Date(year, month - 1, date, 23, 59, 59, 999),
-        }
-        : {
-            $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
-            $lt: new Date(year, month, 0, 23, 59, 59, 999),
-        };
+    // Define the date range for the whole month
+    const dateRange = {
+        $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
+        $lt: new Date(year, month, 0, 23, 59, 59, 999),
+    };
 
     // Find employee attendance for the specified date range
     const employeeAttendance = await AttendanceSchema.find({
@@ -62,117 +57,123 @@ export const salaryCalculate = async (req, res, next) => {
         date: dateRange,
     });
 
-    // Initialize variables to calculate hours
-    let hourNormal = 0;
-    let hourOvertime = 0;
-    let kmNumber = 0;
+    // Initialize the salary record
+    let salaryRecord = {
+        year: year,
+        month: month,
+        date_calculate: new Date(),
+        total_salary: 0,
+        hour_normal: [],
+        hour_overtime: [],
+        total_km: 0,
+        a_parameter: a,
+        b_parameter: b,
+        c_parameter: c,
+        d_parameter: d
+    };
 
-    // Calculate hours based on attendance data
     employeeAttendance.forEach(attendance => {
-        const totalKm = attendance.total_km;
-        kmNumber += totalKm;
-        const totalHour = attendance.shift_info.total_hour;
-        const totalMinutes = attendance.shift_info.total_minutes / 60;
-        if (attendance.shift_info.shift_type === "normal") {
-            hourNormal += totalHour + totalMinutes;
-        } else if (attendance.shift_info.shift_type === "overtime") {
-            hourOvertime += totalHour + totalMinutes;
+        const { department_name, shift_info, total_km } = attendance;
+        const { shift_type, total_hour, total_minutes } = shift_info;
+
+        // Check if the employee has the position in the department for Autofahrer
+        const isAutofahrer = employee.department.some(dep =>
+            dep.name === department_name && dep.position.includes("Autofahrer")
+        );
+
+        if (isAutofahrer) {
+            salaryRecord.total_km += total_km;
         }
+
+        let hourType = shift_type === 'normal' ? 'hour_normal' : 'hour_overtime';
+
+        let departmentRecord = salaryRecord[hourType].find(dep => dep.department_name === department_name);
+        if (!departmentRecord) {
+            departmentRecord = {
+                department_name: department_name,
+                total_hour: 0,
+                total_minutes: 0
+            };
+            salaryRecord[hourType].push(departmentRecord);
+        }
+        departmentRecord.total_hour += total_hour;
+        departmentRecord.total_minutes += total_minutes;
     });
 
-    // day-off salary calculation
+    // Calculate day-off salary
     const days_off = employee.default_day_off - employee.realistic_day_off;
     const salary_day_off = [(b * 3) / 65] * days_off;
 
-    const salary = (hourNormal + hourOvertime) * a - b - c + salary_day_off - employee.house_rent_money + kmNumber * d;
+    // Calculate total salary
+    salaryRecord.total_salary = salaryRecord.hour_normal.reduce((acc, curr) => acc + curr.total_hour * a, 0)
+        + salaryRecord.hour_overtime.reduce((acc, curr) => acc + curr.total_hour * a, 0)
+        - b - c + salary_day_off - employee.house_rent_money + salaryRecord.total_km * d;
 
+    // Save or update the salary record
     if (existStat) {
-        existStat.date_calculate = new Date();
-        existStat.total_salary = salary;
-        existStat.hour_normal = hourNormal;
-        existStat.hour_overtime = hourOvertime;
-        existStat.a_parameter = a;
-        existStat.b_parameter = b;
-        existStat.c_parameter = c;
-        existStat.d_parameter = d;
-        if (employee.position === "Autofahrer") {
-            existStat.total_km = kmNumber;
-        }
-        await employee.save();
-        return res.status(OK).json({
-            success: true,
-            status: OK,
-            message: existStat
-        });
+        // Update existing salary record
+        Object.assign(existStat, salaryRecord);
     } else {
-        // Create new salary record
-        const newSalary = {
-            year: year,
-            month: month,
-            date_calculate: new Date(),
-            hour_normal: hourNormal,
-            hour_overtime: hourOvertime,
-            total_salary: salary,
-            a_parameter: a,
-            b_parameter: b,
-            c_parameter: c,
-            d_parameter: d
-        };
-        if (employee.position === "Autofahrer") {
-            newSalary.total_km = kmNumber;
-        }
-        employee.salary.push(newSalary);
-        await employee.save();
-        return res.status(OK).json({
-            success: true,
-            status: OK,
-            message: newSalary
-        });
+        // Add new salary record
+        employee.salary.push(salaryRecord);
     }
+
+    await employee.save();
+
+    return res.status(OK).json({
+        success: true,
+        status: OK,
+        message: salaryRecord
+    });
 };
 
-export const getSalaryForEmployee = async (req, res, next) => {
+export const getSalary = async (req, res, next) => {
     try {
-        const employeeID = req.params.employeeID;
+        const employeeID = req.query.employeeID;
         const year = parseInt(req.query.year);
         const month = parseInt(req.query.month);
 
-        if (!year || !month || !employeeID) {
+        // Validate year and month inputs
+        if (!year || !month) {
             return res.status(BAD_REQUEST).json({
                 success: false,
                 status: BAD_REQUEST,
-                message: "Year, month, and employee ID are required parameters",
+                message: "Year and month are required parameters",
             });
         }
 
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
-
-        const salary = employee.salary.find(stat =>
-            stat.year === year && stat.month === month
-        );
-
-        const objectReturn = {
-            employee_id: employee.id,
-            employee_name: employee.name,
-            email: employee.email,
-            department_name: employee.department_name,
-            role: employee.role,
-            position: employee.position,
-            salary: salary
+        let employees;
+        if (employeeID) {
+            // Find one employee
+            employees = await EmployeeSchema.find({ id: employeeID });
+        } else {
+            // Find all employees
+            employees = await EmployeeSchema.find();
         }
 
-        if (salary) {
+        const salaries = employees.map(employee => {
+            const salary = employee.salary.find(s => s.year === year && s.month === month);
+            return {
+                employee_id: employee.id,
+                employee_name: employee.name,
+                email: employee.email,
+                department_name: employee.department.map(d => d.name).join(', '),
+                position: employee.department.map(d => d.position.join('/')).join(', '),
+                salary: salary || null
+            };
+        }).filter(emp => emp.salary !== null);
+
+        if (salaries.length > 0) {
             return res.status(OK).json({
                 success: true,
                 status: OK,
-                message: objectReturn,
+                message: salaries,
             });
         } else {
             return res.status(NOT_FOUND).json({
                 success: false,
                 status: NOT_FOUND,
-                message: "Salary record not found for the specified month and year.",
+                message: "No salary records found for the specified month and year.",
             });
         }
     } catch (err) {
@@ -207,9 +208,8 @@ export const getSalaryForAllEmployees = async (req, res, next) => {
                     employee_id: employee.id,
                     employee_name: employee.name,
                     email: employee.email,
-                    department_name: employee.department_name,
+                    department_name: employee.department,
                     role: employee.role,
-                    position: employee.position,
                     salary: salary
                 });
             } else {
@@ -217,7 +217,7 @@ export const getSalaryForAllEmployees = async (req, res, next) => {
                     employee_id: employee.id,
                     employee_name: employee.name,
                     email: employee.email,
-                    department_name: employee.department_name,
+                    department_name: employee.department,
                     role: employee.role,
                     position: employee.position,
                     salary: null,

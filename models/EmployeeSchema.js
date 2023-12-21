@@ -109,12 +109,32 @@ const employeeSchema = new mongoose.Schema(
                 total_salary: {
                     type: Number
                 },
-                hour_normal: {
-                    type: Number
-                },
-                hour_overtime: {
-                    type: Number
-                },
+                hour_normal: [
+                    {
+                        department_name: {
+                            type: String
+                        },
+                        total_hour: {
+                            type: Number
+                        },
+                        total_minutes: { 
+                            type: Number
+                        }
+                    }
+                ],
+                hour_overtime: [
+                    {
+                        department_name: {
+                            type: String
+                        },
+                        total_hour: {
+                            type: Number
+                        },
+                        total_minutes: {
+                            type: Number
+                        }
+                    }
+                ],
                 total_km: {
                     type: Number
                 },

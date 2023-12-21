@@ -323,7 +323,6 @@ export const getAttendanceForManager = async (req, res, next) => {
         const month = req.query.month;
         const dateString = req.query.date;
 
-        // Ensure valid year and month inputs
         if (!year || !month || !manager_name) {
             return res.status(BAD_REQUEST).json({
                 success: false,
@@ -332,7 +331,6 @@ export const getAttendanceForManager = async (req, res, next) => {
             });
         }
 
-        // Find the manager's department name
         const manager = await AdminSchema.findOne({ name: manager_name });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
         const departmentName = manager.department_name;
@@ -376,145 +374,12 @@ export const getAttendanceForManager = async (req, res, next) => {
             query.employee_id = employeeID;
         }
 
-        // Fetch attendance based on the constructed query
         const attendances = await AttendanceSchema.find(query);
 
         return res.status(OK).json({
             success: true,
             status: OK,
             message: attendances,
-        });
-    } catch (err) {
-        next(err);
-    }
-};
-
-export const getAllEmployeeAttendanceByManager = async (req, res, next) => {
-    try {
-        const manager_name = req.query.manager_name;
-        const year = req.query.year;
-        const month = req.query.month;
-        const dateString = req.query.date;
-
-        const manager = await AdminSchema.findOne({ name: manager_name });
-        if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
-
-        // Ensure valid year and month inputs
-        if (!year || !month) {
-            return res.status(BAD_REQUEST).json({
-                success: false,
-                status: BAD_REQUEST,
-                message: "Year and month are required parameters",
-            });
-        }
-
-        let date = null;
-
-        if (dateString) {
-            date = new Date(dateString);
-
-            if (isNaN(date.getTime())) {
-                return res.status(BAD_REQUEST).json({
-                    success: false,
-                    status: BAD_REQUEST,
-                    message: "Invalid date format",
-                });
-            }
-        }
-
-        // Define the date range based on the presence of the date parameter
-        const dateRange = date
-            ? {
-                $gte: new Date(year, month - 1, date, 0, 0, 0, 0),
-                $lt: new Date(year, month - 1, date, 23, 59, 59, 999),
-            }
-            : {
-                $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
-                $lt: new Date(year, month, 0, 23, 59, 59, 999),
-            };
-
-        // Find all employee attendance for the specified date range
-        const employeeAttendance = await AttendanceSchema.find({
-            date: dateRange,
-        });
-
-        const matchedAttendances = employeeAttendance.filter(attendance => {
-            const matchedDepartment = attendance.department_name;
-
-            return (manager.department_name === matchedDepartment);
-        });
-
-        return res.status(OK).json({
-            success: true,
-            status: OK,
-            message: matchedAttendances,
-        });
-    } catch (err) {
-        next(err);
-    }
-};
-
-export const getEmployeeAttendanceByManager = async (req, res, next) => {
-    try {
-        const employeeID = req.params.employeeID;
-        const manager_name = req.query.manager_name;
-        const year = req.query.year;
-        const month = req.query.month;
-        const dateString = req.query.date;
-
-        const manager = await AdminSchema.findOne({ name: manager_name });
-        if (!manager) return next(createError(NOT_FOUND, "manager not found!"));
-
-        // Ensure valid year, month, and employee ID inputs
-        if (!year || !month || !employeeID) {
-            return res.status(BAD_REQUEST).json({
-                success: false,
-                status: BAD_REQUEST,
-                message: "Year, month, and employee ID are required parameters",
-            });
-        }
-
-        let date = null;
-
-        if (dateString) {
-            date = new Date(dateString);
-
-            if (isNaN(date.getTime())) {
-                return res.status(BAD_REQUEST).json({
-                    success: false,
-                    status: BAD_REQUEST,
-                    message: "Invalid date format",
-                });
-            }
-        }
-
-        // Define the date range based on the presence of the date parameter
-        const dateRange = date
-            ? {
-                $gte: new Date(year, month - 1, date, 0, 0, 0, 0),
-                $lt: new Date(year, month - 1, date, 23, 59, 59, 999),
-            }
-            : {
-                $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
-                $lt: new Date(year, month, 0, 23, 59, 59, 999),
-            };
-
-        // Find employee attendance for the specified date range
-        const employeeAttendance = await AttendanceSchema.find({
-            employee_id: employeeID,
-            date: dateRange,
-        });
-
-        const matchedAttendances = employeeAttendance.filter(attendance => {
-            const matchedDepartment = attendance.department_name;
-
-            return (manager.department_name === matchedDepartment);
-        });
-
-        return res.status(OK).json({
-            success: true,
-            status: OK,
-            message: matchedAttendances,
         });
     } catch (err) {
         next(err);

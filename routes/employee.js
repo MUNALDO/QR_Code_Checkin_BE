@@ -1,7 +1,7 @@
 import express from 'express';
 import {
-    checkAttendance, createRequest, getAttendanceByCurrentMonth,
-    getAttendanceCurrentTime, getDateDesignInMonthByEmployee, updateAttendance
+    checkAttendance, createRequest, getDateDesignCurrentByEmployee,
+    getEmployeeAttendanceCurrentMonth, updateAttendance
 } from '../controllers/employeeController.js';
 // import { verifyTokenEmployee } from '../utils/verifyToken.js';
 import multer from 'multer';
@@ -16,12 +16,11 @@ const router = express.Router();
 // attendance
 router.post('/check-attendance', checkAttendance);
 router.post('/update-attendance', upload.single('image'), updateAttendance);
-router.get('/get-attendance-month', getAttendanceByCurrentMonth);
-router.get('/get-attendance-now', getAttendanceCurrentTime);
+router.get('/get-attendance', getEmployeeAttendanceCurrentMonth);
 
 // request
 router.post('/create-request', createRequest);
 
 // schedule
-router.get('/get-schedules', getDateDesignInMonthByEmployee);
+router.get('/get-schedules', getDateDesignCurrentByEmployee);
 export default router;

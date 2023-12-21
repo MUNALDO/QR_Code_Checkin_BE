@@ -566,79 +566,109 @@ export const updateAttendance = async (req, res, next) => {
     }
 }
 
-export const getAttendanceByCurrentMonth = async (req, res, next) => {
+export const getEmployeeAttendanceCurrentMonth = async (req, res, next) => {
     try {
-        const employeeID = req.params.employeeID;
+        const employeeID = req.query.employeeID;
+        const departmentName = req.query.department_name;
+
+        // Ensure employeeID is provided
+        if (!employeeID) {
+            return res.status(BAD_REQUEST).json({
+                success: false,
+                status: BAD_REQUEST,
+                message: "Employee ID is required",
+            });
+        }
+
+        // Use current year and month
         const currentDate = new Date();
-        const currentYear = currentDate.getFullYear();
-        const currentMonth = currentDate.getMonth();
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth(); // Month is 0-indexed
 
-        const attendanceRecords = await AttendanceSchema.find({
+        // Define date range for the entire current month
+        const dateRange = {
+            $gte: new Date(year, month, 1),
+            $lt: new Date(year, month + 1, 1),
+        };
+
+        // Construct the base query
+        let query = {
             employee_id: employeeID,
-            date: {
-                $gte: new Date(currentYear, currentMonth, 1, 0, 0, 0, 0),
-                $lt: new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999),
-            },
-        });
+            date: dateRange,
+        };
 
+        // Add department name to the query if provided
+        if (departmentName) {
+            query['department_name'] = departmentName;
+        }
+
+        // Execute the query
+        const attendances = await AttendanceSchema.find(query).lean();
+
+        // Respond with the attendances
         return res.status(OK).json({
             success: true,
             status: OK,
-            message: attendanceRecords,
+            message: attendances,
         });
     } catch (err) {
         next(err);
     }
 };
 
-export const getAttendanceCurrentTime = async (req, res, next) => {
-    try {
-        const employeeID = req.params.employeeID;
-        const currentDate = new Date();
-
-        const attendanceRecord = await AttendanceSchema.findOne({
-            employee_id: employeeID,
-            date: {
-                $gte: new Date(currentDate.setHours(0, 0, 0, 0)),
-                $lt: new Date(currentDate.setHours(23, 59, 59, 999)),
-            },
-        });
-
-        return res.status(OK).json({
-            success: true,
-            status: OK,
-            message: attendanceRecord,
-        });
-    } catch (err) {
-        next(err);
-    }
-};
-
-export const getDateDesignInMonthByEmployee = async (req, res, next) => {
+export const getDateDesignCurrentByEmployee = async (req, res, next) => {
     const employeeID = req.query.employeeID;
-    const targetMonth = req.query.month;
+    const targetDate = req.query.date ? new Date(req.query.date) : null;
+    const departmentName = req.query.department_name;
+
+    // Get current year and month if not provided
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth();
+
+    // Use query year and month if provided, otherwise use current year and month
+    const targetYear = req.query.year ? parseInt(req.query.year) : currentYear;
+    const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : currentMonth;
+
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
-        // Filter schedules for the target month
-        const schedulesInMonth = employee.schedules.filter(schedule => {
-            const scheduleMonth = schedule.date.getMonth() + 1;
-            return scheduleMonth === targetMonth;
+        const shiftDesigns = [];
+
+        employee.department.forEach(department => {
+            if (departmentName && department.name !== departmentName) {
+                return;
+            }
+
+            department.schedules.forEach(schedule => {
+                const scheduleDate = new Date(schedule.date);
+                if (scheduleDate.getFullYear() === targetYear &&
+                    scheduleDate.getMonth() === targetMonth &&
+                    (!targetDate || scheduleDate.getTime() === targetDate.getTime())) {
+
+                    schedule.shift_design.forEach(shift => {
+                        shiftDesigns.push({
+                            date: scheduleDate,
+                            department_name: department.name,
+                            position: shift.position,
+                            shift_code: shift.shift_code,
+                            time_slot: shift.time_slot,
+                            shift_type: shift.shift_type,
+                        });
+                    });
+                }
+            });
         });
 
-        if (schedulesInMonth.length === 0) {
-            return res.status(NOT_FOUND).json({
-                success: false,
-                status: NOT_FOUND,
-                message: `No schedules found for the employee in the specified month.`,
-            });
+        if (shiftDesigns.length === 0) {
+            return next(createError(NOT_FOUND, "No shift designs found for the specified criteria!"));
         }
 
         res.status(OK).json({
             success: true,
             status: OK,
-            message: schedulesInMonth,
+            message: shiftDesigns
         });
     } catch (err) {
         next(err);

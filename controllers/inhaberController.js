@@ -371,48 +371,43 @@ export const getDateDesignForInhaber = async (req, res, next) => {
     const targetYear = req.query.year ? parseInt(req.query.year) : null;
     const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null;
     const targetDate = req.query.date ? new Date(req.query.date) : null;
-
     try {
+        // Find the Inhaber and get their department name
         const inhaber = await AdminSchema.findOne({ name: inhaberName, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
         const departmentName = inhaber.department_name;
 
         const shiftDesigns = [];
+
         const employees = await EmployeeSchema.find({ 'department.name': departmentName });
-
         employees.forEach(employee => {
-            employee.department.forEach(department => {
-                if (department.name === departmentName) {
-                    department.schedules.forEach(schedule => {
-                        const scheduleDate = new Date(schedule.date);
+            const employeeDepartment = employee.department.find(dep => dep.name === departmentName);
+            if (!employeeDepartment) return;
 
-                        // Include the schedule based on the target year, month, and date or include all if no time queries
-                        const shouldIncludeSchedule = (!targetYear && !targetMonth && !targetDate) || 
-                                                      (targetYear === null || scheduleDate.getFullYear() === targetYear) &&
-                                                      (targetMonth === null || scheduleDate.getMonth() === targetMonth) &&
-                                                      (targetDate === null || scheduleDate.toISOString().split('T')[0] === targetDate.toISOString().split('T')[0]);
+            employeeDepartment.schedules.forEach(schedule => {
+                const scheduleDate = new Date(schedule.date);
+                if ((!targetYear || scheduleDate.getFullYear() === targetYear) &&
+                    (!targetMonth || scheduleDate.getMonth() === targetMonth) &&
+                    (!targetDate || scheduleDate.getTime() === targetDate.getTime())) {
 
-                        if (shouldIncludeSchedule) {
-                            schedule.shift_design.forEach(shift => {
-                                shiftDesigns.push({
-                                    employee_id: employee.id,
-                                    employee_name: employee.name,
-                                    date: scheduleDate,
-                                    department_name: department.name,
-                                    position: shift.position,
-                                    shift_code: shift.shift_code,
-                                    time_slot: shift.time_slot,
-                                    shift_type: shift.shift_type,
-                                });
-                            });
-                        }
+                    schedule.shift_design.forEach(shift => {
+                        shiftDesigns.push({
+                            employee_id: employee.id,
+                            employee_name: employee.name,
+                            date: scheduleDate,
+                            department_name: departmentName,
+                            position: shift.position,
+                            shift_code: shift.shift_code,
+                            time_slot: shift.time_slot,
+                            shift_type: shift.shift_type,
+                        });
                     });
                 }
             });
         });
 
         if (shiftDesigns.length === 0) {
-            return next(createError(NOT_FOUND, "No shift designs found for your department."));
+            return next(createError(NOT_FOUND, "No shift designs found for the specified criteria in your department."));
         }
 
         res.status(OK).json({
@@ -479,11 +474,12 @@ export const getAttendanceForInhaber = async (req, res, next) => {
         const month = req.query.month;
         const dateString = req.query.date;
 
-        if (!year || !month || !inhaber_name) {
+        // Check for Inhaber's name
+        if (!inhaber_name) {
             return res.status(BAD_REQUEST).json({
                 success: false,
                 status: BAD_REQUEST,
-                message: "Year, month, and Inhaber Name are required parameters",
+                message: "Inhaber name is required",
             });
         }
 
@@ -491,42 +487,40 @@ export const getAttendanceForInhaber = async (req, res, next) => {
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
         const departmentName = inhaber.department_name;
 
-        let date = null;
-        if (dateString) {
-            date = new Date(dateString);
-            if (isNaN(date.getTime())) {
-                return res.status(BAD_REQUEST).json({
-                    success: false,
-                    status: BAD_REQUEST,
-                    message: "Invalid date format",
-                });
+        let dateRange = {};
+        if (year && month) {
+            let date = null;
+            if (dateString) {
+                date = new Date(dateString);
+                if (isNaN(date.getTime())) {
+                    return res.status(BAD_REQUEST).json({
+                        success: false,
+                        status: BAD_REQUEST,
+                        message: "Invalid date format",
+                    });
+                }
             }
+
+            dateRange = date
+                ? {
+                    $gte: new Date(year, month - 1, date.getDate(), 0, 0, 0, 0),
+                    $lt: new Date(year, month - 1, date.getDate() + 1, 0, 0, 0, 0),
+                }
+                : {
+                    $gte: new Date(year, month - 1, 1),
+                    $lt: new Date(year, month, 1),
+                };
         }
 
-        const dateRange = date
-            ? {
-                $gte: new Date(year, month - 1, date.getDate(), 0, 0, 0, 0),
-                $lt: new Date(year, month - 1, date.getDate(), 23, 59, 59, 999),
-            }
-            : {
-                $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
-                $lt: new Date(year, month, 0, 23, 59, 59, 999),
-            };
-
         let query = {
-            department_name: departmentName,
-            date: dateRange,
+            department_name: departmentName
         };
 
+        if (Object.keys(dateRange).length > 0) {
+            query.date = dateRange;
+        }
+
         if (employeeID) {
-            const employee = await EmployeeSchema.findOne({ id: employeeID, 'department.name': departmentName });
-            if (!employee) {
-                return res.status(NOT_FOUND).json({
-                    success: false,
-                    status: NOT_FOUND,
-                    message: "Employee not found in Inhaber's department",
-                });
-            }
             query.employee_id = employeeID;
         }
 

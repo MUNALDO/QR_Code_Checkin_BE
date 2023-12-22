@@ -117,7 +117,7 @@ const employeeSchema = new mongoose.Schema(
                         total_hour: {
                             type: Number
                         },
-                        total_minutes: { 
+                        total_minutes: {
                             type: Number
                         }
                     }

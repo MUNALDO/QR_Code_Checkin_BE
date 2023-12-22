@@ -3,7 +3,6 @@ import { BAD_REQUEST, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import AdminSchema from "../models/AdminSchema.js";
-// import ShiftSchema from "../models/ShiftSchema.js";
 import DepartmentSchema from "../models/DepartmentSchema.js";
 import RequestSchema from "../models/RequestSchema.js";
 import DayOffSchema from "../models/DayOffSchema.js";
@@ -12,18 +11,35 @@ import cron from 'node-cron';
 export const updateEmployeeBasicInfor = async (req, res, next) => {
     const employeeID = req.query.employeeID;
     try {
+        // Find the employee before updating
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+
+        if (!employee) {
+            return next(createError(NOT_FOUND, "Employee not found!"));
+        }
+        if (employee.status === "inactive") {
+            return next(createError(NOT_FOUND, "Employee not active!"));
+        }
+
+        // Calculate the change in day offs if default_day_off is in the request
+        if (req.body.default_day_off !== undefined) {
+            const day_off_change = req.body.default_day_off - employee.default_day_off;
+            if (day_off_change > 0) {
+                // Case 1: Increase in default_day_off
+                req.body.realistic_day_off = employee.realistic_day_off + day_off_change;
+            } else if (day_off_change < 0) {
+                // Case 2: Decrease in default_day_off
+                req.body.realistic_day_off = Math.max(0, employee.realistic_day_off + day_off_change);
+            }
+            // Case 3: No change, req.body.realistic_day_off remains unaffected
+        }
+
+        // Update employee with the new information
         const updatedEmployee = await EmployeeSchema.findOneAndUpdate(
             { id: employeeID },
             { $set: req.body },
             { new: true }
         );
-
-        if (!updatedEmployee) {
-            return next(createError(NOT_FOUND, "Employee not found!"));
-        }
-        if (updatedEmployee.status === "inactive") {
-            return next(createError(NOT_FOUND, "Employee not active!"));
-        }
 
         // Update employee information in each department
         for (let departmentObject of updatedEmployee.department) {
@@ -83,8 +99,13 @@ export const madeEmployeeInactive = async (req, res, next) => {
             return next(createError(BAD_REQUEST, "Inactive day must be in the future."));
         }
 
+        const minute = inactiveDate.getMinutes();
+        const hour = inactiveDate.getHours();
+        const day = inactiveDate.getDate();
+        const month = inactiveDate.getMonth(); // Month is 0-indexed in JavaScript
+
         // Schedule the status update
-        cron.schedule(`0 0 0 ${inactiveDate.getDate()} ${inactiveDate.getMonth()} ${inactiveDate.getFullYear()}`, async () => {
+        cron.schedule(`${minute} ${hour} ${day} ${month + 1} *`, async () => {
             employee.inactive_day = inactiveDate;
             employee.status = "inactive";
 

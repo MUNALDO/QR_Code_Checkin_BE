@@ -682,7 +682,6 @@ export const createRequest = async (req, res, next) => {
                     id: employee.id,
                     name: employee.name,
                     email: employee.email,
-                    department_name: employee.department_name,
                     role: employee.role,
                     position: employee.position,
                     status: employee.status
@@ -717,7 +716,6 @@ export const createRequest = async (req, res, next) => {
                     id: employee.id,
                     name: employee.name,
                     email: employee.email,
-                    department_name: employee.department_name,
                     role: employee.role,
                     position: employee.position,
                     status: employee.status

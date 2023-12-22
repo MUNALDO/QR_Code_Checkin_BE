@@ -25,9 +25,12 @@ export const createDayOff = async (req, res, next) => {
             date_end: new Date(date_end),
             name: req.body.name,
             type: req.body.type,
+            allowed: req.body.allowed,
         });
 
         const duration = calculateDuration(date_start, date_end);
+        newDayOff.duration = duration;
+        await newDayOff.save();
 
         const dateChecking = await DayOffSchema.findOne({
             date_start: newDayOff.date_start,
@@ -50,11 +53,14 @@ export const createDayOff = async (req, res, next) => {
                 allowed: newDayOff.allowed
             });
 
+            if (newDayOff.allowed === true) {
+                employee.realistic_day_off = employee.realistic_day_off - newDayOff.duration;
+            }
+
             newDayOff.members.push({
                 id: employee.id,
                 name: employee.name,
                 email: employee.email,
-                department_name: employee.department_name,
                 role: employee.role,
                 position: employee.position,
                 status: employee.status
@@ -69,11 +75,14 @@ export const createDayOff = async (req, res, next) => {
                     id: employee.id,
                     name: employee.name,
                     email: employee.email,
-                    department_name: employee.department_name,
                     role: employee.role,
                     position: employee.position,
                     status: employee.status
                 });
+
+                if (newDayOff.allowed === true) {
+                    employee.realistic_day_off = employee.realistic_day_off - newDayOff.duration;
+                }
 
                 // Add the new day off to all employees
                 employee.dayOff_schedule.push({
@@ -88,8 +97,6 @@ export const createDayOff = async (req, res, next) => {
             });
         }
 
-        newDayOff.duration = duration;
-        await newDayOff.save();
         return res.status(CREATED).json({
             success: true,
             status: CREATED,

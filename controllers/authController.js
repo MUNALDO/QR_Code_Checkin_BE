@@ -304,7 +304,6 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
                 id: newEmployee.id,
                 name: newEmployee.name,
                 email: newEmployee.email,
-                department: newEmployee.department,
                 role: newEmployee.role,
                 status: newEmployee.status
             });
@@ -375,7 +374,6 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
                 id: newEmployee.id,
                 name: newEmployee.name,
                 email: newEmployee.email,
-                department: newEmployee.department,
                 role: newEmployee.role,
                 status: newEmployee.status
             });
@@ -447,7 +445,6 @@ export const registerEmployeeByManager = async (req, res, next) => {
                 id: newEmployee.id,
                 name: newEmployee.name,
                 email: newEmployee.email,
-                department: newEmployee.department,
                 role: newEmployee.role,
                 status: newEmployee.status
             });

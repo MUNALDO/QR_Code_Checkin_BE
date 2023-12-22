@@ -82,29 +82,34 @@ export const getDepartmentSpecific = async (req, res, next) => {
 export const updateDepartment = async (req, res, next) => {
     const department_name = req.query.name;
     try {
+        // Find the department to update
         const department = await DepartmentSchema.findOne({ name: department_name });
-        if (!department) return next(createError(NOT_FOUND, "Department not found!"))
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
 
-        const employees = await EmployeeSchema.find({ department_name: department_name });
-        if (!employees) return next(createError(NOT_FOUND, "Employee not found!"))
+        // Update the department details
+        Object.assign(department, req.body);
+        await department.save();
 
-        const updateDepartment = await DepartmentSchema.findOneAndUpdate(
-            { name: department_name },
-            { $set: req.body },
-            { $new: true },
-        )
+        // Find employees who are members of this department
+        const employees = await EmployeeSchema.find({ "department.name": department_name });
 
         for (const employee of employees) {
-            if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
-            employee.department_name = updateDepartment.name;
+            // Update each employee's department data
+            const departmentIndex = employee.department.findIndex(d => d.name === department_name);
+            if (departmentIndex !== -1) {
+                employee.department[departmentIndex] = {
+                    ...employee.department[departmentIndex],
+                    ...req.body,
+                };
+            }
+
             await employee.save();
         }
 
-        await updateDepartment.save();
         res.status(OK).json({
             success: true,
             status: OK,
-            message: updateDepartment,
+            message: department,
         });
     } catch (err) {
         next(err);
@@ -168,4 +173,42 @@ export const addMemberDepartment = async (req, res, next) => {
         next(err);
     }
 };
+
+export const removeMemberDepartment = async (req, res, next) => {
+    const department_name = req.params.name;
+    const employeeID = req.body.employeeID;
+    try {
+        // Find the department
+        const department = await DepartmentSchema.findOne({ name: department_name });
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+
+        // Find the employee
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+
+        // Check if the employee is in the department
+        if (!department.members.some(member => member.id === employeeID)) {
+            return next(createError(NOT_FOUND, "Employee not a member of the department!"));
+        }
+
+        // Remove the employee from the department's members array
+        department.members = department.members.filter(member => member.id !== employeeID);
+
+        // Remove the department from the employee's department array
+        employee.department = employee.department.filter(dep => dep.name !== department_name);
+
+        // Save the updated department and employee
+        const updatedDepartment = await department.save();
+        const updatedEmployee = await employee.save();
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: { updatedDepartment, updatedEmployee }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 

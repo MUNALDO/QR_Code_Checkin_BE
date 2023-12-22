@@ -6,7 +6,7 @@ import {
 } from '../controllers/adminController.js';
 import {
     addMemberDepartment, createDepartment, deleteDepartmentByName, getAllDepartments,
-    getDepartmentByName, getDepartmentSpecific, updateDepartment
+    getDepartmentByName, getDepartmentSpecific, removeMemberDepartment, updateDepartment
 } from '../controllers/departmentController.js';
 import {
     createShift, getAllShifts,
@@ -41,6 +41,7 @@ router.get('/manage-department/get-by-name', verifyTokenAdmin, getDepartmentByNa
 router.get('/manage-department/get-specific', verifyTokenAdmin, getDepartmentSpecific);
 router.put('/manage-department/update', verifyTokenAdmin, updateDepartment);
 router.put('/manage-department/add-member/:name', verifyTokenAdmin, addMemberDepartment);
+router.put('/manage-department/remove-member/:name', verifyTokenAdmin, removeMemberDepartment);
 router.delete('/manage-department/delete', verifyTokenAdmin, deleteDepartmentByName);
 
 // shift

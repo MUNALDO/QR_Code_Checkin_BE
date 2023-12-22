@@ -200,46 +200,59 @@ export const exportEmployeeDataToExcel = async (req, res, next) => {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Employee Data');
 
+        // Defining columns for the Excel sheet
         const columns = [
-            { header: 'ID', key: 'id', width: 20 },
+            { header: 'ID', key: 'id', width: 15 },
             { header: 'Name', key: 'name', width: 20 },
             { header: 'Email', key: 'email', width: 30 },
             { header: 'Address', key: 'address', width: 30 },
             { header: 'DOB', key: 'dob', width: 15 },
             { header: 'Gender', key: 'gender', width: 10 },
-            { header: 'Department Names', key: 'department_name', width: 30 },
             { header: 'Role', key: 'role', width: 15 },
-            { header: 'Position', key: 'position', width: 20 },
             { header: 'Default Day Off', key: 'default_day_off', width: 15 },
             { header: 'Realistic Day Off', key: 'realistic_day_off', width: 15 },
             { header: 'House Rent', key: 'house_rent_money', width: 15 },
             { header: 'Status', key: 'status', width: 10 },
             { header: 'Active Day', key: 'active_day', width: 15 },
             { header: 'Inactive Day', key: 'inactive_day', width: 15 },
+            { header: 'Departments', key: 'departments', width: 20 },
+            { header: 'Positions', key: 'positions', width: 60 },
         ];
 
         worksheet.columns = columns;
 
+        // Add rows to the worksheet
         employees.forEach(employee => {
-            worksheet.addRow({
+            const departmentsPositions = employee.department.map(dept => ({
+                name: dept.name,
+                positions: dept.position.join(', ')
+            }));
+
+            const departmentNames = departmentsPositions.map(dp => dp.name).join(', ');
+            const allPositions = departmentsPositions.map(dp => dp.positions).join(' / ');
+
+            // Create a row for each employee
+            const row = {
                 id: employee.id,
                 name: employee.name,
                 email: employee.email,
                 address: employee.address || '',
                 dob: employee.dob || '',
                 gender: employee.gender || '',
-                department_name: employee.department_name.join(', ') || '',
                 role: employee.role || '',
-                position: employee.position || '',
                 default_day_off: employee.default_day_off || '',
                 realistic_day_off: employee.realistic_day_off || '',
                 house_rent_money: employee.house_rent_money || '',
                 status: employee.status || '',
                 active_day: employee.active_day || '',
                 inactive_day: employee.inactive_day || '',
-            });
-        });
+                departments: departmentNames,
+                positions: allPositions,
+            };
+            worksheet.addRow(row);
+        })
 
+        // Write buffer
         const buffer = await workbook.xlsx.writeBuffer();
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', 'attachment; filename=Employee_Data.xlsx');
@@ -257,6 +270,7 @@ export const exportEmployeeDataToExcel = async (req, res, next) => {
         return res.status(SYSTEM_ERROR).json({ error: 'Internal server error' });
     }
 };
+
 
 export const exportEmployeeSalaryDataToExcel = async (req, res, next) => {
     const { year, month } = req.query;

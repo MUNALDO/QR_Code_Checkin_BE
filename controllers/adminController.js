@@ -152,20 +152,6 @@ export const deleteEmployeeById = async (req, res, next) => {
     }
 };
 
-export const getAllEmployees = async (req, res, next) => {
-    try {
-        const employee = await EmployeeSchema.find();
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
-        res.status(OK).json({
-            success: true,
-            status: OK,
-            message: employee,
-        });
-    } catch (err) {
-        next(err);
-    }
-};
-
 export const searchSpecific = async (req, res, next) => {
     const { role, department, details, status } = req.query;
     try {
@@ -292,59 +278,68 @@ export const getAllEmployeesSchedules = async (req, res, next) => {
     }
 };
 
-export const getEmployeesByDate = async (req, res, next) => {
+export const getAttendance = async (req, res, next) => {
     try {
-        const targetDate = new Date(req.query.date);
+        const employeeID = req.query.employeeID;
+        const departmentName = req.query.department_name; // New parameter
+        const year = req.query.year;
+        const month = req.query.month;
+        const dateString = req.query.date;
 
-        // Find all employees
-        const employees = await EmployeeSchema.find();
-
-        // Filter employees based on the target date and shift code
-        const matchedEmployees = employees.filter(employee => {
-            const matchedSchedules = employee.schedules.filter(schedule => {
-                return schedule.date.getTime() === targetDate.getTime();
+        // Validate year and month inputs
+        if (!year || !month) {
+            return res.status(BAD_REQUEST).json({
+                success: false,
+                status: BAD_REQUEST,
+                message: "Year and month are required parameters",
             });
+        }
 
-            return matchedSchedules.length > 0;
-        });
+        // Parse date if provided
+        let date = null;
+        if (dateString) {
+            date = new Date(dateString);
+            if (isNaN(date.getTime())) {
+                return res.status(BAD_REQUEST).json({
+                    success: false,
+                    status: BAD_REQUEST,
+                    message: "Invalid date format",
+                });
+            }
+        }
 
-        res.status(OK).json({
+        // Construct date range
+        const dateRange = date
+            ? {
+                $gte: new Date(year, month - 1, date.getDate(), 0, 0, 0, 0),
+                $lt: new Date(year, month - 1, date.getDate() + 1, 0, 0, 0, 0),
+            }
+            : {
+                $gte: new Date(year, month - 1, 1),
+                $lt: new Date(year, month, 1),
+            };
+
+        // Construct the query object
+        let query = { date: dateRange };
+        
+        // Add employeeID to the query if provided
+        if (employeeID) {
+            query.employee_id = employeeID;
+        }
+        
+        // Add department_name to the query if provided
+        if (departmentName) {
+            query['department_name'] = departmentName;
+        }
+
+        // Execute the query
+        const attendances = await AttendanceSchema.find(query).lean();
+
+        // Respond with the attendances
+        return res.status(OK).json({
             success: true,
             status: OK,
-            message: matchedEmployees,
-        });
-    } catch (err) {
-        next(err);
-    }
-};
-
-export const getEmployeesByDateAndShift = async (req, res, next) => {
-    try {
-        const targetDate = new Date(req.query.date);
-        const targetShiftCode = req.query.shift_code;
-
-        const shift = await ShiftSchema.findOne({ code: targetShiftCode });
-        if (!shift) return next(createError(NOT_FOUND, "Shift not found!"))
-
-        // Find all employees
-        const employees = await EmployeeSchema.find({ status: "active" });
-
-        // Filter employees based on the target date and shift code
-        const matchedEmployees = employees.filter(employee => {
-            const matchedSchedules = employee.schedules.filter(schedule => {
-                return (
-                    schedule.date.getTime() === targetDate.getTime() &&
-                    schedule.shift_design.some(shift => shift.shift_code === targetShiftCode)
-                );
-            });
-
-            return matchedSchedules.length > 0;
-        });
-
-        res.status(OK).json({
-            success: true,
-            status: OK,
-            message: matchedEmployees,
+            message: attendances,
         });
     } catch (err) {
         next(err);
@@ -404,7 +399,6 @@ export const getAllEmployeeAttendance = async (req, res, next) => {
         next(err);
     }
 };
-
 
 export const getEmployeeAttendance = async (req, res, next) => {
     try {

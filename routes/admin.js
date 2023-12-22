@@ -1,9 +1,8 @@
 import express from 'express';
 import {
-    deleteEmployeeById, getAllEmployeeAttendance, getAllEmployees,
-    getAllEmployeesSchedules, getAllRequests, getEmployeeAttendance,
-    getEmployeesByDate, getEmployeesByDateAndShift, getRequestById,
-    handleRequest, madeEmployeeInactive, searchSpecific, updateEmployeeBasicInfor
+    deleteEmployeeById, getAllEmployeeAttendance, getAllEmployeesSchedules,
+    getAllRequests, getAttendance, getEmployeeAttendance, getRequestById, handleRequest,
+    madeEmployeeInactive, searchSpecific, updateEmployeeBasicInfor
 } from '../controllers/adminController.js';
 import {
     addMemberDepartment, createDepartment, deleteDepartmentByName, getAllDepartments,
@@ -30,10 +29,7 @@ const router = express.Router();
 router.get('/manage-all/search-specific', verifyTokenAdmin, searchSpecific);
 
 // employee
-router.get('/manage-employee/get-all', verifyTokenAdmin, getAllEmployees);
 router.get('/manage-employee/get-all-schedules', verifyTokenAdmin, getAllEmployeesSchedules);
-router.get('/manage-employee/get-by-date', verifyTokenAdmin, getEmployeesByDate);
-router.get('/manage-employee/get-by-date&shift', verifyTokenAdmin, getEmployeesByDateAndShift);
 router.get('/manage-employee/export-attendance', verifyTokenAdmin, exportAttendanceToExcel);
 router.delete('/manage-employee/delete-byId', verifyTokenAdmin, deleteEmployeeById);
 router.put('/manage-employee/update-basic', verifyTokenAdmin, updateEmployeeBasicInfor);
@@ -74,6 +70,7 @@ router.get('/manage-request/get-byId/:_id', verifyTokenAdmin, getRequestById);
 router.put('/manage-request/handle/:_id', verifyTokenAdmin, handleRequest);
 
 // manage attendance
+router.get('/manage-attendance/get-by-specific', verifyTokenAdmin, getAttendance);
 router.get('/manage-attendance/get-all', verifyTokenAdmin, getAllEmployeeAttendance);
 router.get('/manage-attendance/get-specific/:employeeID', verifyTokenAdmin, getEmployeeAttendance);
 

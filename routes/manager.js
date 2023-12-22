@@ -2,7 +2,8 @@ import express from 'express';
 import { verifyTokenManager } from '../utils/verifyToken.js';
 import {
     createMultipleDateDesignsByManager, deleteDateSpecificByManager,
-    getDateDesignForManager, getEmployeesSchedulesByManager, searchSpecificForManager
+    getAttendanceForManager, getDateDesignForManager, getEmployeesSchedulesByManager, 
+    searchSpecificForManager
 } from '../controllers/managerController.js';
 
 const router = express.Router();
@@ -15,5 +16,8 @@ router.get("/manage-employee/get-all-schedules", verifyTokenManager, getEmployee
 router.post("/manage-date-design/create-days", verifyTokenManager, createMultipleDateDesignsByManager);
 router.get('/manage-date-design/get-by-specific', verifyTokenManager, getDateDesignForManager);
 router.delete('/manage-date-design/delete', verifyTokenManager, deleteDateSpecificByManager);
+
+// manage attendance
+router.get('/manage-attendance/get-by-specific', verifyTokenManager, getAttendanceForManager);
 
 export default router;

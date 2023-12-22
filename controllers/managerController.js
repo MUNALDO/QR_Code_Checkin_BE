@@ -3,6 +3,7 @@ import { FORBIDDEN, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import AdminSchema from "../models/AdminSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";
+import AttendanceSchema from "../models/AttendanceSchema.js";
 
 export const searchSpecificForManager = async (req, res, next) => {
     const { role, details, status } = req.query;
@@ -308,6 +309,80 @@ export const deleteDateSpecificByManager = async (req, res, next) => {
             success: true,
             status: OK,
             message: "Shift design deleted successfully",
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getAttendanceForManager = async (req, res, next) => {
+    try {
+        const manager_name = req.query.manager_name;
+        const employeeID = req.query.employeeID;
+        const year = req.query.year;
+        const month = req.query.month;
+        const dateString = req.query.date;
+
+        // Ensure valid year and month inputs
+        if (!year || !month || !manager_name) {
+            return res.status(BAD_REQUEST).json({
+                success: false,
+                status: BAD_REQUEST,
+                message: "Year, month, and v Name are required parameters",
+            });
+        }
+
+        // Find the manager's department name
+        const manager = await AdminSchema.findOne({ name: manager_name });
+        if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
+        const departmentName = manager.department_name;
+
+        let date = null;
+        if (dateString) {
+            date = new Date(dateString);
+            if (isNaN(date.getTime())) {
+                return res.status(BAD_REQUEST).json({
+                    success: false,
+                    status: BAD_REQUEST,
+                    message: "Invalid date format",
+                });
+            }
+        }
+
+        const dateRange = date
+            ? {
+                $gte: new Date(year, month - 1, date.getDate(), 0, 0, 0, 0),
+                $lt: new Date(year, month - 1, date.getDate(), 23, 59, 59, 999),
+            }
+            : {
+                $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
+                $lt: new Date(year, month, 0, 23, 59, 59, 999),
+            };
+
+        let query = {
+            department_name: departmentName,
+            date: dateRange,
+        };
+
+        if (employeeID) {
+            const employee = await EmployeeSchema.findOne({ id: employeeID, 'department.name': departmentName });
+            if (!employee) {
+                return res.status(NOT_FOUND).json({
+                    success: false,
+                    status: NOT_FOUND,
+                    message: "Employee not found in manager's department",
+                });
+            }
+            query.employee_id = employeeID;
+        }
+
+        // Fetch attendance based on the constructed query
+        const attendances = await AttendanceSchema.find(query);
+
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: attendances,
         });
     } catch (err) {
         next(err);

@@ -83,6 +83,19 @@ const attendanceSchema = new mongoose.Schema(
             type: Number,
             default: 0
         },
+        form_data: [
+            {
+                revenue: {
+                    type: Number
+                },
+                tips: {
+                    type: Number
+                },
+                others: {
+                    type: Number
+                }
+            }
+        ],
         status: {
             type: String,
             enum: ['checked', 'missing']

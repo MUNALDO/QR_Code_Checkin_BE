@@ -74,6 +74,7 @@ export const updateEmployeeBasicInfor = async (req, res, next) => {
             }
         );
 
+        await updatedEmployee.save();
         res.status(OK).json({
             success: true,
             status: OK,

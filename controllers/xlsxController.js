@@ -4,7 +4,8 @@ import fs from 'fs';
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 
-async function getAttendance(year, month) {
+export const exportAttendanceToExcel = async (req, res, next) => {
+    const { year, month, employeeID, department_name } = req.query;
 
     try {
         const query = {
@@ -14,120 +15,92 @@ async function getAttendance(year, month) {
             },
         };
 
-        const attendanceList = await AttendanceSchema.find(query);
-
-        return attendanceList;
-    } catch (err) {
-        console.error('Error fetching attendance data:', err);
-        throw err;
-    }
-}
-
-const columnMapping = {
-    'Month': { header: 'Month', key: 'month', width: 15 },
-    'Date': { header: 'Date', key: 'date', width: 15 },
-    'Weekday': { header: 'Weekday', key: 'weekday', width: 15 },
-    'Employee ID': { header: 'Employee ID', key: 'employee_id', width: 15 },
-    'Employee Name': { header: 'Employee Name', key: 'employee_name', width: 20 },
-    'Shift Code': { header: 'Shift Code', key: 'shift_code', width: 15 },
-    'Check In': { header: 'Check In', key: 'check_in', width: 15 },
-    'Check In Status': { header: 'Check In Status', key: 'check_in_status', width: 15 },
-    'Check In Time': { header: 'Check In Time', key: 'check_in_time', width: 15 },
-    'Check Out': { header: 'Check Out', key: 'check_out', width: 15 },
-    'Check Out Status': { header: 'Check Out Status', key: 'check_out_status', width: 15 },
-    'Check Out Time': { header: 'Check Out Time', key: 'check_out_time', width: 15 },
-};
-
-export const exportAttendanceToExcel = async (req, res, next) => {
-    const { year, month } = req.query;
-    const columnNames = req.body.columns;
-
-    try {
-        const attendanceList = await getAttendance(year, month);
-
-        if (!attendanceList || attendanceList.length === 0) {
-            return res.status(NOT_FOUND).json({ error: "No attendance data found" });
+        if (employeeID) {
+            query.employee_id = employeeID;
         }
 
-        // Group attendance by date
-        const groupedByDate = groupByDate(attendanceList);
-        // Group attendance by month, if year is provided
-        const groupedByMonth = year ? groupByMonth(groupedByDate) : groupedByDate;
+        if (department_name) {
+            query.department_name = department_name;
+        }
 
-        // Define the file name based on year and, optionally, the month
-        const fileName = `${year}${month ? `_${month}` : ''}.xlsx`;
+        const attendanceList = await AttendanceSchema.find(query);
 
-        // Define the file path where you want to save the Excel file
+        if (!attendanceList || attendanceList.length === 0) {
+            return res.status(NOT_FOUND).json({ error: "No attendance data found for the specified criteria" });
+        }
+
+        const fileName = `Employee_Attendance_Data_${year}_${month}.xlsx`;
         const filePath = `../${fileName}`;
 
-        // Create a new Excel workbook and worksheet
         const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Attendance');
+        const worksheet = workbook.addWorksheet('Employee Attendance Data');
 
-        // Define the default columns for the Excel sheet
-        const defaultColumns = [
+        // Define the columns for the Excel sheet (Add or modify as per your schema)
+        const columns = [
             { header: 'Month', key: 'month', width: 15 },
-            { header: 'Date', key: 'date', width: 15 },
-            { header: 'Weekday', key: 'weekday', width: 15 },
+            { header: 'Date', key: 'date', width: 20 },
             { header: 'Employee ID', key: 'employee_id', width: 15 },
             { header: 'Employee Name', key: 'employee_name', width: 20 },
+            { header: 'Department', key: 'department_name', width: 20 },
+            { header: 'Position', key: 'position', width: 15 },
             { header: 'Shift Code', key: 'shift_code', width: 15 },
-            { header: 'Check In', key: 'check_in', width: 15 },
-            { header: 'Check In Status', key: 'check_in_status', width: 15 },
+            { header: 'Shift Type', key: 'shift_type', width: 15 },
             { header: 'Check In Time', key: 'check_in_time', width: 15 },
-            { header: 'Check Out', key: 'check_out', width: 15 },
-            { header: 'Check Out Status', key: 'check_out_status', width: 15 },
             { header: 'Check Out Time', key: 'check_out_time', width: 15 },
+            { header: 'Total Hours', key: 'total_hour', width: 10 },
+            { header: 'Total Minutes', key: 'total_minutes', width: 10 },
+            { header: 'Check In Km', key: 'check_in_km', width: 10 },
+            { header: 'Check Out Km', key: 'check_out_km', width: 10 },
+            { header: 'Total Km', key: 'total_km', width: 10 },
+            { header: 'Revenue', key: 'revenue', width: 10 },
+            { header: 'Tips', key: 'tips', width: 10 },
+            { header: 'Others', key: 'others', width: 10 },
         ];
 
-        // Determine the columns to export based on user input or use default columns
-        const exportColumns = columnNames
-            ? columnNames.map(columnName => columnMapping[columnName] || defaultColumns[0])
-            : defaultColumns;
+        worksheet.columns = columns;
 
-        // Set columns for the Excel sheet
-        worksheet.columns = exportColumns;
+        // Group by month and then by date
+        const groupedByDate = groupByDate(attendanceList);
+        const groupedByMonth = year ? groupByMonth(groupedByDate) : groupedByDate;
 
-        // Populate the worksheet with data
         groupedByMonth.forEach((monthData) => {
-            monthData.dates.forEach((dateData) => {
+            monthData.dates?.forEach((dateData) => {
                 try {
-                    dateData.attendanceList.forEach((attendance, index) => {
+                    dateData.attendanceList?.forEach((attendance, index) => {
                         const date = new Date(attendance.date);
-                        const shiftCode = attendance.shift_info.shift_code;
-                        const checkIn = attendance.shift_info.time_slot.check_in ? 'Yes' : 'No';
-                        const checkOut = attendance.shift_info.time_slot.check_out ? 'Yes' : 'No';
                         const rowData = {
-                            month: index === 0 ? date.getUTCMonth() + 1 : null,
+                            month: index === 0 ? date.getMonth() + 1 : null,
                             date: index === 0 ? date.toLocaleDateString().split('T')[0] : null,
-                            weekday: attendance.weekday,
                             employee_id: attendance.employee_id,
                             employee_name: attendance.employee_name,
-                            shift_code: shiftCode,
-                            check_in: checkIn,
-                            check_in_status: attendance.shift_info.time_slot.check_in_status,
-                            check_in_time: attendance.shift_info.time_slot.check_in_time || 'N/A',
-                            check_out: checkOut,
-                            check_out_status: attendance.shift_info.time_slot.check_out_status || 'N/A',
-                            check_out_time: attendance.shift_info.time_slot.check_out_time || 'N/A',
+                            department_name: attendance.department_name,
+                            position: attendance.position,
+                            shift_code: attendance.shift_info.shift_code,
+                            shift_type: attendance.shift_info.shift_type,
+                            check_in_time: attendance.shift_info.time_slot.check_in_time,
+                            check_out_time: attendance.shift_info.time_slot.check_out_time,
+                            total_hour: attendance.shift_info.total_hour,
+                            total_minutes: attendance.shift_info.total_minutes,
+                            check_in_km: attendance.check_in_km ? attendance.check_in_km : '',
+                            check_out_km: attendance.check_out_km ? attendance.check_out_km : '',
+                            total_km: attendance.total_km ? attendance.total_km : '',
+                            revenue: attendance.revenue ? attendance.revenue : '',
+                            tips: attendance.tips ? attendance.tips : '',
+                            others: attendance.others ? attendance.others : ''
                         };
                         worksheet.addRow(rowData);
-                    });
+                    })
                 } catch (error) {
                     next(error);
                 }
             });
         });
 
-        // Generate the Excel file in memory
         const buffer = await workbook.xlsx.writeBuffer();
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', 'attachment; filename=attendance.xlsx');
-
-        // Send the buffer as the response
+        res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
         res.send(buffer);
 
-        // Save the buffer to the file path
         try {
             fs.writeFileSync(filePath, buffer);
             console.log(`Excel file saved to ${filePath}`);
@@ -135,7 +108,7 @@ export const exportAttendanceToExcel = async (req, res, next) => {
             next(error);
         }
     } catch (error) {
-        console.error('Error exporting Excel:', error);
+        console.error('Error exporting attendance data to Excel:', error);
         return res.status(SYSTEM_ERROR).json({ error: 'Internal server error' });
     }
 };
@@ -166,8 +139,8 @@ function groupByMonth(attendanceList) {
     const groupedData = new Map();
 
     attendanceList.forEach((data) => {
-        const year = data.date.getUTCFullYear();
-        const month = data.date.getUTCMonth();
+        const year = data.date.getFullYear();
+        const month = data.date.getMonth() + 1; // Add 1 to get the correct month number
 
         const dateKey = `${year}_${month}`;
         if (!groupedData.has(dateKey)) {
@@ -183,7 +156,7 @@ function groupByMonth(attendanceList) {
     // Sort the months by ascending order
     return Array.from(groupedData)
         .map(([key, monthData]) => monthData)
-        .sort((a, b) => new Date(a.year, a.month) - new Date(b.year, b.month));
+        .sort((a, b) => new Date(a.year, a.month - 1) - new Date(b.year, b.month - 1));
 };
 
 export const exportEmployeeDataToExcel = async (req, res, next) => {

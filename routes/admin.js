@@ -30,7 +30,6 @@ router.get('/manage-all/search-specific', verifyTokenAdmin, searchSpecific);
 
 // employee
 router.get('/manage-employee/get-all-schedules', verifyTokenAdmin, getAllEmployeesSchedules);
-router.get('/manage-employee/export-attendance', verifyTokenAdmin, exportAttendanceToExcel);
 router.delete('/manage-employee/delete-byId', verifyTokenAdmin, deleteEmployeeById);
 router.put('/manage-employee/update-basic', verifyTokenAdmin, updateEmployeeBasicInfor);
 router.put('/manage-employee/make-inactive', verifyTokenAdmin, madeEmployeeInactive);
@@ -80,5 +79,6 @@ router.get('/manage-salary/get-all', verifyTokenAdmin, getSalaryForAllEmployees)
 // manage xlsx
 router.get('/manage-xlsx/employee-data', verifyTokenAdmin, exportEmployeeDataToExcel);
 router.get('/manage-xlsx/salary-data', verifyTokenAdmin, exportEmployeeSalaryDataToExcel);
+router.get('/manage-xlsx/attendance-data', verifyTokenAdmin, exportAttendanceToExcel);
 
 export default router;

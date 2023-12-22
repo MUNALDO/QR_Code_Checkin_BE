@@ -499,11 +499,10 @@ export const updateAttendance = async (req, res, next) => {
                     });
                 }
             } else if (existingAttendance.position === "Service") {
-                existingAttendance.form_data.push({
-                    revenue: req.body.revenue,
-                    tips: req.body.tips,
-                    others: req.body.others
-                });
+                existingAttendance.revenue = req.body.revenue;
+                existingAttendance.tips = req.body.tips;
+                existingAttendance.others = req.body.others;
+                await existingAttendance.save();
             } else {
                 return res.status(BAD_REQUEST).json({
                     success: false,

@@ -94,6 +94,9 @@ const createMissingAttendance = async (employee, department, schedule, shift) =>
             total_hour: 0,
             total_minutes: 0,
         },
+        check_in_km: 0,
+        check_out_km: 0,
+        total_km: 0,
         status: "missing",
     });
     const departmentIndex = employee.department.findIndex(dep => dep.name === department.name);

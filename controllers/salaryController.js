@@ -111,10 +111,8 @@ export const salaryCalculate = async (req, res, next) => {
 
     // Save or update the salary record
     if (existStat) {
-        // Update existing salary record
         Object.assign(existStat, salaryRecord);
     } else {
-        // Add new salary record
         employee.salary.push(salaryRecord);
     }
 

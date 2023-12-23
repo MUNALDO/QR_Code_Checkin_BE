@@ -1,11 +1,8 @@
 import express from 'express';
 import {
     createMultipleDateDesignsByInhaber, deleteDateSpecificByInhaber, deleteEmployeeByIdByInhaber,
-    getAllRequestsForInhaber,
-    getAttendanceForInhaber, getDateDesignForInhaber, getEmployeesSchedulesByInhaber,
-    getRequestByIdForInhaber,
-    getSalaryForAllEmployeesByInhaber, getSalaryForEmployeeByInhaber,
-    handleRequestForInhaber,
+    getAllRequestsForInhaber, getAttendanceForInhaber, getDateDesignForInhaber, getEmployeesSchedulesByInhaber,
+    getRequestByIdForInhaber, getSalaryForEmployeeByInhaber, handleRequestForInhaber,
     madeEmployeeInactiveByInhaber, searchSpecificForInhaber, updateEmployeeByInhaber
 } from '../controllers/inhaberController.js';
 import {
@@ -14,7 +11,10 @@ import {
 } from '../controllers/shiftController.js';
 import { salaryCalculate } from '../controllers/salaryController.js';
 import { verifyTokenInhaber } from '../utils/verifyToken.js';
-import { exportAttendanceForInhaberToExcel, exportEmployeeDataForInhaberToExcel, exportEmployeeSalaryDataForInhaberToExcel } from '../controllers/xlsxController.js';
+import {
+    exportAttendanceForInhaberToExcel, exportEmployeeDataForInhaberToExcel,
+    exportEmployeeSalaryDataForInhaberToExcel
+} from '../controllers/xlsxController.js';
 
 const router = express.Router();
 
@@ -43,7 +43,7 @@ router.get('/manage-attendance/get-by-specific', verifyTokenInhaber, getAttendan
 // manage salary
 router.post('/manage-salary/calculate/:employeeID', verifyTokenInhaber, salaryCalculate);
 router.get('/manage-salary/get-single/:employeeID', verifyTokenInhaber, getSalaryForEmployeeByInhaber);
-router.get('/manage-salary/get-all', verifyTokenInhaber, getSalaryForAllEmployeesByInhaber);
+// router.get('/manage-salary/get-all', verifyTokenInhaber, getSalaryForAllEmployeesByInhaber);
 
 // manage request
 router.get('/manage-request/get-all', verifyTokenInhaber, getAllRequestsForInhaber);

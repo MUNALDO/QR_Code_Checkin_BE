@@ -250,7 +250,6 @@ export const getAllEmployeesSchedules = async (req, res, next) => {
     const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null; // Month is optional
     const targetDate = req.query.date ? new Date(req.query.date) : null; // Specific date is optional
     const departmentFilter = req.query.department_name;
-
     try {
         const employees = await EmployeeSchema.find();
         const schedules = [];

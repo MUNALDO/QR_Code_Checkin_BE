@@ -1,8 +1,11 @@
 import express from 'express';
 import {
     createMultipleDateDesignsByInhaber, deleteDateSpecificByInhaber, deleteEmployeeByIdByInhaber,
+    getAllRequestsForInhaber,
     getAttendanceForInhaber, getDateDesignForInhaber, getEmployeesSchedulesByInhaber,
+    getRequestByIdForInhaber,
     getSalaryForAllEmployeesByInhaber, getSalaryForEmployeeByInhaber,
+    handleRequestForInhaber,
     madeEmployeeInactiveByInhaber, searchSpecificForInhaber, updateEmployeeByInhaber
 } from '../controllers/inhaberController.js';
 import {
@@ -41,6 +44,11 @@ router.get('/manage-attendance/get-by-specific', verifyTokenInhaber, getAttendan
 router.post('/manage-salary/calculate/:employeeID', verifyTokenInhaber, salaryCalculate);
 router.get('/manage-salary/get-single/:employeeID', verifyTokenInhaber, getSalaryForEmployeeByInhaber);
 router.get('/manage-salary/get-all', verifyTokenInhaber, getSalaryForAllEmployeesByInhaber);
+
+// manage request
+router.get('/manage-request/get-all', verifyTokenInhaber, getAllRequestsForInhaber);
+router.get('/manage-request/get-byId/:_id', verifyTokenInhaber, getRequestByIdForInhaber);
+router.put('/manage-request/handle/:_id', verifyTokenInhaber, handleRequestForInhaber);
 
 // manage export
 router.get('/manage-xlsx/employee-data', verifyTokenInhaber, exportEmployeeDataForInhaberToExcel);

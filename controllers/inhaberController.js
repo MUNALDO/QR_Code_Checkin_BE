@@ -6,6 +6,7 @@ import AdminSchema from "../models/AdminSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";
 import cron from 'node-cron';
 import DepartmentSchema from "../models/DepartmentSchema.js";
+import RequestSchema from "../models/RequestSchema.js";
 
 export const updateEmployeeByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
@@ -580,10 +581,6 @@ export const getSalaryForEmployeeByInhaber = async (req, res, next) => {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
-        if (!employee.department_name.includes(inhaber.department_name)) {
-            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));
-        }
-
         const salary = employee.salary.find(stat =>
             stat.year === year && stat.month === month
         );
@@ -592,7 +589,6 @@ export const getSalaryForEmployeeByInhaber = async (req, res, next) => {
             employee_id: employee.id,
             employee_name: employee.name,
             email: employee.email,
-            department_name: employee.department_name,
             role: employee.role,
             position: employee.position,
             salary: salary
@@ -672,6 +668,105 @@ export const getSalaryForAllEmployeesByInhaber = async (req, res, next) => {
             success: true,
             status: OK,
             salaries: salaries,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getAllRequestsForInhaber = async (req, res, next) => {
+    const inhaber_name = req.query.inhaber_name;
+    try {
+        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        const employeesInDepartment = await EmployeeSchema.find({ 'department.name': inhaber.department_name });
+        const employeeIds = employeesInDepartment.map(emp => emp.id);
+
+        const requests = await RequestSchema.find({ employee_id: { $in: employeeIds } });
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: requests,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getRequestByIdForInhaber = async (req, res, next) => {
+    const inhaber_name = req.query.inhaber_name;
+    const requestId = req.params._id;
+
+    try {
+        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        const request = await RequestSchema.findById(requestId).populate('employee_id');
+        if (!request) return next(createError(NOT_FOUND, "Request not found!"));
+
+        // Check if employee who made the request is in the Inhaber's department
+        const employee = await EmployeeSchema.findOne({ id: request.employee_id, 'department.name': inhaber.department_name });
+        if (!employee) return next(createError(NOT_FOUND, "Request not made by an employee in Inhaber's department"));
+
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: request,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const handleRequestForInhaber = async (req, res, next) => {
+    const inhaber_name = req.query.inhaber_name;
+    const requestId = req.params._id;
+    try {
+        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        const updateRequest = await RequestSchema.findById(requestId).populate('employee_id');
+        if (!updateRequest) return next(createError(NOT_FOUND, "Request not found!"));
+
+        // Check if the request is from an employee in the Inhaber's department
+        const employee = await EmployeeSchema.findOne({ id: updateRequest.employee_id, 'department.name': inhaber.department_name });
+        if (!employee) return next(createError(NOT_FOUND, "Request not from an employee in Inhaber's department"));
+
+        const day_off = await DayOffSchema.findOne({
+            date_start: new Date(updateRequest.request_dayOff_start),
+            date_end: new Date(updateRequest.request_dayOff_end),
+            'members.id': employee.id
+        });
+        if (!day_off) return next(createError(NOT_FOUND, "Day Off not found!"));
+
+        if (updateRequest.answer_status === "approved") {
+            day_off.allowed = true;
+            await day_off.save();
+            const employeeDayOff = employee.dayOff_schedule.find(dayOffSchedule =>
+                dayOffSchedule.date_start.getTime() === day_off.date_start.getTime() &&
+                dayOffSchedule.date_end.getTime() === day_off.date_end.getTime()
+            );
+
+            if (employeeDayOff) {
+                employeeDayOff.allowed = true;
+                employee.realistic_day_off = employee.realistic_day_off - day_off.duration;
+                employee.markModified('dayOff_schedule');
+                await employee.save();
+            }
+        } else if (updateRequest.answer_status === "denied") {
+            employee.dayOff_schedule = employee.dayOff_schedule.filter(dayOffSchedule =>
+                dayOffSchedule.date_start.getTime() !== day_off.date_start.getTime() ||
+                dayOffSchedule.date_end.getTime() !== day_off.date_end.getTime()
+            );
+            await employee.save();
+            await DayOffSchema.findOneAndDelete({ _id: day_off._id });
+        }
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: updateRequest,
         });
     } catch (err) {
         next(err);

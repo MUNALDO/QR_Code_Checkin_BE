@@ -11,6 +11,7 @@ import {
 } from '../controllers/shiftController.js';
 import { salaryCalculate } from '../controllers/salaryController.js';
 import { verifyTokenInhaber } from '../utils/verifyToken.js';
+import { exportAttendanceForInhaberToExcel, exportEmployeeDataForInhaberToExcel, exportEmployeeSalaryDataForInhaberToExcel } from '../controllers/xlsxController.js';
 
 const router = express.Router();
 
@@ -40,5 +41,10 @@ router.get('/manage-attendance/get-by-specific', verifyTokenInhaber, getAttendan
 router.post('/manage-salary/calculate/:employeeID', verifyTokenInhaber, salaryCalculate);
 router.get('/manage-salary/get-single/:employeeID', verifyTokenInhaber, getSalaryForEmployeeByInhaber);
 router.get('/manage-salary/get-all', verifyTokenInhaber, getSalaryForAllEmployeesByInhaber);
+
+// manage export
+router.get('/manage-xlsx/employee-data', verifyTokenInhaber, exportEmployeeDataForInhaberToExcel);
+router.get('/manage-xlsx/salary-data', verifyTokenInhaber, exportEmployeeSalaryDataForInhaberToExcel);
+router.get('/manage-xlsx/attendance-data', verifyTokenInhaber, exportAttendanceForInhaberToExcel);
 
 export default router;

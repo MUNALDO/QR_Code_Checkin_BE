@@ -42,7 +42,7 @@ app.use(cors({
         'https://qr-code-checkin.vercel.app', 'https://qr-code-checkin-thai-nx.vercel.app',
         'https://35.73.196.128', 'https://www.35.73.196.128.com', 'http://35.73.196.128',
         'qrapp.qxotttabcxyz.online', 'http://192.168.0.102:3000', 'http://localhost:8800',
-        'http://192.168.30.230:3000'],
+        'http://192.168.30.230:3000', 'https://fe-qr-project.vercel.app'],
     credentials: true,
 }));
 app.options('*', cors());

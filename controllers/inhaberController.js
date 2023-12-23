@@ -14,6 +14,29 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
+        // Find the employee before updating
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+
+        if (!employee) {
+            return next(createError(NOT_FOUND, "Employee not found!"));
+        }
+        if (employee.status === "inactive") {
+            return next(createError(NOT_FOUND, "Employee not active!"));
+        }
+
+        // Calculate the change in day offs if default_day_off is in the request
+        if (req.body.default_day_off !== undefined) {
+            const day_off_change = req.body.default_day_off - employee.default_day_off;
+            if (day_off_change > 0) {
+                // Case 1: Increase in default_day_off
+                req.body.realistic_day_off = employee.realistic_day_off + day_off_change;
+            } else if (day_off_change < 0) {
+                // Case 2: Decrease in default_day_off
+                req.body.realistic_day_off = Math.max(0, employee.realistic_day_off + day_off_change);
+            }
+            // Case 3: No change, req.body.realistic_day_off remains unaffected
+        }
+
         const updatedEmployee = await EmployeeSchema.findOneAndUpdate(
             { id: employeeID },
             { $set: req.body },

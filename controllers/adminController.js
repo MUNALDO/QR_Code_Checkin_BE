@@ -246,10 +246,11 @@ export const searchSpecific = async (req, res, next) => {
 };
 
 export const getAllEmployeesSchedules = async (req, res, next) => {
-    const targetYear = parseInt(req.query.year);
+    const targetYear = req.query.year ? parseInt(req.query.year) : null; // Year is optional
     const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null; // Month is optional
     const targetDate = req.query.date ? new Date(req.query.date) : null; // Specific date is optional
     const departmentFilter = req.query.department_name;
+
     try {
         const employees = await EmployeeSchema.find();
         const schedules = [];
@@ -261,9 +262,12 @@ export const getAllEmployeesSchedules = async (req, res, next) => {
                     department.schedules.forEach(schedule => {
                         const scheduleDate = new Date(schedule.date);
 
-                        if (scheduleDate.getFullYear() === targetYear &&
-                            (targetMonth === null || scheduleDate.getMonth() === targetMonth) &&
-                            (!targetDate || scheduleDate.toISOString().split('T')[0] === targetDate.toISOString().split('T')[0])) {
+                        // Check if the schedule matches the time criteria
+                        const matchesYear = targetYear === null || scheduleDate.getFullYear() === targetYear;
+                        const matchesMonth = targetMonth === null || scheduleDate.getMonth() === targetMonth;
+                        const matchesDate = !targetDate || scheduleDate.toISOString().split('T')[0] === targetDate.toISOString().split('T')[0];
+
+                        if (matchesYear && matchesMonth && matchesDate) {
                             schedule.shift_design.forEach(shift => {
                                 schedules.push({
                                     employee_id: employee.id,

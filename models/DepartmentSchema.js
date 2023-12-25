@@ -9,6 +9,7 @@ const departmentSchema = new mongoose.Schema(
             required: true
         },
         members: [],
+        cars: []
     },
     { timestamps: true }
 );

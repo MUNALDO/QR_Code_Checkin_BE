@@ -1,4 +1,5 @@
 import { CONFLICT, CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
+import CarSchema from "../models/CarSchema.js";
 import DepartmentSchema from "../models/DepartmentSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import { createError } from "../utils/error.js";
@@ -211,4 +212,161 @@ export const removeMemberDepartment = async (req, res, next) => {
     }
 };
 
+export const createCar = async (req, res, next) => {
+    const carDepartmentNames = req.body.department_name;
+    try {
+        const departments = await DepartmentSchema.find({
+            name: { $in: carDepartmentNames }
+        });
 
+        if (!departments) {
+            return next(createError(NOT_FOUND, "One or more departments not found!"));
+        }
+
+        for (const department of departments) {
+            if (department.cars.some(car => car.name === req.body.name)) {
+                return next(createError(CONFLICT, `Car already exists in department ${department.name}!`));
+            }
+        }
+
+        const newCar = new CarSchema({
+            ...req.body,
+            department_name: carDepartmentNames,
+            register_date: new Date(req.body.register_date)
+        });
+
+        for (const department of departments) {
+            department.cars.push({
+                name: newCar.car_name,
+                number: newCar.car_number,
+                department_name: department.name,
+                register_date: newCar.register_date
+            });
+            await department.save();
+        }
+
+        await newCar.save();
+        return res.status(CREATED).json({
+            success: true,
+            status: CREATED,
+            message: newCar,
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
+export const getCar = async (req, res, next) => {
+    try {
+        const { car_name, car_number, department_name } = req.query;
+
+        if (department_name) {
+            const department = await DepartmentSchema.findOne({ name: department_name });
+            if (!department) {
+                return next(createError(NOT_FOUND, "Department not found!"));
+            }
+
+            // Filter cars within the department
+            const cars = department.cars.filter(car => {
+                const matchesCarName = car_name ? (car.name && car.name.match(new RegExp(car_name, 'i'))) : true;
+                const matchesCarNumber = car_number ? (car.number && car.number.match(new RegExp(car_number, 'i'))) : true;
+                return matchesCarName && matchesCarNumber;
+            });
+
+            if (!cars || cars.length === 0) {
+                return next(createError(NOT_FOUND, "No cars found."));
+            }
+
+            return res.status(OK).json({
+                success: true,
+                status: OK,
+                message: cars,
+            });
+        } else {
+            let query = {};
+            if (car_number) query.car_number = { $regex: new RegExp(car_number, 'i') };
+            if (car_name) query.car_name = { $regex: new RegExp(car_name, 'i') };
+
+            const cars = await CarSchema.find(query);
+            if (!cars || cars.length === 0) {
+                return next(createError(NOT_FOUND, "No cars found."));
+            }
+
+            return res.status(OK).json({
+                success: true,
+                status: OK,
+                message: cars,
+            });
+        }
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const updateCar = async (req, res, next) => {
+    const { car_number } = req.params;
+    try {
+        const car = await CarSchema.findOne({ car_number: car_number });
+        if (!car) {
+            return next(createError(NOT_FOUND, "Car not found!"));
+        }
+
+        // Updating car details
+        Object.assign(car, req.body);
+        await car.save();
+
+        // Reflect changes in departments
+        const departments = await DepartmentSchema.find({
+            'cars.number': car_number
+        });
+
+        for (const department of departments) {
+            const carIndex = department.cars.findIndex(c => c.number === car_number);
+            if (carIndex !== -1) {
+                department.cars[carIndex] = {
+                    name: car.car_name,
+                    number: car.car_number,
+                    department_name: department.name,
+                    register_date: car.register_date
+                };
+                await department.save();
+            }
+        }
+
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: car,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const deleteCar = async (req, res, next) => {
+    const { car_number } = req.params;
+    try {
+        const car = await CarSchema.findOneAndDelete({ car_number: car_number });
+        if (!car) {
+            return next(createError(NOT_FOUND, "Car not found!"));
+        }
+
+        // Remove car from departments
+        const departments = await DepartmentSchema.find({
+            'cars.number': car_number
+        });
+
+        for (const department of departments) {
+            department.cars = department.cars.filter(c => c.number !== car_number);
+            await department.save();
+        }
+
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: `Car ${car_number} deleted successfully`,
+        });
+    } catch (err) {
+        next(err);
+    }
+};

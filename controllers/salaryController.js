@@ -99,7 +99,8 @@ export const salaryCalculate = async (req, res, next) => {
         total_times: stats.attendance_total_times + stats.attendance_overtime,
         day_off: employee.default_day_off - employee.realistic_day_off,
         hour_normal: [],
-        hour_overtime: stats.attendance_overtime,
+        total_hour_work: stats.attendance_total_times,
+        total_hour_overtime: stats.attendance_overtime,
         total_km: 0,
         a_parameter: a,
         b_parameter: b,
@@ -154,6 +155,7 @@ export const salaryCalculate = async (req, res, next) => {
             message: updateSalary
         });
     } else {
+        // console.log(salaryRecord);
         const newSalary = new SalarySchema(salaryRecord);
         await newSalary.save();
         return res.status(OK).json({
@@ -164,107 +166,108 @@ export const salaryCalculate = async (req, res, next) => {
     }
 };
 
+// export const getSalary = async (req, res, next) => {
+//     try {
+//         const employeeID = req.query.employeeID;
+//         const year = req.query.year ? parseInt(req.query.year) : null;
+//         const month = req.query.month ? parseInt(req.query.month) : null;
+
+//         let employees;
+//         if (employeeID) {
+//             // Find one specific employee
+//             employees = await EmployeeSchema.find({ id: employeeID });
+//         } else {
+//             // Find all employees
+//             employees = await EmployeeSchema.find();
+//         }
+
+//         const salaries = employees.map(employee => {
+//             let salary;
+//             if (year && month) {
+//                 // Find salary for the specific year and month
+//                 salary = employee.salary.find(s => s.year === year && s.month === month);
+//             } else {
+//                 // Get the latest salary record if year and month are not specified
+//                 salary = employee.salary.length > 0 ? employee.salary[employee.salary.length - 1] : null;
+//             }
+
+//             return {
+//                 employee_id: employee.id,
+//                 employee_name: employee.name,
+//                 email: employee.email,
+//                 department_name: employee.department.map(d => d.name).join(', '),
+//                 position: employee.department.flatMap(d => d.position.join('/')).join(', '),
+//                 salary: salary || null
+//             };
+//         }).filter(emp => emp.salary !== null);
+
+//         if (salaries.length > 0) {
+//             return res.status(OK).json({
+//                 success: true,
+//                 status: OK,
+//                 message: salaries,
+//             });
+//         } else {
+//             return res.status(NOT_FOUND).json({
+//                 success: false,
+//                 status: NOT_FOUND,
+//                 message: "No salary records found.",
+//             });
+//         }
+//     } catch (err) {
+//         next(err);
+//     }
+// };
+
 export const getSalary = async (req, res, next) => {
     try {
-        const employeeID = req.query.employeeID;
-        const year = req.query.year ? parseInt(req.query.year) : null;
-        const month = req.query.month ? parseInt(req.query.month) : null;
+        const { year, month, employeeID, department_name } = req.query;
 
-        let employees;
-        if (employeeID) {
-            // Find one specific employee
-            employees = await EmployeeSchema.find({ id: employeeID });
-        } else {
-            // Find all employees
-            employees = await EmployeeSchema.find();
+        let query = {};
+
+        // Adding year and month to the query if they are provided
+        if (year) {
+            query.year = parseInt(year);
         }
 
-        const salaries = employees.map(employee => {
-            let salary;
-            if (year && month) {
-                // Find salary for the specific year and month
-                salary = employee.salary.find(s => s.year === year && s.month === month);
+        if (month) {
+            query.month = parseInt(month);
+        }
+
+        // If department_name is provided, find all employees in that department
+        let employeeIdsInDepartment = [];
+        if (department_name) {
+            const employees = await EmployeeSchema.find({'department.name': department_name}).select('id');
+            employeeIdsInDepartment = employees.map(emp => emp.id);
+        }
+
+        // If employeeID is provided, add it to the query
+        if (employeeID) {
+            // Combine with department filter if both are provided
+            if (employeeIdsInDepartment.length > 0) {
+                query.employee_id = { $in: employeeIdsInDepartment, $eq: employeeID };
             } else {
-                // Get the latest salary record if year and month are not specified
-                salary = employee.salary.length > 0 ? employee.salary[employee.salary.length - 1] : null;
+                query.employee_id = employeeID;
             }
+        } else if (employeeIdsInDepartment.length > 0) {
+            // Only department filter is provided
+            query.employee_id = { $in: employeeIdsInDepartment };
+        }
 
-            return {
-                employee_id: employee.id,
-                employee_name: employee.name,
-                email: employee.email,
-                department_name: employee.department.map(d => d.name).join(', '),
-                position: employee.department.flatMap(d => d.position.join('/')).join(', '),
-                salary: salary || null
-            };
-        }).filter(emp => emp.salary !== null);
+        const salaries = await SalarySchema.find(query);
 
-        if (salaries.length > 0) {
-            return res.status(OK).json({
-                success: true,
-                status: OK,
-                message: salaries,
-            });
-        } else {
+        if (salaries.length === 0) {
             return res.status(NOT_FOUND).json({
                 success: false,
                 status: NOT_FOUND,
-                message: "No salary records found.",
-            });
-        }
-    } catch (err) {
-        next(err);
-    }
-};
-
-export const getSalaryForAllEmployees = async (req, res, next) => {
-    try {
-        const year = parseInt(req.query.year);
-        const month = parseInt(req.query.month);
-
-        if (!year || !month) {
-            return res.status(BAD_REQUEST).json({
-                success: false,
-                status: BAD_REQUEST,
-                message: "Year and month are required parameters",
+                message: "No salary records found."
             });
         }
 
-        const employees = await EmployeeSchema.find();
-        if (!employees) return next(createError(NOT_FOUND, "Employees not found!"));
-
-        let salaries = [];
-
-        for (const employee of employees) {
-            const salary = employee.salary.find(stat =>
-                stat.year === year && stat.month === month
-            );
-            if (salary) {
-                salaries.push({
-                    employee_id: employee.id,
-                    employee_name: employee.name,
-                    email: employee.email,
-                    department_name: employee.department,
-                    role: employee.role,
-                    salary: salary
-                });
-            } else {
-                salaries.push({
-                    employee_id: employee.id,
-                    employee_name: employee.name,
-                    email: employee.email,
-                    department_name: employee.department,
-                    role: employee.role,
-                    position: employee.position,
-                    salary: null,
-                    message: "Salary record not found for the specified month and year."
-                });
-            }
-        }
         return res.status(OK).json({
             success: true,
             status: OK,
-            salaries: salaries,
+            message: salaries
         });
     } catch (err) {
         next(err);

@@ -1,20 +1,23 @@
 import express from 'express';
 import {
     deleteEmployeeById, getAllEmployeesSchedules,
-    getAllRequests, getAttendance, getRequestById, handleRequest,
+    getAllRequests, getAttendance, getRequestById, getStats, handleRequest,
     madeEmployeeInactive, searchSpecific, updateEmployeeBasicInfor
 } from '../controllers/adminController.js';
 import {
-    addMemberDepartment, createDepartment, deleteDepartmentByName, getAllDepartments,
-    getDepartmentByName, getDepartmentSpecific, removeMemberDepartment, updateDepartment
+    addMemberDepartment, createCar, createDepartment, deleteCar, deleteDepartmentByName, getAllDepartments,
+    getCar,
+    getDepartmentByName, getDepartmentSpecific, removeMemberDepartment, updateCar, updateDepartment
 } from '../controllers/departmentController.js';
 import {
     createShift, getAllShifts,
     getShiftByCode, getShiftByName, updateShift
 } from '../controllers/shiftController.js';
 import { verifyTokenAdmin } from '../utils/verifyToken.js';
-import { getSalary, getSalaryForAllEmployees, salaryCalculate } from '../controllers/salaryController.js';
-import { exportAttendanceToExcel, exportEmployeeDataToExcel, exportEmployeeSalaryDataToExcel } from '../controllers/xlsxController.js';
+import { getSalary, salaryCalculate } from '../controllers/salaryController.js';
+import {
+    exportAttendanceToExcel, exportEmployeeDataToExcel, exportEmployeeSalaryDataToExcel
+} from '../controllers/xlsxController.js';
 import {
     createMultipleDateDesigns, deleteDateSpecific, getDateDesign
 } from '../controllers/dateDesignController.js';
@@ -74,12 +77,20 @@ router.get('/manage-attendance/get-by-specific', verifyTokenAdmin, getAttendance
 
 // manage salary
 router.post('/manage-salary/calculate/:employeeID', verifyTokenAdmin, salaryCalculate);
-router.get('/manage-salary/get-by-specific', verifyTokenAdmin, getSalary);
-router.get('/manage-salary/get-all', verifyTokenAdmin, getSalaryForAllEmployees);
+router.get('/manage-salary/get', verifyTokenAdmin, getSalary);
 
 // manage xlsx
 router.get('/manage-xlsx/employee-data', verifyTokenAdmin, exportEmployeeDataToExcel);
 router.get('/manage-xlsx/salary-data', verifyTokenAdmin, exportEmployeeSalaryDataToExcel);
 router.get('/manage-xlsx/attendance-data', verifyTokenAdmin, exportAttendanceToExcel);
+
+// manage cars
+router.post('/manage-car/create', verifyTokenAdmin, createCar);
+router.get('/manage-car/get', verifyTokenAdmin, getCar);
+router.put('/manage-car/update', verifyTokenAdmin, updateCar);
+router.delete('/manage-car/delete', verifyTokenAdmin, deleteCar);
+
+// manage stats
+router.get('/manage-stats/get', verifyTokenAdmin, getStats);
 
 export default router;

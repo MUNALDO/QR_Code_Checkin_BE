@@ -30,7 +30,13 @@ To do Employee FE:
 - Display attendance history cua nhan vien trong calendar
 - An vao 1 ngay trong attendance history => view details attendance(shift_infor, date, department_name, status)
 2. Employee(position: Autofahrer)
-2.1 Login => 4 options: Scan QR, Choose Car + Type Km, View Schedules 1 month, View Attendance 1 month
+2.1 Login => 4 options: Scan QR, 
+Check in:
+	Choose Car(
+	car_type: 2 options: company, private, 
+	car_number, register_day) + Type Km(check_in_km)
+Check out: Type Km(check_out_km)
+View Schedules 1 month, View Attendance 1 month
 2.2 Scan QR: Scan Success => alert => Choose Car + Type Km => Choose option page
 2.3 View Schedules 1 month: 
 - Display schedules cua nhan vien trong calendar
@@ -39,11 +45,24 @@ To do Employee FE:
 - Display attendance history cua nhan vien trong calendar
 - An vao 1 ngay trong attendance history => view details attendance(shift_infor, date, department_name, check_in_km, check_out_km, total_km, status)
 3. Employee(position: Lito)
-3.1 Login => 4 options: Scan QR, Upload Checkout Image, View Schedules 1 month, View Attendance 1 month
-3.2 Scan QR: Scan Success => alert => Upload Checkout Image => Choose option page
+3.1 Login => 4 options: Scan QR, 
+Check out: Form: tien thu, tien tips, tien phat sinh, upload image
+, View Schedules 1 month, View Attendance 1 month
+3.2 Scan QR: Scan Success => alert => Fill form (check out) => Choose option page
 3.3 View Schedules 1 month: 
 - Display schedules cua nhan vien trong calendar
 - An vao 1 ngay trong schedules => view details schedule (shift_design, date, department_name)
 3.4 View Schedules 1 month: 
+- Display attendance history cua nhan vien trong calendar
+- An vao 1 ngay trong attendance history => view details attendance(shift_infor, date, department_name, check_out_image, status)
+4. Employee(position: Service)
+4.1 Login => 4 options: Scan QR, 
+Check out: Form: tien thu, tien tips, tien phat sinh
+, View Schedules 1 month, View Attendance 1 month
+4.2 Scan QR: Scan Success => alert => Fill form (check out) => Choose option page
+4.3 View Schedules 1 month: 
+- Display schedules cua nhan vien trong calendar
+- An vao 1 ngay trong schedules => view details schedule (shift_design, date, department_name)
+4.4 View Schedules 1 month: 
 - Display attendance history cua nhan vien trong calendar
 - An vao 1 ngay trong attendance history => view details attendance(shift_infor, date, department_name, check_out_image, status)

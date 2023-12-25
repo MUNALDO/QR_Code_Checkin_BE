@@ -47,7 +47,11 @@ const salarySchema = new mongoose.Schema(
                 }
             }
         ],
-        hour_overtime: {
+        total_hour_work: {
+            type: Number,
+            default: 0
+        },
+        total_hour_overtime: {
             type: Number,
             default: 0
         },

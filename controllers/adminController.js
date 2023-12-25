@@ -7,6 +7,7 @@ import DepartmentSchema from "../models/DepartmentSchema.js";
 import RequestSchema from "../models/RequestSchema.js";
 import DayOffSchema from "../models/DayOffSchema.js";
 import cron from 'node-cron';
+import StatsSchema from "../models/StatsSchema.js";
 
 export const updateEmployeeBasicInfor = async (req, res, next) => {
     const employeeID = req.query.employeeID;
@@ -442,6 +443,68 @@ export const handleRequest = async (req, res, next) => {
         next(err);
     }
 }
+
+export const getStats = async (req, res, next) => {
+    try {
+        const { year, month, employeeID, department_name } = req.query;
+        let query = {};
+
+        // Add year and month to the query if they are provided
+        if (year) query.year = parseInt(year);
+        if (month) query.month = parseInt(month);
+
+        // Initialize an array to hold potential employee IDs
+        let employeeIds = [];
+
+        if (department_name) {
+            // Find all employees in the specified department
+            const employees = await EmployeeSchema.find({ 'department.name': department_name });
+            employeeIds = employees.map(emp => emp.id);
+        }
+
+        // If employeeID is provided, it takes precedence or is used in combination with department_name
+        if (employeeID) {
+            if (department_name) {
+                // Filter the employeeIds array to include only the specific employeeID
+                employeeIds = employeeIds.filter(id => id === employeeID);
+                if (employeeIds.length === 0) {
+                    return res.status(NOT_FOUND).json({
+                        success: false,
+                        status: NOT_FOUND,
+                        message: "No matching statistics found.",
+                    });
+                }
+            } else {
+                employeeIds = [employeeID];
+            }
+        }
+
+        // Add employee_id to the query if there are any IDs to query
+        if (employeeIds.length > 0) {
+            query.employee_id = { $in: employeeIds };
+        }
+
+        // Find stats with the constructed query
+        const stats = await StatsSchema.find(query);
+
+        if (!stats || stats.length === 0) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: "Statistics not found.",
+            });
+        }
+
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: stats,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 
 
 

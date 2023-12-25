@@ -64,8 +64,14 @@ const attendanceSchema = new mongoose.Schema(
                 type: String,
                 enum: ['company', 'private']
             },
+            car_name: {
+                type: String
+            },
             car_number: {
                 type: String
+            },
+            register_date: {
+                type: Date
             }
         },
         check_out_image: {

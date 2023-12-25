@@ -1,6 +1,7 @@
 import { s3Client } from "../awsConfig.js";
 import { BAD_REQUEST, CREATED, NOT_FOUND, OK, SYSTEM_ERROR } from "../constant/HttpStatus.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
+import CarSchema from "../models/CarSchema.js";
 import DayOffSchema from "../models/DayOffSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import RequestSchema from "../models/RequestSchema.js";
@@ -503,6 +504,11 @@ export const updateAttendance = async (req, res, next) => {
                 if (existingAttendance.shift_info.time_slot.check_in === true && existingAttendance.shift_info.time_slot.check_out !== true) {
                     existingAttendance.car_info.car_type = req.body.car_type;
                     if (existingAttendance.car_info.car_type === "company") {
+                        existingAttendance.car_info.car_name === req.body.car_name;
+                        const carCompany = await CarSchema.findOne({car_name: req.body.car_name});
+                        existingAttendance.car_info.car_number === carCompany.car_number;
+                        existingAttendance.car_info.register_date === carCompany.register_date;
+                    } else {
                         existingAttendance.car_info.car_number === req.body.car_number;
                     }
                     if (!req.body.check_in_km) {
@@ -548,6 +554,9 @@ export const updateAttendance = async (req, res, next) => {
                     try {
                         const imageUrl = await uploadImageToS3(file);
                         existingAttendance.check_out_image = imageUrl;
+                        existingAttendance.revenue = req.body.revenue;
+                        existingAttendance.tips = req.body.tips;
+                        existingAttendance.others = req.body.others;
                         await existingAttendance.save();
                         return res.status(OK).json({
                             success: true,
@@ -570,6 +579,11 @@ export const updateAttendance = async (req, res, next) => {
                 existingAttendance.tips = req.body.tips;
                 existingAttendance.others = req.body.others;
                 await existingAttendance.save();
+                return res.status(OK).json({
+                    success: true,
+                    status: OK,
+                    message: existingAttendance,
+                });
             } else {
                 return res.status(BAD_REQUEST).json({
                     success: false,

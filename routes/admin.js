@@ -33,7 +33,7 @@ router.get('/manage-all/search-specific', verifyTokenAdmin, searchSpecific);
 
 // employee
 router.get('/manage-employee/get-all-schedules', verifyTokenAdmin, getAllEmployeesSchedules);
-router.get('/manage-employee/get-by-id', verifyTokenAdmin, getEmployeeById);
+router.get('/manage-employee/get-byId', verifyTokenAdmin, getEmployeeById);
 router.delete('/manage-employee/delete-byId', verifyTokenAdmin, deleteEmployeeById);
 router.put('/manage-employee/update-basic', verifyTokenAdmin, updateEmployeeBasicInfor);
 router.put('/manage-employee/make-inactive', verifyTokenAdmin, madeEmployeeInactive);

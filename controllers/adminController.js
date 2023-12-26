@@ -144,9 +144,9 @@ export const madeEmployeeInactive = async (req, res, next) => {
 };
 
 export const getEmployeeById = async (req, res, next) => {
-    const employeeID = req.query._id;
+    const employeeID = req.query.employeeID;
     try {
-        const employee = await EmployeeSchema.findById(employeeID);
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
         res.status(OK).json({

@@ -34,7 +34,9 @@ const logSchema = new mongoose.Schema(
             type: String,
             required: true
         },
-        detail_update: [],
+        detail_update: {
+            type: Object
+        },
         object_update: {
             type: Object
         }

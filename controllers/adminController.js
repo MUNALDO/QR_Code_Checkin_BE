@@ -8,6 +8,7 @@ import RequestSchema from "../models/RequestSchema.js";
 import DayOffSchema from "../models/DayOffSchema.js";
 import cron from 'node-cron';
 import StatsSchema from "../models/StatsSchema.js";
+import LogSchema from "../models/LogSchema.js";
 
 export const updateEmployeeBasicInfor = async (req, res, next) => {
     const employeeID = req.query.employeeID;
@@ -142,6 +143,22 @@ export const madeEmployeeInactive = async (req, res, next) => {
     }
 };
 
+export const getEmployeeById = async (req, res, next) => {
+    const employeeID = req.query._id;
+    try {
+        const employee = await EmployeeSchema.findById(employeeID);
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: employee,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const deleteEmployeeById = async (req, res, next) => {
     const employeeID = req.query.employeeID;
     try {
@@ -184,17 +201,13 @@ export const searchSpecific = async (req, res, next) => {
 
         if (role) {
             if (role === 'Employee') {
-                // When role is specifically 'Employee', exclude management search
                 managementQueryCriteria = null;
                 employeeQueryCriteria['role'] = 'Employee';
             } else {
-                // For other roles, include them in management search
                 managementQueryCriteria['role'] = role;
-                // Include for employees if role is specified and not 'Employee'
                 employeeQueryCriteria['role'] = role;
             }
         } else {
-            // Default to 'Inhaber' and 'Manager' for management search
             managementQueryCriteria['role'] = { $in: ['Inhaber', 'Manager'] };
             employeeQueryCriteria['role'] = 'Employee';
         }
@@ -257,7 +270,6 @@ export const getAllEmployeesSchedules = async (req, res, next) => {
 
         employees.forEach(employee => {
             employee.department.forEach(department => {
-                // Check if department matches the filter (if provided)
                 if (!departmentFilter || department.name === departmentFilter) {
                     department.schedules.forEach(schedule => {
                         const scheduleDate = new Date(schedule.date);
@@ -449,23 +461,17 @@ export const getStats = async (req, res, next) => {
         const { year, month, employeeID, department_name } = req.query;
         let query = {};
 
-        // Add year and month to the query if they are provided
         if (year) query.year = parseInt(year);
         if (month) query.month = parseInt(month);
 
-        // Initialize an array to hold potential employee IDs
         let employeeIds = [];
-
         if (department_name) {
-            // Find all employees in the specified department
             const employees = await EmployeeSchema.find({ 'department.name': department_name });
             employeeIds = employees.map(emp => emp.id);
         }
 
-        // If employeeID is provided, it takes precedence or is used in combination with department_name
         if (employeeID) {
             if (department_name) {
-                // Filter the employeeIds array to include only the specific employeeID
                 employeeIds = employeeIds.filter(id => id === employeeID);
                 if (employeeIds.length === 0) {
                     return res.status(NOT_FOUND).json({
@@ -505,6 +511,124 @@ export const getStats = async (req, res, next) => {
     }
 };
 
+export const updateAttendance = async (req, res, next) => {
+    const attendanceId = req.params._id;
+    const editor_name = req.query.editor_name;
+    const updateData = req.body;
+    try {
+        const attendance = await AttendanceSchema.findById(attendanceId);
+        if (!attendance) {
+            return next(createError(NOT_FOUND, "Attendance record not found."));
+        }
+
+        const currentTime = new Date();
+        const currentYear = currentTime.getFullYear();
+        const currentMonth = currentTime.getMonth() + 1;
+        const editor = await AdminSchema.findOne({ name: editor_name });
+        const edited = await EmployeeSchema.findOne({ id: attendance.employee_id });
+
+        const departmentIndex = edited.department.findIndex(dep => dep.name === attendance.department_name);
+        const statsIndex = edited.department[departmentIndex].attendance_stats.findIndex(stat =>
+            stat.year === currentYear && stat.month === currentMonth
+        );
+
+        const attendanceTotalHours = attendance.shift_info.total_hour;
+        const attendanceTotalMinutes = attendance.shift_info.total_minutes;
+        const attendance_total_times = attendanceTotalHours + attendanceTotalMinutes / 60;
+        if (attendance.status === "checked") {
+            if (attendance.shift_info.time_slot.check_in_status === "on time" && attendance.shift_info.time_slot.check_out_status === "on time") {
+                edited.department[departmentIndex].attendance_stats[statsIndex].date_on_time -= 1;
+            } else if (attendance.shift_info.time_slot.check_in_status === "late" && attendance.shift_info.time_slot.check_out_status === "late") {
+                edited.department[departmentIndex].attendance_stats[statsIndex].date_late -= 1;
+            } else if ((attendance.shift_info.time_slot.check_in_status === "late" && attendance.shift_info.time_slot.check_out_status === "on time")
+                || (attendance.shift_info.time_slot.check_in_status === "on time" && attendance.shift_info.time_slot.check_out_status === "late")) {
+                edited.department[departmentIndex].attendance_stats[statsIndex].date_on_time -= 0.5;
+                edited.department[departmentIndex].attendance_stats[statsIndex].date_late -= 0.5;
+            }
+        } else {
+            edited.department[departmentIndex].attendance_stats[statsIndex].date_missing += 1;
+        }
+
+        const updatedFields = {};
+        for (const key in updateData) {
+            if (updateData.hasOwnProperty(key)) {
+                if (typeof updateData[key] === 'object' && updateData[key] !== null) {
+                    for (const subKey in updateData[key]) {
+                        updatedFields[`${key}.${subKey}`] = updateData[key][subKey];
+                    }
+                } else {
+                    updatedFields[key] = updateData[key];
+                }
+            }
+        }
+
+        const updatedAttendance = await AttendanceSchema.findByIdAndUpdate(
+            attendanceId,
+            { $set: updatedFields },
+            { new: true }
+        );
+
+        const updatedCheckInTimeString = updatedAttendance.shift_info.time_slot.check_in_time;
+        const updatedCheckInTime = new Date(`${updatedAttendance.date.toDateString()} ${updatedCheckInTimeString}`);
+
+        const updatedCheckOutTimeString = updatedAttendance.shift_info.time_slot.check_out_time;
+        const updatedCheckOutTime = new Date(`${updatedAttendance.date.toDateString()} ${updatedCheckOutTimeString}`);
+
+        const updatedTimeDifference = updatedCheckOutTime - updatedCheckInTime;
+        const updatedTotalHours = Math.floor(updatedTimeDifference / (1000 * 60 * 60));
+        const updatedTotalMinutes = Math.floor((updatedTimeDifference % (1000 * 60 * 60)) / (1000 * 60));
+        updatedAttendance.shift_info.total_hour = updatedTotalHours;
+        updatedAttendance.shift_info.total_minutes = updatedTotalMinutes;
+        const update_total_times = updatedTotalHours + updatedTotalMinutes / 60;
+
+        if (updatedAttendance.status === "checked") {
+            if (updatedAttendance.shift_info.time_slot.check_in_status === "on time" && updatedAttendance.shift_info.time_slot.check_out_status === "on time") {
+                edited.department[departmentIndex].attendance_stats[statsIndex].date_on_time += 1;
+            } else if (updatedAttendance.shift_info.time_slot.check_in_status === "late" && updatedAttendance.shift_info.time_slot.check_out_status === "late") {
+                edited.department[departmentIndex].attendance_stats[statsIndex].date_late += 1;
+            } else if ((updatedAttendance.shift_info.time_slot.check_in_status === "late" && updatedAttendance.shift_info.time_slot.check_out_status === "on time")
+                || (updatedAttendance.shift_info.time_slot.check_in_status === "on time" && updatedAttendance.shift_info.time_slot.check_out_status === "late")) {
+                edited.department[departmentIndex].attendance_stats[statsIndex].date_on_time += 0.5;
+                edited.department[departmentIndex].attendance_stats[statsIndex].date_late += 0.5;
+            }
+        } else {
+            edited.department[departmentIndex].attendance_stats[statsIndex].date_missing += 1;
+        }
+        await updatedAttendance.save();
+
+        let stats = await StatsSchema.findOne({
+            employee_id: edited.id,
+            year: currentYear,
+            month: currentMonth
+        });
+        stats.attendance_total_times = stats.attendance_total_times - attendance_total_times + update_total_times;
+        stats.attendance_overtime = stats.attendance_total_times - stats.default_schedule_times;
+        await stats.save();
+
+        const newLog = new LogSchema({
+            year: currentYear,
+            month: currentMonth,
+            date: currentTime,
+            type_update: "Update attendance",
+            editor_name: editor.name,
+            editor_role: editor.role,
+            edited_name: edited.name,
+            edited_role: edited.role,
+            detail_update: req.body,
+            object_update: attendance
+        })
+        await newLog.save();
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: updatedAttendance,
+            log: newLog
+        });
+    } catch (err) {
+        next(err);
+    }
+};
 
 
 

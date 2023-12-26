@@ -1,8 +1,8 @@
 import express from 'express';
 import {
     deleteEmployeeById, getAllEmployeesSchedules,
-    getAllRequests, getAttendance, getRequestById, getStats, handleRequest,
-    madeEmployeeInactive, searchSpecific, updateEmployeeBasicInfor
+    getAllRequests, getAttendance, getEmployeeById, getRequestById, getStats, handleRequest,
+    madeEmployeeInactive, searchSpecific, updateAttendance, updateEmployeeBasicInfor
 } from '../controllers/adminController.js';
 import {
     addMemberDepartment, createCar, createDepartment, deleteCar, deleteDepartmentByName, getAllDepartments,
@@ -33,6 +33,7 @@ router.get('/manage-all/search-specific', verifyTokenAdmin, searchSpecific);
 
 // employee
 router.get('/manage-employee/get-all-schedules', verifyTokenAdmin, getAllEmployeesSchedules);
+router.get('/manage-employee/get-by-id', verifyTokenAdmin, getEmployeeById);
 router.delete('/manage-employee/delete-byId', verifyTokenAdmin, deleteEmployeeById);
 router.put('/manage-employee/update-basic', verifyTokenAdmin, updateEmployeeBasicInfor);
 router.put('/manage-employee/make-inactive', verifyTokenAdmin, madeEmployeeInactive);
@@ -74,6 +75,7 @@ router.put('/manage-request/handle/:_id', verifyTokenAdmin, handleRequest);
 
 // manage attendance
 router.get('/manage-attendance/get-by-specific', verifyTokenAdmin, getAttendance);
+router.put('/manage-attendance/update/:_id', verifyTokenAdmin, updateAttendance);
 
 // manage salary
 router.post('/manage-salary/calculate/:employeeID', verifyTokenAdmin, salaryCalculate);

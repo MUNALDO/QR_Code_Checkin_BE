@@ -506,8 +506,9 @@ export const updateAttendance = async (req, res, next) => {
                     if (existingAttendance.car_info.car_type === "company") {
                         existingAttendance.car_info.car_name === req.body.car_name;
                         const carCompany = await CarSchema.findOne({car_name: req.body.car_name});
-                        existingAttendance.car_info.car_number === carCompany.car_number;
-                        existingAttendance.car_info.register_date === carCompany.register_date;
+                        // console.log(carCompany);
+                        existingAttendance.car_info.car_number = carCompany.car_number;
+                        existingAttendance.car_info.register_date = carCompany.register_date;
                     } else {
                         existingAttendance.car_info.car_number === req.body.car_number;
                     }

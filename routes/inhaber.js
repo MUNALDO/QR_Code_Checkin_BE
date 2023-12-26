@@ -2,8 +2,8 @@ import express from 'express';
 import {
     createMultipleDateDesignsByInhaber, deleteDateSpecificByInhaber, deleteEmployeeByIdByInhaber,
     getAllRequestsForInhaber, getAttendanceForInhaber, getDateDesignForInhaber, getEmployeesSchedulesByInhaber,
-    getRequestByIdForInhaber, getSalaryForEmployeeByInhaber, handleRequestForInhaber,
-    madeEmployeeInactiveByInhaber, searchSpecificForInhaber, updateEmployeeByInhaber
+    getRequestByIdForInhaber, getSalaryForInhaber, getStatsForInhaber, handleRequestForInhaber,
+    madeEmployeeInactiveByInhaber, searchSpecificForInhaber, updateAttendanceForInhaber, updateEmployeeByInhaber
 } from '../controllers/inhaberController.js';
 import {
     createShift, getAllShifts, getShiftByCode,
@@ -39,11 +39,11 @@ router.put('/manage-shift/update', verifyTokenInhaber, updateShift);
 
 // manage attendance
 router.get('/manage-attendance/get-by-specific', verifyTokenInhaber, getAttendanceForInhaber);
+router.put('/manage-attendance/update/:_id', verifyTokenInhaber, updateAttendanceForInhaber);
 
 // manage salary
 router.post('/manage-salary/calculate/:employeeID', verifyTokenInhaber, salaryCalculate);
-router.get('/manage-salary/get-single/:employeeID', verifyTokenInhaber, getSalaryForEmployeeByInhaber);
-// router.get('/manage-salary/get-all', verifyTokenInhaber, getSalaryForAllEmployeesByInhaber);
+router.get('/manage-salary/get-single', verifyTokenInhaber, getSalaryForInhaber);
 
 // manage request
 router.get('/manage-request/get-all', verifyTokenInhaber, getAllRequestsForInhaber);
@@ -54,5 +54,8 @@ router.put('/manage-request/handle/:_id', verifyTokenInhaber, handleRequestForIn
 router.get('/manage-xlsx/employee-data', verifyTokenInhaber, exportEmployeeDataForInhaberToExcel);
 router.get('/manage-xlsx/salary-data', verifyTokenInhaber, exportEmployeeSalaryDataForInhaberToExcel);
 router.get('/manage-xlsx/attendance-data', verifyTokenInhaber, exportAttendanceForInhaberToExcel);
+
+// manage stats
+router.get('/manage-stats/get', verifyTokenInhaber, getStatsForInhaber);
 
 export default router;

@@ -1,13 +1,12 @@
 import express from 'express';
 import {
     deleteEmployeeById, getAllEmployeesSchedules, getAllRequests, getAttendance,
-    getEmployeeById, getLog, getRequestById, getStats, handleRequest,
+    getEmployeeById, getLogs, getRequestById, getStats, handleRequest,
     madeEmployeeInactive, searchSpecific, updateAttendance, updateEmployee
 } from '../controllers/adminController.js';
 import {
     addMemberDepartment, createCar, createDepartment, deleteCar, deleteDepartmentByName, getAllDepartments,
-    getCar,
-    getDepartmentByName, getDepartmentSpecific, removeMemberDepartment, updateCar, updateDepartment
+    getCar, getDepartmentByName, getDepartmentSpecific, removeMemberDepartment, updateCar, updateDepartment
 } from '../controllers/departmentController.js';
 import {
     createShift, getAllShifts,
@@ -96,6 +95,6 @@ router.delete('/manage-car/delete', verifyTokenAdmin, deleteCar);
 router.get('/manage-stats/get', verifyTokenAdmin, getStats);
 
 // manage logs
-router.get('/manage-logs/get', verifyTokenAdmin, getLog);
+router.get('/manage-logs/get', verifyTokenAdmin, getLogs);
 
 export default router;

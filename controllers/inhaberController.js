@@ -7,17 +7,21 @@ import ShiftSchema from "../models/ShiftSchema.js";
 import cron from 'node-cron';
 import DepartmentSchema from "../models/DepartmentSchema.js";
 import RequestSchema from "../models/RequestSchema.js";
+import LogSchema from "../models/LogSchema.js";
 
 export const updateEmployeeByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
     const employeeID = req.query.employeeID;
     try {
+        const currentTime = new Date();
+        const currentYear = currentTime.getFullYear();
+        const currentMonth = currentTime.getMonth() + 1;
+
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
         // Find the employee before updating
         const employee = await EmployeeSchema.findOne({ id: employeeID });
-
         if (!employee) {
             return next(createError(NOT_FOUND, "Employee not found!"));
         }
@@ -25,17 +29,34 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
             return next(createError(NOT_FOUND, "Employee not active!"));
         }
 
-        // Calculate the change in day offs if default_day_off is in the request
+        const inhaberDepartments = inhaber.department_name;
+
+        // Check if the employee is in any of the Inhaber's departments
+        const employeeInInhaberDepartments = employee.department.some(dep => inhaberDepartments.includes(dep.name));
+        if (!employeeInInhaberDepartments) {
+            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only modify an employee in their departments."));
+        }
+
         if (req.body.default_day_off !== undefined) {
             const day_off_change = req.body.default_day_off - employee.default_day_off;
             if (day_off_change > 0) {
-                // Case 1: Increase in default_day_off
                 req.body.realistic_day_off = employee.realistic_day_off + day_off_change;
             } else if (day_off_change < 0) {
-                // Case 2: Decrease in default_day_off
                 req.body.realistic_day_off = Math.max(0, employee.realistic_day_off + day_off_change);
             }
-            // Case 3: No change, req.body.realistic_day_off remains unaffected
+        }
+
+        if (req.body.total_time_per_month !== undefined) {
+            let stats = await StatsSchema.findOne({
+                employee_id: employee.id,
+                year: currentYear,
+                month: currentMonth
+            });
+            const spendSchedulesTime = stats.default_schedule_times - stats.realistic_schedule_times;
+            stats.default_schedule_times = req.body.total_time_per_month;
+            stats.realistic_schedule_times = req.body.total_time_per_month - spendSchedulesTime;
+            stats.attendance_overtime = stats.attendance_total_times - req.body.total_time_per_month;
+            await stats.save();
         }
 
         const updatedEmployee = await EmployeeSchema.findOneAndUpdate(
@@ -82,10 +103,25 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
             }
         );
 
+        const newLog = new LogSchema({
+            year: currentYear,
+            month: currentMonth,
+            date: currentTime,
+            type_update: "Update employee",
+            editor_name: inhaber.name,
+            editor_role: inhaber.role,
+            edited_name: employee.name,
+            edited_role: employee.role,
+            detail_update: req.body,
+            object_update: updatedEmployee
+        })
+        await newLog.save();
+
         res.status(OK).json({
             success: true,
             status: OK,
             message: updatedEmployee,
+            log: newLog
         });
     } catch (err) {
         next(err);
@@ -102,6 +138,10 @@ export const madeEmployeeInactiveByInhaber = async (req, res, next) => {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
         if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
+
+        if (!department.members.find(member => member.id == employee.id) || !inhaber.department_name.includes(department.name)) {
+            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only modify an employee in their departments."));
+        }
 
         const inactiveDate = new Date(req.body.inactive_day);
         const currentDate = new Date();
@@ -156,8 +196,10 @@ export const deleteEmployeeByIdByInhaber = async (req, res, next) => {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
-        const department = await DepartmentSchema.findOne({ name: inhaber.department_name });
-        if (!department.members.find(member => member.id == employee.id)) return next(createError(FORBIDDEN, "Permission denied. Inhaber can only intervention an employee in their department."));
+        const department = await DepartmentSchema.find({ name: { $in: inhaber.department_name } });
+        if (!department || !department.some(dep => dep.members.find(member => member.id == employee.id))) {
+            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only modify an employee in their departments."));
+        }
 
         if (department) {
             department.members = department.members.filter(member => member.id !== employee.id);
@@ -193,7 +235,7 @@ export const searchSpecificForInhaber = async (req, res, next) => {
         const departmentFilter = { 'department_name': inhaber.department_name };
 
         let managementQueryCriteria = { ...departmentFilter, 'role': 'Manager' };
-        let employeeQueryCriteria = { 'department.name': inhaber.department_name, 'role': 'Employee' };
+        const employeeQueryCriteria = { 'department.name': { $in: inhaber.department_name }, 'role': 'Employee' };
 
         if (status) {
             managementQueryCriteria['status'] = status;
@@ -249,7 +291,7 @@ export const getEmployeesSchedulesByInhaber = async (req, res, next) => {
         const departmentName = inhaber.department_name;
 
         // Find all employees in the Inhaber's department
-        const employees = await EmployeeSchema.find({ 'department.name': departmentName });
+        const employees = await EmployeeSchema.find({ 'department.name': { $in: inhaber.department_name } });
         const schedules = [];
 
         employees.forEach(employee => {
@@ -315,7 +357,7 @@ export const createMultipleDateDesignsByInhaber = async (req, res, next) => {
 
         let employees;
         if (specificEmployeeID) {
-            const employee = await EmployeeSchema.findOne({ id: specificEmployeeID, 'department.name': departmentName });
+            const employee = await EmployeeSchema.findOne({ id: specificEmployeeID, 'department.name': { $in: inhaber.department_name } });
             if (!employee) return next(createError(NOT_FOUND, "Employee not found in the Inhaber's department!"));
             employees = [employee];
         } else {
@@ -405,7 +447,7 @@ export const getDateDesignForInhaber = async (req, res, next) => {
 
         const shiftDesigns = [];
 
-        const employees = await EmployeeSchema.find({ 'department.name': departmentName });
+        const employees = await EmployeeSchema.find({ 'department.name': { $in: inhaber.department_name } });
         employees.forEach(employee => {
             const employeeDepartment = employee.department.find(dep => dep.name === departmentName);
             if (!employeeDepartment) return;
@@ -508,7 +550,6 @@ export const getAttendanceForInhaber = async (req, res, next) => {
 
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
-        const departmentName = inhaber.department_name;
 
         let dateRange = {};
         if (year && month) {
@@ -536,7 +577,7 @@ export const getAttendanceForInhaber = async (req, res, next) => {
         }
 
         let query = {
-            department_name: departmentName
+            department_name: { $in: inhaber.department_name }
         };
 
         if (Object.keys(dateRange).length > 0) {
@@ -559,56 +600,37 @@ export const getAttendanceForInhaber = async (req, res, next) => {
     }
 };
 
-export const getSalaryForEmployeeByInhaber = async (req, res, next) => {
+export const getSalaryForInhaber = async (req, res, next) => {
     try {
+        const { year, month, employeeID } = req.query;
         const inhaber_name = req.query.inhaber_name;
-        const year = req.query.year ? parseInt(req.query.year) : null;
-        const month = req.query.month ? parseInt(req.query.month) : null;
 
-        if (!inhaber_name) {
-            return res.status(BAD_REQUEST).json({
-                success: false,
-                status: BAD_REQUEST,
-                message: "Inhaber name is a required parameter",
-            });
-        }
+        let query = {};
+        if (year) query.year = parseInt(year);
+        if (month) query.month = parseInt(month);
 
+        // Find the Inhaber and their departments
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
-        const employees = await EmployeeSchema.find({ 'department.name': inhaber.department_name });
-        const salaries = employees.map(employee => {
-            let salary;
-            if (year && month) {
-                salary = employee.salary.find(s => s.year === year && s.month === month);
-            } else {
-                salary = employee.salary.length > 0 ? employee.salary[employee.salary.length - 1] : null;
-            }
+        // If employeeID is provided, add it to the query
+        if (employeeID) query.employee_id = employeeID;
 
-            return {
-                employee_id: employee.id,
-                employee_name: employee.name,
-                email: employee.email,
-                role: employee.role,
-                position: employee.department.flatMap(d => d.position.join('/')).join(', '),
-                department_name: employee.department.map(d => d.name).join(', '),
-                salary: salary || null
-            };
-        }).filter(emp => emp.salary !== null);
+        const salaries = await SalarySchema.find(query).where('department_name').in(inhaber.department_name);
 
-        if (salaries.length > 0) {
-            return res.status(OK).json({
-                success: true,
-                status: OK,
-                message: salaries,
-            });
-        } else {
+        if (salaries.length === 0) {
             return res.status(NOT_FOUND).json({
                 success: false,
                 status: NOT_FOUND,
-                message: "No salary records found in Inhaber's department.",
+                message: "No salary records found in Inhaber's departments."
             });
         }
+
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: salaries
+        });
     } catch (err) {
         next(err);
     }
@@ -620,7 +642,7 @@ export const getAllRequestsForInhaber = async (req, res, next) => {
         const inhaber = await AdminSchema.findOne({ name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
-        const employeesInDepartment = await EmployeeSchema.find({ 'department.name': inhaber.department_name });
+        const employeesInDepartment = await EmployeeSchema.find({ 'department.name': { $in: inhaber.department_name } });
         const employeeIds = employeesInDepartment.map(emp => emp.id);
 
         const requests = await RequestSchema.find({ employee_id: { $in: employeeIds } });
@@ -646,8 +668,8 @@ export const getRequestByIdForInhaber = async (req, res, next) => {
         if (!request) return next(createError(NOT_FOUND, "Request not found!"));
 
         // Check if employee who made the request is in the Inhaber's department
-        const employee = await EmployeeSchema.findOne({ id: request.employee_id, 'department.name': inhaber.department_name });
-        if (!employee) return next(createError(NOT_FOUND, "Request not made by an employee in Inhaber's department"));
+        const employeesInDepartment = await EmployeeSchema.find({ 'department.name': { $in: inhaber.department_name } });
+        if (!employeesInDepartment) return next(createError(NOT_FOUND, "Request not made by an employee in Inhaber's department"));
 
         return res.status(OK).json({
             success: true,
@@ -670,7 +692,7 @@ export const handleRequestForInhaber = async (req, res, next) => {
         if (!updateRequest) return next(createError(NOT_FOUND, "Request not found!"));
 
         // Check if the request is from an employee in the Inhaber's department
-        const employee = await EmployeeSchema.findOne({ id: updateRequest.employee_id, 'department.name': inhaber.department_name });
+        const employee = await EmployeeSchema.findOne({ id: updateRequest.employee_id, 'department.name': { $in: inhaber.department_name } });
         if (!employee) return next(createError(NOT_FOUND, "Request not from an employee in Inhaber's department"));
 
         const day_off = await DayOffSchema.findOne({
@@ -707,6 +729,188 @@ export const handleRequestForInhaber = async (req, res, next) => {
             success: true,
             status: OK,
             message: updateRequest,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const updateAttendanceForInhaber = async (req, res, next) => {
+    const attendanceId = req.params._id;
+    const inhaber_name = req.query.inhaber_name;
+    const updateData = req.body;
+    try {
+        const attendance = await AttendanceSchema.findById(attendanceId);
+        if (!attendance) {
+            return next(createError(NOT_FOUND, "Attendance record not found."));
+        }
+
+        // Verify Inhaber's departments
+        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        if (!inhaber || !inhaber.department_name.includes(attendance.department_name)) {
+            return next(createError(FORBIDDEN, "Inhaber does not have access to this department."));
+        }
+
+        const currentTime = new Date();
+        const currentYear = currentTime.getFullYear();
+        const currentMonth = currentTime.getMonth() + 1;
+        const edited = await EmployeeSchema.findOne({ id: attendance.employee_id });
+
+        const departmentIndex = edited.department.findIndex(dep => dep.name === attendance.department_name);
+        const statsIndex = edited.department[departmentIndex].attendance_stats.findIndex(stat =>
+            stat.year === currentYear && stat.month === currentMonth
+        );
+
+        const attendanceTotalHours = attendance.shift_info.total_hour;
+        const attendanceTotalMinutes = attendance.shift_info.total_minutes;
+        const attendance_total_times = attendanceTotalHours + attendanceTotalMinutes / 60;
+        if (attendance.status === "checked") {
+            if (attendance.shift_info.time_slot.check_in_status === "on time" && attendance.shift_info.time_slot.check_out_status === "on time") {
+                edited.department[departmentIndex].attendance_stats[statsIndex].date_on_time -= 1;
+            } else if (attendance.shift_info.time_slot.check_in_status === "late" && attendance.shift_info.time_slot.check_out_status === "late") {
+                edited.department[departmentIndex].attendance_stats[statsIndex].date_late -= 1;
+            } else if ((attendance.shift_info.time_slot.check_in_status === "late" && attendance.shift_info.time_slot.check_out_status === "on time")
+                || (attendance.shift_info.time_slot.check_in_status === "on time" && attendance.shift_info.time_slot.check_out_status === "late")) {
+                edited.department[departmentIndex].attendance_stats[statsIndex].date_on_time -= 0.5;
+                edited.department[departmentIndex].attendance_stats[statsIndex].date_late -= 0.5;
+            }
+        } else {
+            edited.department[departmentIndex].attendance_stats[statsIndex].date_missing += 1;
+        }
+
+        const updatedFields = {};
+        for (const key in updateData) {
+            if (updateData.hasOwnProperty(key)) {
+                if (typeof updateData[key] === 'object' && updateData[key] !== null) {
+                    for (const subKey in updateData[key]) {
+                        updatedFields[`${key}.${subKey}`] = updateData[key][subKey];
+                    }
+                } else {
+                    updatedFields[key] = updateData[key];
+                }
+            }
+        }
+
+        const updatedAttendance = await AttendanceSchema.findByIdAndUpdate(
+            attendanceId,
+            { $set: updatedFields },
+            { new: true }
+        );
+
+        const updatedCheckInTimeString = updatedAttendance.shift_info.time_slot.check_in_time;
+        const updatedCheckInTime = new Date(`${updatedAttendance.date.toDateString()} ${updatedCheckInTimeString}`);
+
+        const updatedCheckOutTimeString = updatedAttendance.shift_info.time_slot.check_out_time;
+        const updatedCheckOutTime = new Date(`${updatedAttendance.date.toDateString()} ${updatedCheckOutTimeString}`);
+
+        const updatedTimeDifference = updatedCheckOutTime - updatedCheckInTime;
+        const updatedTotalHours = Math.floor(updatedTimeDifference / (1000 * 60 * 60));
+        const updatedTotalMinutes = Math.floor((updatedTimeDifference % (1000 * 60 * 60)) / (1000 * 60));
+        updatedAttendance.shift_info.total_hour = updatedTotalHours;
+        updatedAttendance.shift_info.total_minutes = updatedTotalMinutes;
+        const update_total_times = updatedTotalHours + updatedTotalMinutes / 60;
+
+        if (updatedAttendance.status === "checked") {
+            if (updatedAttendance.shift_info.time_slot.check_in_status === "on time" && updatedAttendance.shift_info.time_slot.check_out_status === "on time") {
+                edited.department[departmentIndex].attendance_stats[statsIndex].date_on_time += 1;
+            } else if (updatedAttendance.shift_info.time_slot.check_in_status === "late" && updatedAttendance.shift_info.time_slot.check_out_status === "late") {
+                edited.department[departmentIndex].attendance_stats[statsIndex].date_late += 1;
+            } else if ((updatedAttendance.shift_info.time_slot.check_in_status === "late" && updatedAttendance.shift_info.time_slot.check_out_status === "on time")
+                || (updatedAttendance.shift_info.time_slot.check_in_status === "on time" && updatedAttendance.shift_info.time_slot.check_out_status === "late")) {
+                edited.department[departmentIndex].attendance_stats[statsIndex].date_on_time += 0.5;
+                edited.department[departmentIndex].attendance_stats[statsIndex].date_late += 0.5;
+            }
+        } else {
+            edited.department[departmentIndex].attendance_stats[statsIndex].date_missing += 1;
+        }
+        await updatedAttendance.save();
+
+        let stats = await StatsSchema.findOne({
+            employee_id: edited.id,
+            year: currentYear,
+            month: currentMonth
+        });
+        stats.attendance_total_times = stats.attendance_total_times - attendance_total_times + update_total_times;
+        stats.attendance_overtime = stats.attendance_total_times - stats.default_schedule_times;
+        await stats.save();
+
+        const newLog = new LogSchema({
+            year: currentYear,
+            month: currentMonth,
+            date: currentTime,
+            type_update: "Update attendance",
+            editor_name: inhaber.name,
+            editor_role: inhaber.role,
+            edited_name: edited.name,
+            edited_role: edited.role,
+            detail_update: req.body,
+            object_update: attendance
+        })
+        await newLog.save();
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: updatedAttendance,
+            log: newLog
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getStatsForInhaber = async (req, res, next) => {
+    try {
+        const { year, month, employeeID } = req.query;
+        const inhaber_name = req.query.inhaber_name;
+
+        let query = {};
+        if (year) query.year = parseInt(year);
+        if (month) query.month = parseInt(month);
+
+        // Find the Inhaber and their departments
+        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        let employeeIds = [];
+        if (employeeID) {
+            // Verify if the employee belongs to one of the Inhaber's departments
+            const employee = await EmployeeSchema.findOne({ id: employeeID, 'department.name': { $in: inhaber.department_name } });
+            if (employee) {
+                employeeIds = [employeeID];
+            } else {
+                return res.status(NOT_FOUND).json({
+                    success: false,
+                    status: NOT_FOUND,
+                    message: "Employee not found in Inhaber's departments."
+                });
+            }
+        } else {
+            // If employeeID is not specified, fetch all employees from Inhaber's departments
+            const employees = await EmployeeSchema.find({ 'department.name': { $in: inhaber.department_name } });
+            employeeIds = employees.map(emp => emp.id);
+        }
+
+        // Construct the query with employee IDs
+        if (employeeIds.length > 0) {
+            query.employee_id = { $in: employeeIds };
+        }
+
+        // Find stats with the constructed query
+        const stats = await StatsSchema.find(query);
+
+        if (!stats || stats.length === 0) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: "Statistics not found for Inhaber's departments.",
+            });
+        }
+
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: stats,
         });
     } catch (err) {
         next(err);

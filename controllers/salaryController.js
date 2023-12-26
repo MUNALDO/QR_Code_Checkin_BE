@@ -166,59 +166,6 @@ export const salaryCalculate = async (req, res, next) => {
     }
 };
 
-// export const getSalary = async (req, res, next) => {
-//     try {
-//         const employeeID = req.query.employeeID;
-//         const year = req.query.year ? parseInt(req.query.year) : null;
-//         const month = req.query.month ? parseInt(req.query.month) : null;
-
-//         let employees;
-//         if (employeeID) {
-//             // Find one specific employee
-//             employees = await EmployeeSchema.find({ id: employeeID });
-//         } else {
-//             // Find all employees
-//             employees = await EmployeeSchema.find();
-//         }
-
-//         const salaries = employees.map(employee => {
-//             let salary;
-//             if (year && month) {
-//                 // Find salary for the specific year and month
-//                 salary = employee.salary.find(s => s.year === year && s.month === month);
-//             } else {
-//                 // Get the latest salary record if year and month are not specified
-//                 salary = employee.salary.length > 0 ? employee.salary[employee.salary.length - 1] : null;
-//             }
-
-//             return {
-//                 employee_id: employee.id,
-//                 employee_name: employee.name,
-//                 email: employee.email,
-//                 department_name: employee.department.map(d => d.name).join(', '),
-//                 position: employee.department.flatMap(d => d.position.join('/')).join(', '),
-//                 salary: salary || null
-//             };
-//         }).filter(emp => emp.salary !== null);
-
-//         if (salaries.length > 0) {
-//             return res.status(OK).json({
-//                 success: true,
-//                 status: OK,
-//                 message: salaries,
-//             });
-//         } else {
-//             return res.status(NOT_FOUND).json({
-//                 success: false,
-//                 status: NOT_FOUND,
-//                 message: "No salary records found.",
-//             });
-//         }
-//     } catch (err) {
-//         next(err);
-//     }
-// };
-
 export const getSalary = async (req, res, next) => {
     try {
         const { year, month, employeeID, department_name } = req.query;

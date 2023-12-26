@@ -659,12 +659,11 @@ export const updateAttendance = async (req, res, next) => {
     }
 };
 
-export const getLog = async (req, res, next) => {
+export const getLogs = async (req, res, next) => {
     try {
         const { year, month, date, editor_name, editor_role, edited_name, edited_role,
             type_update, department_name } = req.query;
 
-        // Building the query
         let query = {};
 
         if (year) query.year = parseInt(year);
@@ -676,16 +675,24 @@ export const getLog = async (req, res, next) => {
         if (edited_role) query.edited_role = edited_role;
         if (type_update) query.type_update = type_update;
 
-        // Handling department_name for editor and edited roles
+        // Fetch the department if department_name is provided
+        let departmentMembers = [];
         if (department_name) {
-            if (['Inhaber', 'Manager'].includes(editor_role)) {
-                // Add logic to filter logs based on department_name for editor
-            } else if (edited_role === 'Employee') {
-                // Add logic to filter logs based on department_name for edited employee
-            }
+            const department = await DepartmentSchema.findOne({ name: department_name });
+            if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+            departmentMembers = department.members.map(member => member.name);
+            // console.log(departmentMembers);
         }
 
-        const logs = await LogSchema.find(query);
+        // Retrieve logs based on the constructed query
+        let logs = await LogSchema.find(query);
+
+        // Filter logs based on department members
+        if (department_name) {
+            logs = logs.filter(log =>
+                departmentMembers.includes(log.editor_name) || departmentMembers.includes(log.edited_name)
+            );
+        }
 
         if (!logs || logs.length === 0) {
             return res.status(NOT_FOUND).json({
@@ -704,6 +711,7 @@ export const getLog = async (req, res, next) => {
         next(err);
     }
 };
+
 
 
 

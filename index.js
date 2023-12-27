@@ -41,7 +41,7 @@ app.use(cors({
     origin: ['http://localhost:3000', 'https://qr-code-checkin-be.vercel.app',
         'https://qr-code-checkin.vercel.app', 'https://qr-code-checkin-thai-nx.vercel.app',
         'qrapp.qxotttabcxyz.online', 'http://192.168.0.102:3000', 'http://localhost:8800',
-        'http://192.168.30.230:3000', 'https://fe-qr-project.vercel.app'],
+        'http://192.168.30.230:3000', 'https://fe-qr-project.vercel.app', 'https://qr-code-checkin-employee.vercel.app'],
     credentials: true,
 }));
 app.options('*', cors());

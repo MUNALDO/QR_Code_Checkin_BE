@@ -27,10 +27,8 @@ const adminSchema = new mongoose.Schema(
         gender: {
             type: String,
         },
-        department_name: [],
         role: {
             type: String,
-            enum: ['Admin', 'Inhaber', 'Manager'],
             default: 'Admin',
         },
         status: {

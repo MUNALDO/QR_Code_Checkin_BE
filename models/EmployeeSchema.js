@@ -29,6 +29,7 @@ const employeeSchema = new mongoose.Schema(
         },
         role: {
             type: String,
+            enum: ['Inhaber', 'Manager', 'Employee'],
             default: 'Employee',
         },
         total_time_per_month: {

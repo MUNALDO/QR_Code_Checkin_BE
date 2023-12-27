@@ -68,57 +68,94 @@ export const logoutAdmin = (req, res, next) => {
 };
 
 export const registerInhaberByAdmin = async (req, res, next) => {
-    const departmentNames = req.body.department_name;
     try {
-        const departments = await DepartmentSchema.find({
-            name: { $in: departmentNames }
-        });
+        const salt = bcrypt.genSaltSync(10);
+        const hash = bcrypt.hashSync(req.body.password, salt);
 
-        if (!departments) {
-            return next(createError(NOT_FOUND, "One or more departments not found!"));
-        }
-
-        const salt = bcrypt.genSaltSync(10)
-        const hash = bcrypt.hashSync(req.body.password, salt)
-
-        const newInhaber = new AdminSchema({
+        const newInhaber = new EmployeeSchema({
             ...req.body,
             password: hash,
             role: "Inhaber",
-            department_name: inhaber_department_name
-        })
-        const inhaber = await AdminSchema.findOne({ name: newInhaber.name });
-        if (inhaber) return next(createError(CONFLICT, "Inhaber is already exists!"))
+            active_day: new Date()
+        });
 
-        for (const department of departments) {
-            if (department.members.some(member => member.name === newInhaber.name)) {
-                return next(createError(CONFLICT, "This Inhaber already exists in the department!"));
-            }
-            department.members.push({
+        const isIdExists = await EmployeeSchema.findOne({
+            id: newInhaber.id,
+            role: newInhaber.role
+        })
+        const isNameExists = await EmployeeSchema.findOne({
+            name: newInhaber.name,
+            role: newInhaber.role
+        })
+
+        if (isIdExists || isNameExists) {
+            return res.status(BAD_REQUEST).json({
+                success: false,
+                status: BAD_REQUEST,
+                message: "Inhaber is already exists.",
+            });
+        }
+
+        const departmentObject = {
+            name: req.body.department_name,
+            position: req.body.position
+        }
+
+        const department = await DepartmentSchema.findOne({ name: departmentObject.name });
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+
+        if (department.members.some(member => member.name === req.body.name)) {
+            return next(createError(CONFLICT, `Inhaber already exists in department ${department.name}!`));
+        }
+
+        department.members.push({
+            id: newInhaber.id,
+            name: newInhaber.name,
+            email: newInhaber.email,
+            role: newInhaber.role,
+            position: departmentObject.position,
+            status: newInhaber.status
+        });
+        await department.save();
+
+        const globalDayOffs = await DayOffSchema.find({ type: 'global' });
+        globalDayOffs.forEach(globalDayOff => {
+            newInhaber.dayOff_schedule.push({
+                date_start: globalDayOff.date_start,
+                date_end: globalDayOff.date_end,
+                duration: globalDayOff.duration,
+                name: globalDayOff.name,
+                type: globalDayOff.type,
+                allowed: globalDayOff.allowed
+            });
+
+            globalDayOff.members.push({
                 id: newInhaber.id,
                 name: newInhaber.name,
                 email: newInhaber.email,
-                department_name: newInhaber.department_name,
                 role: newInhaber.role,
                 status: newInhaber.status
             });
-            await department.save();
-        }
+            globalDayOff.save();
+        })
 
+        newInhaber.department.push(departmentObject);
+        newInhaber.realistic_day_off = newInhaber.default_day_off;
         await newInhaber.save();
-        res.status(CREATED).json({
+
+        return res.status(CREATED).json({
             success: true,
             status: CREATED,
             message: newInhaber,
         });
     } catch (err) {
-        next(err)
+        next(err);
     }
 };
 
 export const loginInhaber = async (req, res, next) => {
     try {
-        const inhaber = await AdminSchema.findOne({
+        const inhaber = await EmployeeSchema.findOne({
             name: req.body.name,
             role: "Inhaber"
         });
@@ -151,89 +188,178 @@ export const logoutInhaber = (req, res, next) => {
 };
 
 export const registerManagerByAdmin = async (req, res, next) => {
-    const departmentNames = req.body.department_name;
     try {
-        const departments = await DepartmentSchema.find({
-            name: { $in: departmentNames }
-        });
+        const salt = bcrypt.genSaltSync(10);
+        const hash = bcrypt.hashSync(req.body.password, salt);
 
-        if (!departments) {
-            return next(createError(NOT_FOUND, "One or more departments not found!"));
-        }
-
-        const salt = bcrypt.genSaltSync(10)
-        const hash = bcrypt.hashSync(req.body.password, salt)
-
-        const newManager = new AdminSchema({
+        const newManager = new EmployeeSchema({
             ...req.body,
             password: hash,
             role: "Manager",
-        })
-        const manager = await AdminSchema.findOne({ name: newManager.name });
-        if (manager) return next(createError(CONFLICT, "Manager is already exists!"))
+            active_day: new Date()
+        });
 
-        for (const department of departments) {
-            if (department.members.some(member => member.name === newManager.name)) {
-                return next(createError(CONFLICT, "This Manager already exists in the department!"));
-            }
-            department.members.push({
+        const isIdExists = await EmployeeSchema.findOne({
+            id: newManager.id,
+            role: newManager.role
+        })
+        const isNameExists = await EmployeeSchema.findOne({
+            name: newManager.name,
+            role: newManager.role
+        })
+
+        if (isIdExists || isNameExists) {
+            return res.status(BAD_REQUEST).json({
+                success: false,
+                status: BAD_REQUEST,
+                message: "Inhaber is already exists.",
+            });
+        }
+
+        const departmentObject = {
+            name: req.body.department_name,
+            position: req.body.position
+        }
+
+        const department = await DepartmentSchema.findOne({ name: departmentObject.name });
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+
+        if (department.members.some(member => member.name === req.body.name)) {
+            return next(createError(CONFLICT, `Inhaber already exists in department ${department.name}!`));
+        }
+
+        department.members.push({
+            id: newManager.id,
+            name: newManager.name,
+            email: newManager.email,
+            role: newManager.role,
+            position: departmentObject.position,
+            status: newManager.status
+        });
+        await department.save();
+
+        const globalDayOffs = await DayOffSchema.find({ type: 'global' });
+        globalDayOffs.forEach(globalDayOff => {
+            newManager.dayOff_schedule.push({
+                date_start: globalDayOff.date_start,
+                date_end: globalDayOff.date_end,
+                duration: globalDayOff.duration,
+                name: globalDayOff.name,
+                type: globalDayOff.type,
+                allowed: globalDayOff.allowed
+            });
+
+            globalDayOff.members.push({
                 id: newManager.id,
                 name: newManager.name,
                 email: newManager.email,
-                department_name: newManager.department_name,
                 role: newManager.role,
                 status: newManager.status
             });
-            await department.save();
-        }
+            globalDayOff.save();
+        })
 
+        newManager.department.push(departmentObject);
+        newManager.realistic_day_off = newManager.default_day_off;
         await newManager.save();
-        res.status(CREATED).json({
+
+        return res.status(CREATED).json({
             success: true,
             status: CREATED,
             message: newManager,
         });
     } catch (err) {
-        next(err)
+        next(err);
     }
 };
 
 export const registerManagerByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
     try {
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        const inhaber = await EmployeeSchema.findOne({
+            name: inhaber_name,
+            role: "Inhaber"
+        });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
-
-        const department = await DepartmentSchema.findOne({ name: inhaber.department_name });
-        if (!department) return next(createError(NOT_FOUND, "Department not found!"))
 
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
 
-        const newManager = new AdminSchema({
+        const newManager = new EmployeeSchema({
             ...req.body,
             password: hash,
             role: "Manager",
-            department_name: [inhaber.department_name]
+            active_day: new Date()
         });
-        const manager = await AdminSchema.findOne({ name: newManager.name });
-        if (manager) return next(createError(CONFLICT, "Manager is already exists!"))
+        newManager.realistic_day_off = newManager.default_day_off;
 
-        if (department.members.some(member => member.name === newManager.name)) {
-            return next(createError(CONFLICT, "This Manager already exists in the department!"));
-        }
-        department.members.push({
+        const isIdExists = await EmployeeSchema.findOne({
             id: newManager.id,
+            role: newManager.role
+        })
+        const isNameExists = await EmployeeSchema.findOne({
             name: newManager.name,
-            email: newManager.email,
-            department_name: newManager.department_name,
-            role: newManager.role,
-            status: newManager.status
-        });
-        await department.save();
+            role: newManager.role
+        })
 
-        await newManager.save();
-        res.status(CREATED).json({
+        if (isIdExists || isNameExists) {
+            return res.status(BAD_REQUEST).json({
+                success: false,
+                status: BAD_REQUEST,
+                message: "Inhaber is already exists.",
+            });
+        }
+
+        const inhaberDepartments = inhaber.department;
+        for (const inhaberDepartment of inhaberDepartments) {
+            const department = await DepartmentSchema.findOne({ name: inhaberDepartment.name });
+            if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+
+            if (department.members.some(member => member.name === req.body.name)) {
+                return next(createError(CONFLICT, `Inhaber already exists in department ${department.name}!`));
+            }
+
+            const departmentObject = {
+                name: department.name,
+                position: req.body.position
+            }
+
+            department.members.push({
+                id: newManager.id,
+                name: newManager.name,
+                email: newManager.email,
+                role: newManager.role,
+                position: departmentObject.position,
+                status: newManager.status
+            });
+            await department.save();
+
+            newManager.department.push(departmentObject);
+            await newManager.save();
+        }
+
+        const globalDayOffs = await DayOffSchema.find({ type: 'global' });
+        globalDayOffs.forEach(globalDayOff => {
+            newManager.dayOff_schedule.push({
+                date_start: globalDayOff.date_start,
+                date_end: globalDayOff.date_end,
+                duration: globalDayOff.duration,
+                name: globalDayOff.name,
+                type: globalDayOff.type,
+                allowed: globalDayOff.allowed
+            });
+
+            globalDayOff.members.push({
+                id: newManager.id,
+                name: newManager.name,
+                email: newManager.email,
+                role: newManager.role,
+                status: newManager.status
+            });
+            globalDayOff.save();
+        })
+
+        return res.status(CREATED).json({
             success: true,
             status: CREATED,
             message: newManager,
@@ -245,7 +371,7 @@ export const registerManagerByInhaber = async (req, res, next) => {
 
 export const loginManager = async (req, res, next) => {
     try {
-        const manager = await AdminSchema.findOne({
+        const manager = await EmployeeSchema.findOne({
             name: req.body.name,
             role: "Manager"
         });
@@ -359,20 +485,11 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
 export const registerEmployeeByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
     try {
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        const inhaber = await EmployeeSchema.findOne({
+            name: inhaber_name,
+            role: "Inhaber"
+        });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
-
-        const department = await DepartmentSchema.findOne({ name: inhaber.department_name });
-        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
-
-        if (department.members.some(member => member.name === req.body.name)) {
-            return next(createError(CONFLICT, "This Employee already exists in the department!"));
-        }
-
-        const departmentObject = {
-            name: department.name,
-            position: req.body.position
-        }
 
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
@@ -380,8 +497,10 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
         const newEmployee = new EmployeeSchema({
             ...req.body,
             password: hash,
+            role: "Employee",
             active_day: new Date()
         });
+        newEmployee.realistic_day_off = newEmployee.default_day_off;
 
         const isIdExists = await EmployeeSchema.findOne({ id: newEmployee.id })
         const isNameExists = await EmployeeSchema.findOne({ name: newEmployee.name })
@@ -394,14 +513,34 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
             });
         }
 
-        department.members.push({
-            id: newEmployee.id,
-            name: newEmployee.name,
-            email: newEmployee.email,
-            role: newEmployee.role,
-            position: departmentObject.position,
-            status: newEmployee.status
-        });
+        const inhaberDepartments = inhaber.department;
+        for (const inhaberDepartment of inhaberDepartments) {
+            const department = await DepartmentSchema.findOne({ name: inhaberDepartment.name });
+            if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+
+            if (department.members.some(member => member.name === req.body.name)) {
+                return next(createError(CONFLICT, `Inhaber already exists in department ${department.name}!`));
+            }
+
+            const departmentObject = {
+                name: department.name,
+                position: req.body.position
+            }
+
+            department.members.push({
+                id: newEmployee.id,
+                name: newEmployee.name,
+                email: newEmployee.email,
+                role: newEmployee.role,
+                position: departmentObject.position,
+                status: newEmployee.status
+            });
+            await department.save();
+
+            newEmployee.department.push(departmentObject);
+            await newEmployee.save();
+        }
+
         const globalDayOffs = await DayOffSchema.find({ type: 'global' });
         globalDayOffs.forEach(globalDayOff => {
             newEmployee.dayOff_schedule.push({
@@ -422,11 +561,6 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
             });
             globalDayOff.save();
         })
-
-        newEmployee.department.push(departmentObject);
-        newEmployee.realistic_day_off = newEmployee.default_day_off;
-        await department.save();
-        await newEmployee.save();
 
         return res.status(CREATED).json({
             success: true,
@@ -441,20 +575,11 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
 export const registerEmployeeByManager = async (req, res, next) => {
     const manager_name = req.query.manager_name;
     try {
-        const manager = await AdminSchema.findOne({ name: manager_name });
+        const manager = await EmployeeSchema.findOne({
+            name: manager_name,
+            role: "Manager"
+        });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
-
-        const department = await DepartmentSchema.findOne({ name: manager.department_name });
-        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
-
-        if (department.members.some(member => member.name === req.body.name)) {
-            return next(createError(CONFLICT, "This Employee already exists in the department!"));
-        }
-
-        const departmentObject = {
-            name: department.name,
-            position: req.body.position
-        }
 
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
@@ -462,8 +587,10 @@ export const registerEmployeeByManager = async (req, res, next) => {
         const newEmployee = new EmployeeSchema({
             ...req.body,
             password: hash,
+            role: "Employee",
             active_day: new Date()
         });
+        newEmployee.realistic_day_off = newEmployee.default_day_off;
 
         const isIdExists = await EmployeeSchema.findOne({ id: newEmployee.id })
         const isNameExists = await EmployeeSchema.findOne({ name: newEmployee.name })
@@ -476,14 +603,34 @@ export const registerEmployeeByManager = async (req, res, next) => {
             });
         }
 
-        department.members.push({
-            id: newEmployee.id,
-            name: newEmployee.name,
-            email: newEmployee.email,
-            role: newEmployee.role,
-            position: departmentObject.position,
-            status: newEmployee.status
-        });
+        const managerDepartments = manager.department;
+        for (const managerDepartment of managerDepartments) {
+            const department = await DepartmentSchema.findOne({ name: managerDepartment.name });
+            if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+
+            if (department.members.some(member => member.name === req.body.name)) {
+                return next(createError(CONFLICT, `Manager already exists in department ${department.name}!`));
+            }
+
+            const departmentObject = {
+                name: department.name,
+                position: req.body.position
+            }
+
+            department.members.push({
+                id: newEmployee.id,
+                name: newEmployee.name,
+                email: newEmployee.email,
+                role: newEmployee.role,
+                position: departmentObject.position,
+                status: newEmployee.status
+            });
+            await department.save();
+
+            newEmployee.department.push(departmentObject);
+            await newEmployee.save();
+        }
+
         const globalDayOffs = await DayOffSchema.find({ type: 'global' });
         globalDayOffs.forEach(globalDayOff => {
             newEmployee.dayOff_schedule.push({
@@ -504,11 +651,6 @@ export const registerEmployeeByManager = async (req, res, next) => {
             });
             globalDayOff.save();
         })
-
-        newEmployee.department.push(departmentObject);
-        newEmployee.realistic_day_off = newEmployee.default_day_off;
-        await department.save();
-        await newEmployee.save();
 
         return res.status(CREATED).json({
             success: true,

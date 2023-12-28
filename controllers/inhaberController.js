@@ -8,6 +8,7 @@ import cron from 'node-cron';
 import DepartmentSchema from "../models/DepartmentSchema.js";
 import RequestSchema from "../models/RequestSchema.js";
 import LogSchema from "../models/LogSchema.js";
+import StatsSchema from "../models/StatsSchema.js";
 
 export const updateEmployeeByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
@@ -17,22 +18,16 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
         const currentYear = currentTime.getFullYear();
         const currentMonth = currentTime.getMonth() + 1;
 
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        // Find the Inhaber in the Employee Schema
+        const inhaber = await EmployeeSchema.findOne({ role: 'Inhaber', name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
-        // Find the employee before updating
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) {
-            return next(createError(NOT_FOUND, "Employee not found!"));
-        }
-        if (employee.status === "inactive") {
-            return next(createError(NOT_FOUND, "Employee not active!"));
-        }
-
-        const inhaberDepartments = inhaber.department_name;
-
         // Check if the employee is in any of the Inhaber's departments
-        const employeeInInhaberDepartments = employee.department.some(dep => inhaberDepartments.includes(dep.name));
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
+
+        const employeeInInhaberDepartments = employee.department.some(dep => inhaber.department.map(d => d.name).includes(dep.name));
         if (!employeeInInhaberDepartments) {
             return next(createError(FORBIDDEN, "Permission denied. Inhaber can only modify an employee in their departments."));
         }
@@ -129,17 +124,21 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
 };
 
 export const madeEmployeeInactiveByInhaber = async (req, res, next) => {
-    const inhaber_name = req.query.inhaber_name;
+    const inhaberName = req.query.inhaber_name;
     const employeeID = req.query.employeeID;
     try {
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
-        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
+        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee already inactive!"));
 
-        if (!department.members.find(member => member.id == employee.id) || !inhaber.department_name.includes(department.name)) {
+        // Verify if the employee belongs to the Inhaber's department
+        const isEmployeeInDepartment = employee.department.some(department =>
+            inhaber.department.some(inhaberDepartment => inhaberDepartment.name === department.name)
+        );
+        if (!isEmployeeInDepartment) {
             return next(createError(FORBIDDEN, "Permission denied. Inhaber can only modify an employee in their departments."));
         }
 
@@ -187,18 +186,21 @@ export const madeEmployeeInactiveByInhaber = async (req, res, next) => {
 };
 
 export const deleteEmployeeByIdByInhaber = async (req, res, next) => {
-    const inhaber_name = req.query.inhaber_name;
+    const inhaberName = req.query.inhaber_name;
     const employeeID = req.query.employeeID;
     try {
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
-        const department = await DepartmentSchema.find({ name: { $in: inhaber.department_name } });
-        if (!department || !department.some(dep => dep.members.find(member => member.id == employee.id))) {
-            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only modify an employee in their departments."));
+        // Verify if the employee belongs to the Inhaber's department
+        const isEmployeeInDepartment = employee.department.some(department =>
+            inhaber.department.some(inhaberDepartment => inhaberDepartment.name === department.name)
+        );
+        if (!isEmployeeInDepartment) {
+            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only delete an employee in their departments."));
         }
 
         if (department) {
@@ -226,51 +228,33 @@ export const deleteEmployeeByIdByInhaber = async (req, res, next) => {
 
 export const searchSpecificForInhaber = async (req, res, next) => {
     const { role, details, status } = req.query;
-    const inhaber_name = req.query.inhaber_name;
+    const inhaberName = req.query.inhaber_name;
     try {
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
+        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
         const regex = new RegExp(details, 'i');
-        const departmentFilter = { 'department_name': inhaber.department_name };
+        const employeeQueryCriteria = {
+            'department.name': { $in: inhaber.department.map(dep => dep.name) },
+            'role': role || { $in: ['Inhaber', 'Manager', 'Employee'] },
+            ...(status && { 'status': status }),
+            ...(details && { '$or': [{ 'id': regex }, { 'name': regex }] })
+        };
 
-        let managementQueryCriteria = { ...departmentFilter, 'role': 'Manager' };
-        const employeeQueryCriteria = { 'department.name': { $in: inhaber.department_name }, 'role': 'Employee' };
+        const employees = await EmployeeSchema.find(employeeQueryCriteria);
 
-        if (status) {
-            managementQueryCriteria['status'] = status;
-            employeeQueryCriteria['status'] = status;
-        }
-
-        if (details) {
-            managementQueryCriteria['$or'] = [{ id: regex }, { name: regex }];
-            employeeQueryCriteria['$or'] = [{ id: regex }, { name: regex }, { 'department.position': regex }];
-        }
-
-        if (role) {
-            if (role === 'Manager') {
-                employeeQueryCriteria = {};
-            } else if (role === 'Employee') {
-                managementQueryCriteria = {};
-            }
-        }
-
-        const managers = Object.keys(managementQueryCriteria).length > 1 ? await AdminSchema.find(managementQueryCriteria) : [];
-        const employees = Object.keys(employeeQueryCriteria).length > 1 ? await EmployeeSchema.find(employeeQueryCriteria) : [];
-
-        const result = [...managers, ...employees];
-        if (result.length === 0) {
+        if (employees.length === 0) {
             return res.status(NOT_FOUND).json({
                 success: false,
                 status: NOT_FOUND,
-                message: "No matching records found in your department.",
+                message: "No matching records found in your departments.",
             });
         }
 
         res.status(OK).json({
             success: true,
             status: OK,
-            message: result,
+            message: employees,
         });
     } catch (err) {
         next(err);
@@ -279,48 +263,45 @@ export const searchSpecificForInhaber = async (req, res, next) => {
 
 export const getEmployeesSchedulesByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
-    const targetYear = req.query.year ? parseInt(req.query.year) : null; // Year is optional
-    const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null; // Month is optional
-    const targetDate = req.query.date ? new Date(req.query.date) : null; // Specific date is optional
-
+    const targetYear = req.query.year ? parseInt(req.query.year) : null; 
+    const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null; 
+    const targetDate = req.query.date ? new Date(req.query.date) : null; 
     try {
         // Find the Inhaber and get their department name
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
+        const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
-        const departmentName = inhaber.department_name;
+        const departmentNames = inhaber.department.map(dep => dep.name);
 
-        // Find all employees in the Inhaber's department
-        const employees = await EmployeeSchema.find({ 'department.name': { $in: inhaber.department_name } });
+        // Find all employees in the Inhaber's departments
+        const employees = await EmployeeSchema.find({ 'department.name': { $in: departmentNames } });
         const schedules = [];
 
         employees.forEach(employee => {
             employee.department.forEach(department => {
-                if (department.name === departmentName) {
-                    department.schedules.forEach(schedule => {
-                        const scheduleDate = new Date(schedule.date);
+                department.schedules.forEach(schedule => {
+                    const scheduleDate = new Date(schedule.date);
 
-                        // Check if the schedule matches the time criteria
-                        const matchesYear = targetYear === null || scheduleDate.getFullYear() === targetYear;
-                        const matchesMonth = targetMonth === null || scheduleDate.getMonth() === targetMonth;
-                        const matchesDate = !targetDate || scheduleDate.toISOString().split('T')[0] === targetDate.toISOString().split('T')[0];
+                    // Check if the schedule matches the time criteria
+                    const matchesYear = targetYear === null || scheduleDate.getFullYear() === targetYear;
+                    const matchesMonth = targetMonth === null || scheduleDate.getMonth() === targetMonth;
+                    const matchesDate = !targetDate || scheduleDate.toISOString().split('T')[0] === targetDate.toISOString().split('T')[0];
 
-                        if (matchesYear && matchesMonth && matchesDate) {
-                            schedule.shift_design.forEach(shift => {
-                                schedules.push({
-                                    employee_id: employee.id,
-                                    employee_name: employee.name,
-                                    department_name: department.name,
-                                    date: scheduleDate,
-                                    shift_code: shift.shift_code,
-                                    position: shift.position,
-                                    time_slot: shift.time_slot,
-                                    shift_type: shift.shift_type
-                                });
+                    if (matchesYear && matchesMonth && matchesDate) {
+                        schedule.shift_design.forEach(shift => {
+                            schedules.push({
+                                employee_id: employee.id,
+                                employee_name: employee.name,
+                                department_name: department.name,
+                                date: scheduleDate,
+                                shift_code: shift.shift_code,
+                                position: shift.position,
+                                time_slot: shift.time_slot,
+                                shift_type: shift.shift_type
                             });
-                        }
-                    });
-                }
+                        });
+                    }
+                });
             });
         });
 
@@ -348,72 +329,93 @@ export const createMultipleDateDesignsByInhaber = async (req, res, next) => {
     const shiftCode = req.body.shift_code;
     const dates = req.body.dates;
     try {
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
+        const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
-        const departmentName = inhaber.department_name;
 
         const shift = await ShiftSchema.findOne({ code: shiftCode });
         if (!shift) return next(createError(NOT_FOUND, "Shift not found!"));
 
-        let employees;
+        const departmentNames = inhaber.department.map(dep => dep.name);
+
+        let employeeQuery = { 'department.name': { $in: departmentNames } };
         if (specificEmployeeID) {
-            const employee = await EmployeeSchema.findOne({ id: specificEmployeeID, 'department.name': { $in: inhaber.department_name } });
-            if (!employee) return next(createError(NOT_FOUND, "Employee not found in the Inhaber's department!"));
-            employees = [employee];
-        } else {
-            employees = await EmployeeSchema.find({ 'department.name': departmentName });
+            employeeQuery.id = specificEmployeeID;
         }
+
+        const employees = await EmployeeSchema.find(employeeQuery);
 
         const results = [];
         for (const employee of employees) {
-            const employeeDepartment = employee.department.find(dep => dep.name === departmentName);
-            if (!employeeDepartment) continue;
+            for (const dateString of dates) {
+                const [month, day, year] = dateString.split('/');
+                const dateObj = new Date(year, month - 1, day);
 
-            for (const date of dates) {
-                const dateObj = new Date(date);
-                let existingDateInDepartmentSchedule = employeeDepartment.schedules.find(schedule =>
-                    schedule.date.getTime() === dateObj.getTime()
-                );
+                let stats = await StatsSchema.findOne({
+                    employee_id: employee.id,
+                    year: year,
+                    month: month
+                });
 
-                if (existingDateInDepartmentSchedule && existingDateInDepartmentSchedule.shift_design.some(design => design.shift_code === shiftCode)) {
-                    return res.status(BAD_REQUEST).json({
-                        success: false,
-                        status: BAD_REQUEST,
-                        message: `Shift with code ${shiftCode} already exists for ${date} in the employee's department.`
+                if (!stats) {
+                    stats = new StatsSchema({
+                        employee_id: employee.id,
+                        employee_name: employee.name,
+                        year: year,
+                        month: month,
+                        default_schedule_times: employee.total_time_per_month,
+                        realistic_schedule_times: employee.total_time_per_month - shift.time_slot.duration
+                    });
+                    await stats.save();
+                } else {
+                    stats.realistic_schedule_times -= shift.time_slot.duration;
+                    await stats.save();
+                }
+
+                let shiftExistsInAnyDepartment = false;
+                employee.department.forEach(dep => {
+                    if (departmentNames.includes(dep.name)) {
+                        const existingDateInSchedule = dep.schedules.find(s => s.date.toISOString().split('T')[0] === dateObj.toISOString().split('T')[0]);
+                        if (existingDateInSchedule && existingDateInSchedule.shift_design.some(design => design.shift_code === shiftCode)) {
+                            shiftExistsInAnyDepartment = true;
+                        }
+                    }
+                });
+
+                if (!shiftExistsInAnyDepartment) {
+                    employee.department.forEach(dep => {
+                        if (departmentNames.includes(dep.name)) {
+                            let schedule = dep.schedules.find(s => s.date.toISOString().split('T')[0] === dateObj.toISOString().split('T')[0]);
+                            if (!schedule) {
+                                schedule = {
+                                    date: dateObj,
+                                    shift_design: [{
+                                        position: req.body.position,
+                                        shift_code: shiftCode,
+                                        time_slot: shift.time_slot,
+                                        time_left: stats.realistic_schedule_times
+                                    }]
+                                };
+                                dep.schedules.push(schedule);
+                            }
+
+                            schedule.shift_design.push({
+                                position: req.body.position,
+                                shift_code: shiftCode,
+                                time_slot: shift.time_slot,
+                                time_left: stats.realistic_schedule_times
+                            });
+                        }
                     });
                 }
-
-                if (!existingDateInDepartmentSchedule) {
-                    existingDateInDepartmentSchedule = {
-                        date: dateObj,
-                        shift_design: [{
-                            position: req.body.position,
-                            shift_code: shift.code,
-                            time_slot: shift.time_slot,
-                            shift_type: req.body.shift_type
-                        }]
-                    };
-                    employeeDepartment.schedules.push(existingDateInDepartmentSchedule);
-                }
-
-                existingDateInDepartmentSchedule.shift_design.push({
-                    position: req.body.position,
-                    shift_code: shift.code,
-                    time_slot: shift.time_slot,
-                    shift_type: req.body.shift_type
-                });
             }
-
             await employee.save();
 
             results.push({
                 employee_id: employee.id,
                 employee_name: employee.name,
                 email: employee.email,
-                department_name: departmentName,
+                departments: employee.department,
                 role: employee.role,
-                position: req.body.position,
-                schedule: employeeDepartment.schedules
             });
         }
 
@@ -421,7 +423,7 @@ export const createMultipleDateDesignsByInhaber = async (req, res, next) => {
             return res.status(NOT_FOUND).json({
                 success: false,
                 status: NOT_FOUND,
-                message: "No schedules created. No employees found in the Inhaber's department."
+                message: "No schedules created. No employees found in the Inhaber's departments."
             });
         }
 
@@ -440,35 +442,44 @@ export const getDateDesignForInhaber = async (req, res, next) => {
     const targetYear = req.query.year ? parseInt(req.query.year) : null;
     const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null;
     const targetDate = req.query.date ? new Date(req.query.date) : null;
+    const specificEmployeeID = req.query.employeeID;
     try {
-        const inhaber = await AdminSchema.findOne({ name: inhaberName, role: 'Inhaber' });
+        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
-        const departmentName = inhaber.department_name;
 
+        const departmentNames = inhaber.department.map(dep => dep.name);
         const shiftDesigns = [];
 
-        const employees = await EmployeeSchema.find({ 'department.name': { $in: inhaber.department_name } });
+        // Adjust the query to optionally include a specific employee ID
+        let employeeQuery = { 'department.name': { $in: departmentNames } };
+        if (specificEmployeeID) {
+            employeeQuery.id = specificEmployeeID; // Filter by specific employee ID if provided
+        }
+
+        const employees = await EmployeeSchema.find(employeeQuery);
         employees.forEach(employee => {
-            const employeeDepartment = employee.department.find(dep => dep.name === departmentName);
-            if (!employeeDepartment) return;
+            employee.department.forEach(department => {
+                if (departmentNames.includes(department.name)) {
+                    department.schedules.forEach(schedule => {
+                        const scheduleDate = new Date(schedule.date);
 
-            employeeDepartment.schedules.forEach(schedule => {
-                const scheduleDate = new Date(schedule.date);
-                if ((!targetYear || scheduleDate.getFullYear() === targetYear) &&
-                    (!targetMonth || scheduleDate.getMonth() === targetMonth) &&
-                    (!targetDate || scheduleDate.getTime() === targetDate.getTime())) {
+                        if ((!targetYear || scheduleDate.getFullYear() === targetYear) &&
+                            (!targetMonth || scheduleDate.getMonth() === targetMonth) &&
+                            (!targetDate || scheduleDate.toISOString().split('T')[0] === targetDate.toISOString().split('T')[0])) {
 
-                    schedule.shift_design.forEach(shift => {
-                        shiftDesigns.push({
-                            employee_id: employee.id,
-                            employee_name: employee.name,
-                            date: scheduleDate,
-                            department_name: departmentName,
-                            position: shift.position,
-                            shift_code: shift.shift_code,
-                            time_slot: shift.time_slot,
-                            shift_type: shift.shift_type,
-                        });
+                            schedule.shift_design.forEach(shift => {
+                                shiftDesigns.push({
+                                    employee_id: employee.id,
+                                    employee_name: employee.name,
+                                    date: scheduleDate,
+                                    department_name: department.name,
+                                    position: shift.position,
+                                    shift_code: shift.shift_code,
+                                    time_slot: shift.time_slot,
+                                    shift_type: shift.shift_type,
+                                });
+                            });
+                        }
                     });
                 }
             });
@@ -533,13 +544,12 @@ export const deleteDateSpecificByInhaber = async (req, res, next) => {
 };
 
 export const getAttendanceForInhaber = async (req, res, next) => {
+    const inhaber_name = req.query.inhaber_name;
+    const employeeID = req.query.employeeID;
+    const year = req.query.year;
+    const month = req.query.month;
+    const dateString = req.query.date;
     try {
-        const inhaber_name = req.query.inhaber_name;
-        const employeeID = req.query.employeeID;
-        const year = req.query.year;
-        const month = req.query.month;
-        const dateString = req.query.date;
-
         if (!inhaber_name) {
             return res.status(BAD_REQUEST).json({
                 success: false,
@@ -548,7 +558,7 @@ export const getAttendanceForInhaber = async (req, res, next) => {
             });
         }
 
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
         let dateRange = {};
@@ -577,7 +587,7 @@ export const getAttendanceForInhaber = async (req, res, next) => {
         }
 
         let query = {
-            department_name: { $in: inhaber.department_name }
+            department_name: { $in: inhaber.department.map(dep => dep.name) }
         };
 
         if (Object.keys(dateRange).length > 0) {
@@ -609,14 +619,14 @@ export const getSalaryForInhaber = async (req, res, next) => {
         if (year) query.year = parseInt(year);
         if (month) query.month = parseInt(month);
 
-        // Find the Inhaber and their departments
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
-        // If employeeID is provided, add it to the query
         if (employeeID) query.employee_id = employeeID;
 
-        const salaries = await SalarySchema.find(query).where('department_name').in(inhaber.department_name);
+        query.department_name = { $in: inhaber.department.map(dep => dep.name) };
+
+        const salaries = await SalarySchema.find(query);
 
         if (salaries.length === 0) {
             return res.status(NOT_FOUND).json({
@@ -639,13 +649,15 @@ export const getSalaryForInhaber = async (req, res, next) => {
 export const getAllRequestsForInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
     try {
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
-        const employeesInDepartment = await EmployeeSchema.find({ 'department.name': { $in: inhaber.department_name } });
+        const departmentNames = inhaber.department.map(dep => dep.name);
+        const employeesInDepartment = await EmployeeSchema.find({ 'department.name': { $in: departmentNames } });
         const employeeIds = employeesInDepartment.map(emp => emp.id);
 
         const requests = await RequestSchema.find({ employee_id: { $in: employeeIds } });
+
         return res.status(OK).json({
             success: true,
             status: OK,
@@ -659,17 +671,17 @@ export const getAllRequestsForInhaber = async (req, res, next) => {
 export const getRequestByIdForInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
     const requestId = req.params._id;
-
     try {
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
         const request = await RequestSchema.findById(requestId).populate('employee_id');
         if (!request) return next(createError(NOT_FOUND, "Request not found!"));
 
-        // Check if employee who made the request is in the Inhaber's department
-        const employeesInDepartment = await EmployeeSchema.find({ 'department.name': { $in: inhaber.department_name } });
-        if (!employeesInDepartment) return next(createError(NOT_FOUND, "Request not made by an employee in Inhaber's department"));
+        const departmentNames = inhaber.department.map(dep => dep.name);
+        if (!departmentNames.includes(request.employee_id.department.name)) {
+            return next(createError(NOT_FOUND, "Request not made by an employee in Inhaber's department"));
+        }
 
         return res.status(OK).json({
             success: true,
@@ -685,14 +697,19 @@ export const handleRequestForInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
     const requestId = req.params._id;
     try {
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
         const updateRequest = await RequestSchema.findById(requestId).populate('employee_id');
         if (!updateRequest) return next(createError(NOT_FOUND, "Request not found!"));
 
+        const departmentNames = inhaber.department.map(dep => dep.name);
+        if (!departmentNames.includes(updateRequest.employee_id.department.name)) {
+            return next(createError(NOT_FOUND, "Request not from an employee in Inhaber's department"));
+        }
+
         // Check if the request is from an employee in the Inhaber's department
-        const employee = await EmployeeSchema.findOne({ id: updateRequest.employee_id, 'department.name': { $in: inhaber.department_name } });
+        const employee = await EmployeeSchema.findOne({ id: updateRequest.employee_id, 'department.name': { $in: departmentNames } });
         if (!employee) return next(createError(NOT_FOUND, "Request not from an employee in Inhaber's department"));
 
         const day_off = await DayOffSchema.findOne({
@@ -739,15 +756,13 @@ export const updateAttendanceForInhaber = async (req, res, next) => {
     const attendanceId = req.params._id;
     const inhaber_name = req.query.inhaber_name;
     const updateData = req.body;
+
     try {
         const attendance = await AttendanceSchema.findById(attendanceId);
-        if (!attendance) {
-            return next(createError(NOT_FOUND, "Attendance record not found."));
-        }
+        if (!attendance) return next(createError(NOT_FOUND, "Attendance record not found."));
 
-        // Verify Inhaber's departments
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
-        if (!inhaber || !inhaber.department_name.includes(attendance.department_name)) {
+        const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
+        if (!inhaber || !inhaber.department.some(dep => dep.name === attendance.department_name)) {
             return next(createError(FORBIDDEN, "Inhaber does not have access to this department."));
         }
 
@@ -860,59 +875,33 @@ export const updateAttendanceForInhaber = async (req, res, next) => {
 };
 
 export const getStatsForInhaber = async (req, res, next) => {
+    const { year, month, employeeID } = req.query;
+    const inhaber_name = req.query.inhaber_name;
     try {
-        const { year, month, employeeID } = req.query;
-        const inhaber_name = req.query.inhaber_name;
+        const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
         let query = {};
         if (year) query.year = parseInt(year);
         if (month) query.month = parseInt(month);
 
-        // Find the Inhaber and their departments
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
-        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
-
         let employeeIds = [];
         if (employeeID) {
-            // Verify if the employee belongs to one of the Inhaber's departments
-            const employee = await EmployeeSchema.findOne({ id: employeeID, 'department.name': { $in: inhaber.department_name } });
-            if (employee) {
-                employeeIds = [employeeID];
-            } else {
-                return res.status(NOT_FOUND).json({
-                    success: false,
-                    status: NOT_FOUND,
-                    message: "Employee not found in Inhaber's departments."
-                });
-            }
+            const employee = await EmployeeSchema.findOne({ id: employeeID, 'department.name': { $in: inhaber.department.map(dep => dep.name) } });
+            if (employee) employeeIds = [employeeID];
         } else {
-            // If employeeID is not specified, fetch all employees from Inhaber's departments
-            const employees = await EmployeeSchema.find({ 'department.name': { $in: inhaber.department_name } });
+            const employees = await EmployeeSchema.find({ 'department.name': { $in: inhaber.department.map(dep => dep.name) } });
             employeeIds = employees.map(emp => emp.id);
         }
 
-        // Construct the query with employee IDs
-        if (employeeIds.length > 0) {
-            query.employee_id = { $in: employeeIds };
-        }
+        if (employeeIds.length > 0) query.employee_id = { $in: employeeIds };
 
-        // Find stats with the constructed query
         const stats = await StatsSchema.find(query);
+        if (stats.length === 0) return res.status(NOT_FOUND).json({ success: false, status: NOT_FOUND, message: "Statistics not found." });
 
-        if (!stats || stats.length === 0) {
-            return res.status(NOT_FOUND).json({
-                success: false,
-                status: NOT_FOUND,
-                message: "Statistics not found for Inhaber's departments.",
-            });
-        }
-
-        return res.status(OK).json({
-            success: true,
-            status: OK,
-            message: stats,
-        });
+        return res.status(OK).json({ success: true, status: OK, message: stats });
     } catch (err) {
         next(err);
     }
 };
+

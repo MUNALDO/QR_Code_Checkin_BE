@@ -9,7 +9,8 @@ export const createMultipleDateDesigns = async (req, res, next) => {
     const shiftCode = req.body.shift_code;
     const employeeID = req.query.employeeID;
     const departmentName = req.query.department_name;
-    const dates = req.body.dates;
+    const dates = req.body.dates; 
+
     try {
         const department = await DepartmentSchema.findOne({ name: departmentName });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"));
@@ -24,49 +25,64 @@ export const createMultipleDateDesigns = async (req, res, next) => {
         const employeeDepartment = employee.department.find(dep => dep.name === departmentName);
         if (!employeeDepartment) return next(createError(NOT_FOUND, "Employee does not belong to the specified department!"));
 
-        for (const date of dates) {
-            const dateObj = new Date(date);
+        for (const dateString of dates) {
+            const [month, day, year] = dateString.split('/');
+            const dateObj = new Date(year, month - 1, day);
 
-            let shiftExistsInAnyDepartment = false;
-            employee.department.forEach(dep => {
-                const existingDateInSchedule = dep.schedules.find(schedule =>
-                    schedule.date.getTime() === dateObj.getTime()
-                );
-                if (existingDateInSchedule && existingDateInSchedule.shift_design.some(design => design.shift_code === shiftCode)) {
-                    shiftExistsInAnyDepartment = true;
-                }
+            let stats = await StatsSchema.findOne({
+                employee_id: employee.id,
+                year: year,
+                month: month
             });
 
-            if (shiftExistsInAnyDepartment) {
+            if (!stats) {
+                stats = new StatsSchema({
+                    employee_id: employee.id,
+                    employee_name: employee.name,
+                    year: year,
+                    month: month,
+                    default_schedule_times: employee.total_time_per_month,
+                    realistic_schedule_times: employee.total_time_per_month - shift.time_slot.duration
+                });
+                await stats.save();
+            } else {
+                stats.realistic_schedule_times -= shift.time_slot.duration;
+                await stats.save();
+            }
+
+            let shiftExistsInDepartment = employeeDepartment.schedules.some(schedule =>
+                schedule.date.toISOString().split('T')[0] === dateObj.toISOString().split('T')[0] &&
+                schedule.shift_design.some(design => design.shift_code === shiftCode)
+            );
+
+            if (!shiftExistsInDepartment) {
+                let schedule = employeeDepartment.schedules.find(s => s.date.toISOString().split('T')[0] === dateObj.toISOString().split('T')[0]);
+                if (!schedule) {
+                    schedule = {
+                        date: dateObj,
+                        shift_design: [{
+                            position: req.body.position,
+                            shift_code: shift.code,
+                            time_slot: shift.time_slot,
+                            time_left: stats.realistic_schedule_times
+                        }]
+                    };
+                    employeeDepartment.schedules.push(schedule);
+                }
+                schedule.shift_design.push({
+                    position: req.body.position,
+                    shift_code: shift.code,
+                    time_slot: shift.time_slot,
+                    time_left: stats.realistic_schedule_times
+                });
+            } else {
                 res.status(BAD_REQUEST).json({
                     success: false,
                     status: BAD_REQUEST,
-                    message: `Shift already exists for ${date} in one of the departments`
+                    message: `Shift with code ${shiftCode} already exists for ${dateString} in the department.`
                 });
                 continue;
             }
-
-            let existingDateInDepartmentSchedule = employeeDepartment.schedules.find(schedule =>
-                schedule.date.getTime() === dateObj.getTime()
-            );
-
-            if (!existingDateInDepartmentSchedule) {
-                existingDateInDepartmentSchedule = {
-                    date: dateObj,
-                    shift_design: [{
-                        position: req.body.position,
-                        shift_code: shift.code,
-                        time_slot: shift.time_slot,
-                    }]
-                };
-                employeeDepartment.schedules.push(existingDateInDepartmentSchedule);
-            }
-
-            existingDateInDepartmentSchedule.shift_design.push({
-                position: req.body.position,
-                shift_code: shift.code,
-                time_slot: shift.time_slot,
-            });
         }
 
         await employee.save();
@@ -78,41 +94,13 @@ export const createMultipleDateDesigns = async (req, res, next) => {
             department_name: departmentName,
             role: employee.role,
             position: req.body.position,
-            schedule: employeeDepartment.schedules
+            schedule: employeeDepartment.schedules,
         };
-
-        let totalDuration = 0;
-        totalDuration = dates.length * shift.time_slot.duration;
-
-        // Find or create stats for the current month and year
-        const currentYear = new Date().getFullYear();
-        const currentMonth = new Date().getMonth() + 1;
-        let stats = await StatsSchema.findOne({
-            employee_id: employeeID,
-            year: currentYear,
-            month: currentMonth
-        });
-
-        if (stats) {
-            stats.realistic_schedule_times = stats.realistic_schedule_times - totalDuration;
-            await stats.save();
-        } else {
-            stats = new StatsSchema({
-                employee_id: employee.id,
-                employee_name: employee.name,
-                year: currentYear,
-                month: currentMonth,
-                default_schedule_times: employee.total_time_per_month,
-                realistic_schedule_times: employee.total_time_per_month - totalDuration
-            });
-            await stats.save();
-        }
 
         res.status(CREATED).json({
             success: true,
             status: CREATED,
-            message: objectReturn,
-            time_left: stats.realistic_schedule_times
+            message: objectReturn
         });
     } catch (err) {
         next(err);

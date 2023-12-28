@@ -77,8 +77,11 @@ const employeeSchema = new mongoose.Schema(
                                 time_slot: {
                                     type: Object,
                                 },
+                                time_left: {
+                                    type: Number
+                                }
                             }
-                        ],
+                        ]
                     },
                 ],
                 attendance_stats: [

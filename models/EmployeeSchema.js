@@ -34,7 +34,7 @@ const employeeSchema = new mongoose.Schema(
         },
         total_time_per_month: {
             type: Number,
-            required: true
+            // required: true
         },
         house_rent_money: {
             type: Number,

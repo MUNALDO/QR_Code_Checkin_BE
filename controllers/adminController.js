@@ -12,12 +12,12 @@ import LogSchema from "../models/LogSchema.js";
 
 export const updateEmployee = async (req, res, next) => {
     const employeeID = req.query.employeeID;
-    const editor_name = req.query.editor_name;
+    // const editor_name = req.query.editor_name;
     try {
         const currentTime = new Date();
         const currentYear = currentTime.getFullYear();
         const currentMonth = currentTime.getMonth() + 1;
-        const editor = await AdminSchema.findOne({ name: editor_name });
+        // const editor = await AdminSchema.findOne({ name: editor_name });
 
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) {

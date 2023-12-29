@@ -35,10 +35,7 @@ export const registerAdmin = async (req, res, next) => {
 
 export const loginAdmin = async (req, res, next) => {
     try {
-        const admin = await AdminSchema.findOne({
-            name: req.body.name,
-            role: "Admin"
-        });
+        const admin = await AdminSchema.findOne({ name: req.body.name, role: "Admin" });
         if (!admin) return next(createError(NOT_FOUND, "Admin not found!"))
         const isPasswordCorrect = await bcrypt.compare(
             req.body.password,
@@ -79,14 +76,8 @@ export const registerInhaberByAdmin = async (req, res, next) => {
             active_day: new Date()
         });
 
-        const isIdExists = await EmployeeSchema.findOne({
-            id: newInhaber.id,
-            role: newInhaber.role
-        })
-        const isNameExists = await EmployeeSchema.findOne({
-            name: newInhaber.name,
-            role: newInhaber.role
-        })
+        const isIdExists = await EmployeeSchema.findOne({ id: newInhaber.id, role: newInhaber.role })
+        const isNameExists = await EmployeeSchema.findOne({ name: newInhaber.name, role: newInhaber.role })
 
         if (isIdExists || isNameExists) {
             return res.status(BAD_REQUEST).json({
@@ -155,10 +146,7 @@ export const registerInhaberByAdmin = async (req, res, next) => {
 
 export const loginInhaber = async (req, res, next) => {
     try {
-        const inhaber = await EmployeeSchema.findOne({
-            name: req.body.name,
-            role: "Inhaber"
-        });
+        const inhaber = await EmployeeSchema.findOne({ name: req.body.name, role: "Inhaber" });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"))
         const isPasswordCorrect = await bcrypt.compare(
             req.body.password,
@@ -199,14 +187,8 @@ export const registerManagerByAdmin = async (req, res, next) => {
             active_day: new Date()
         });
 
-        const isIdExists = await EmployeeSchema.findOne({
-            id: newManager.id,
-            role: newManager.role
-        })
-        const isNameExists = await EmployeeSchema.findOne({
-            name: newManager.name,
-            role: newManager.role
-        })
+        const isIdExists = await EmployeeSchema.findOne({ id: newManager.id, role: newManager.role })
+        const isNameExists = await EmployeeSchema.findOne({ name: newManager.name, role: newManager.role })
 
         if (isIdExists || isNameExists) {
             return res.status(BAD_REQUEST).json({
@@ -276,10 +258,7 @@ export const registerManagerByAdmin = async (req, res, next) => {
 export const registerManagerByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
     try {
-        const inhaber = await EmployeeSchema.findOne({
-            name: inhaber_name,
-            role: "Inhaber"
-        });
+        const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: "Inhaber" });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
         const salt = bcrypt.genSaltSync(10);
@@ -371,10 +350,7 @@ export const registerManagerByInhaber = async (req, res, next) => {
 
 export const loginManager = async (req, res, next) => {
     try {
-        const manager = await EmployeeSchema.findOne({
-            name: req.body.name,
-            role: "Manager"
-        });
+        const manager = await EmployeeSchema.findOne({ name: req.body.name, role: "Manager" });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"))
         const isPasswordCorrect = await bcrypt.compare(
             req.body.password,
@@ -411,11 +387,12 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
         const newEmployee = new EmployeeSchema({
             ...req.body,
             password: hash,
+            role: "Employee",
             active_day: new Date()
         });
 
-        const isIdExists = await EmployeeSchema.findOne({ id: newEmployee.id })
-        const isNameExists = await EmployeeSchema.findOne({ name: newEmployee.name })
+        const isIdExists = await EmployeeSchema.findOne({ id: newEmployee.id, role: newEmployee.role })
+        const isNameExists = await EmployeeSchema.findOne({ name: newEmployee.name, role: newEmployee.role })
 
         if (isIdExists || isNameExists) {
             return res.status(BAD_REQUEST).json({
@@ -485,10 +462,7 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
 export const registerEmployeeByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
     try {
-        const inhaber = await EmployeeSchema.findOne({
-            name: inhaber_name,
-            role: "Inhaber"
-        });
+        const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: "Inhaber" });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
         const salt = bcrypt.genSaltSync(10);
@@ -502,8 +476,8 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
         });
         newEmployee.realistic_day_off = newEmployee.default_day_off;
 
-        const isIdExists = await EmployeeSchema.findOne({ id: newEmployee.id })
-        const isNameExists = await EmployeeSchema.findOne({ name: newEmployee.name })
+        const isIdExists = await EmployeeSchema.findOne({ id: newEmployee.id, role: newEmployee.role })
+        const isNameExists = await EmployeeSchema.findOne({ name: newEmployee.name, role: newEmployee.role })
 
         if (isIdExists || isNameExists) {
             return res.status(BAD_REQUEST).json({
@@ -575,10 +549,7 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
 export const registerEmployeeByManager = async (req, res, next) => {
     const manager_name = req.query.manager_name;
     try {
-        const manager = await EmployeeSchema.findOne({
-            name: manager_name,
-            role: "Manager"
-        });
+        const manager = await EmployeeSchema.findOne({ name: manager_name, role: "Manager" });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
 
         const salt = bcrypt.genSaltSync(10);
@@ -592,8 +563,8 @@ export const registerEmployeeByManager = async (req, res, next) => {
         });
         newEmployee.realistic_day_off = newEmployee.default_day_off;
 
-        const isIdExists = await EmployeeSchema.findOne({ id: newEmployee.id })
-        const isNameExists = await EmployeeSchema.findOne({ name: newEmployee.name })
+        const isIdExists = await EmployeeSchema.findOne({ id: newEmployee.id, role: newEmployee.role })
+        const isNameExists = await EmployeeSchema.findOne({ name: newEmployee.name, role: newEmployee.role })
 
         if (isIdExists || isNameExists) {
             return res.status(BAD_REQUEST).json({
@@ -664,7 +635,7 @@ export const registerEmployeeByManager = async (req, res, next) => {
 
 export const loginEmployee = async (req, res, next) => {
     try {
-        const employee = await EmployeeSchema.findOne({ name: req.body.name })
+        const employee = await EmployeeSchema.findOne({ name: req.body.name, role: "Employee" })
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
         const isPasswordCorrect = await bcrypt.compare(
             req.body.password,

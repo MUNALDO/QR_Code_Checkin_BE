@@ -52,7 +52,6 @@ export const updateEmployee = async (req, res, next) => {
             }
         }
 
-        // Update employee with the new information
         const updatedEmployee = await EmployeeSchema.findOneAndUpdate(
             { id: employeeID },
             { $set: req.body },
@@ -93,25 +92,25 @@ export const updateEmployee = async (req, res, next) => {
         );
         await updatedEmployee.save();
 
-        const newLog = new LogSchema({
-            year: currentYear,
-            month: currentMonth,
-            date: currentTime,
-            type_update: "Update employee",
-            editor_name: editor.name,
-            editor_role: editor.role,
-            edited_name: employee.name,
-            edited_role: employee.role,
-            detail_update: req.body,
-            object_update: updatedEmployee
-        })
-        await newLog.save();
+        // const newLog = new LogSchema({
+        //     year: currentYear,
+        //     month: currentMonth,
+        //     date: currentTime,
+        //     type_update: "Update employee",
+        //     editor_name: editor.name,
+        //     editor_role: editor.role,
+        //     edited_name: employee.name,
+        //     edited_role: employee.role,
+        //     detail_update: req.body,
+        //     object_update: updatedEmployee
+        // })
+        // await newLog.save();
 
         res.status(OK).json({
             success: true,
             status: OK,
             message: updatedEmployee,
-            log: newLog
+            // log: newLog
         });
     } catch (err) {
         next(err);
@@ -136,7 +135,7 @@ export const madeEmployeeInactive = async (req, res, next) => {
         const minute = inactiveDate.getMinutes();
         const hour = inactiveDate.getHours();
         const day = inactiveDate.getDate();
-        const month = inactiveDate.getMonth(); // Month is 0-indexed in JavaScript
+        const month = inactiveDate.getMonth();
 
         // Schedule the status update
         cron.schedule(`${minute} ${hour} ${day} ${month + 1} *`, async () => {
@@ -264,7 +263,7 @@ export const searchSpecific = async (req, res, next) => {
         let employees = [];
 
         if (managementQueryCriteria) {
-            managements = await AdminSchema.find(managementQueryCriteria);
+            managements = await EmployeeSchema.find(managementQueryCriteria);
         }
         if (Object.keys(employeeQueryCriteria).length > 0) {
             employees = await EmployeeSchema.find(employeeQueryCriteria);
@@ -291,9 +290,9 @@ export const searchSpecific = async (req, res, next) => {
 };
 
 export const getAllEmployeesSchedules = async (req, res, next) => {
-    const targetYear = req.query.year ? parseInt(req.query.year) : null; // Year is optional
-    const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null; // Month is optional
-    const targetDate = req.query.date ? new Date(req.query.date) : null; // Specific date is optional
+    const targetYear = req.query.year ? parseInt(req.query.year) : null;
+    const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null;
+    const targetDate = req.query.date ? new Date(req.query.date) : null;
     const departmentFilter = req.query.department_name;
     try {
         const employees = await EmployeeSchema.find();
@@ -358,7 +357,6 @@ export const getAttendance = async (req, res, next) => {
         let date = null;
         let dateRange = {};
 
-        // Only parse date if year and month are provided
         if (year && month) {
             if (dateString) {
                 date = new Date(dateString);
@@ -398,7 +396,6 @@ export const getAttendance = async (req, res, next) => {
         // Execute the query
         const attendances = await AttendanceSchema.find(query).lean();
 
-        // Respond with the attendances
         return res.status(OK).json({
             success: true,
             status: OK,
@@ -686,7 +683,6 @@ export const getLogs = async (req, res, next) => {
             // console.log(departmentMembers);
         }
 
-        // Retrieve logs based on the constructed query
         let logs = await LogSchema.find(query);
 
         // Filter logs based on department members

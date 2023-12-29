@@ -83,11 +83,9 @@ export const getDepartmentSpecific = async (req, res, next) => {
 export const updateDepartment = async (req, res, next) => {
     const department_name = req.query.name;
     try {
-        // Find the department to update
         const department = await DepartmentSchema.findOne({ name: department_name });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"));
 
-        // Update the department details
         Object.assign(department, req.body);
         await department.save();
 
@@ -179,11 +177,9 @@ export const removeMemberDepartment = async (req, res, next) => {
     const department_name = req.params.name;
     const employeeID = req.body.employeeID;
     try {
-        // Find the department
         const department = await DepartmentSchema.findOne({ name: department_name });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"));
 
-        // Find the employee
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 

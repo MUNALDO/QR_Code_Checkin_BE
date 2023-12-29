@@ -18,7 +18,6 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
         const currentYear = currentTime.getFullYear();
         const currentMonth = currentTime.getMonth() + 1;
 
-        // Find the Inhaber in the Employee Schema
         const inhaber = await EmployeeSchema.findOne({ role: 'Inhaber', name: inhaber_name });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 

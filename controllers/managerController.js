@@ -9,7 +9,7 @@ export const searchSpecificForManager = async (req, res, next) => {
     const { role, details, status } = req.query;
     const managerName = req.query.manager_name;
     try {
-        const manager = await EmployeeSchema.findOne({ name: managerName, role: 'manager' });
+        const manager = await EmployeeSchema.findOne({ name: managerName, role: 'Manager' });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
 
         const regex = new RegExp(details, 'i');
@@ -108,7 +108,7 @@ export const createMultipleDateDesignsByManager = async (req, res, next) => {
     const shiftCode = req.body.shift_code;
     const dates = req.body.dates;
     try {
-        const manager = await EmployeeSchema.findOne({ name: manager_name, role: 'manager' });
+        const manager = await EmployeeSchema.findOne({ name: manager_name, role: 'Manager' });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
 
         const shift = await ShiftSchema.findOne({ code: shiftCode });
@@ -224,7 +224,7 @@ export const getDateDesignForManager = async (req, res, next) => {
     const specificEmployeeID = req.query.employeeID;
 
     try {
-        const manager = await EmployeeSchema.findOne({ name: managerName, role: 'manager' });
+        const manager = await EmployeeSchema.findOne({ name: managerName, role: 'Manager' });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
 
         const departmentNames = manager.department.map(dep => dep.name);
@@ -341,7 +341,7 @@ export const getAttendanceForManager = async (req, res, next) => {
             });
         }
 
-        const manager = await EmployeeSchema.findOne({ name: manager_name, role: 'manager' });
+        const manager = await EmployeeSchema.findOne({ name: manager_name, role: 'Manager' });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
 
         let dateRange = {};

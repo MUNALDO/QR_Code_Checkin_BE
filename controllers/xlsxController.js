@@ -316,17 +316,27 @@ export const exportEmployeeSalaryDataToExcel = async (req, res, next) => {
 export const exportAttendanceForInhaberToExcel = async (req, res, next) => {
     const { year, month, inhaber_name } = req.query;
     try {
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        const inhaber = await EmployeeSchema.findOne({
+            name: inhaber_name,
+            role: "Inhaber"
+        });
         if (!inhaber) {
             return res.status(NOT_FOUND).json({ error: "Inhaber not found" });
         }
+
+        // Fetch employees who are in the Inhaber's department
+        const departmentNames = inhaber.department.map(dep => dep.name);
+        // const employees = await EmployeeSchema.find({ 'department.name': { $in: departmentNames } });
+        // if (!employees || employees.length === 0) {
+        //     return res.status(NOT_FOUND).json({ error: "No employee data found in Inhaber's department" });
+        // }
 
         const query = {
             date: {
                 $gte: new Date(year, month ? month - 1 : 0, 1, 0, 0, 0, 0),
                 $lt: new Date(year, month ? month : 12, 1, 0, 0, 0, 0),
             },
-            department_name: inhaber.department_name
+            'department.name': { $in: departmentNames }
         };
 
         const attendanceList = await AttendanceSchema.find(query);
@@ -416,14 +426,17 @@ export const exportAttendanceForInhaberToExcel = async (req, res, next) => {
 export const exportEmployeeDataForInhaberToExcel = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
     try {
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        const inhaber = await EmployeeSchema.findOne({
+            name: inhaber_name,
+            role: "Inhaber"
+        });
         if (!inhaber) {
             return res.status(NOT_FOUND).json({ error: "Inhaber not found" });
         }
 
         // Fetch employees who are in the Inhaber's department
-        const employees = await EmployeeSchema.find({ 'department.name': inhaber.department_name });
-
+        const departmentNames = inhaber.department.map(dep => dep.name);
+        const employees = await EmployeeSchema.find({ 'department.name': { $in: departmentNames } });
         if (!employees || employees.length === 0) {
             return res.status(NOT_FOUND).json({ error: "No employee data found in Inhaber's department" });
         }
@@ -502,13 +515,20 @@ export const exportEmployeeDataForInhaberToExcel = async (req, res, next) => {
 export const exportEmployeeSalaryDataForInhaberToExcel = async (req, res, next) => {
     const { year, month, inhaber_name } = req.query;
     try {
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
+        const inhaber = await EmployeeSchema.findOne({
+            name: inhaber_name,
+            role: "Inhaber"
+        });
         if (!inhaber) {
             return res.status(NOT_FOUND).json({ error: "Inhaber not found" });
         }
 
         // Fetch employees who are in the Inhaber's department
-        const employees = await EmployeeSchema.find({ 'department.name': inhaber.department_name });
+        const departmentNames = inhaber.department.map(dep => dep.name);
+        const employees = await EmployeeSchema.find({ 'department.name': { $in: departmentNames } });
+        if (!employees || employees.length === 0) {
+            return res.status(NOT_FOUND).json({ error: "No employee data found in Inhaber's department" });
+        }
 
         if (!employees || employees.length === 0) {
             return res.status(NOT_FOUND).json({ error: "No salary data found for Inhaber's department" });

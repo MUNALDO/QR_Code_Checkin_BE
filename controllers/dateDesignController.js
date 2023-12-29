@@ -10,7 +10,6 @@ export const createMultipleDateDesigns = async (req, res, next) => {
     const employeeID = req.query.employeeID;
     const departmentName = req.query.department_name;
     const dates = req.body.dates; 
-
     try {
         const department = await DepartmentSchema.findOne({ name: departmentName });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"));

@@ -1,5 +1,5 @@
 import { s3Client } from "../awsConfig.js";
-import { BAD_REQUEST, CONFLICT, CREATED, NOT_FOUND, OK, SYSTEM_ERROR } from "../constant/HttpStatus.js";
+import { BAD_REQUEST, CONFLICT, CREATED, FORBIDDEN, NOT_FOUND, OK, SYSTEM_ERROR } from "../constant/HttpStatus.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import CarSchema from "../models/CarSchema.js";
 import DayOffSchema from "../models/DayOffSchema.js";
@@ -599,7 +599,7 @@ export const updateAttendance = async (req, res, next) => {
                     });
                 }
             } else if (existingAttendance.position === "Lito") {
-                if (existingAttendance.shift_info.time_slot.check_in === true && existingAttendance.shift_info.time_slot.check_out !== true) {
+                if (existingAttendance.shift_info.time_slot.check_in === true && existingAttendance.shift_info.time_slot.check_out === true) {
                     const file = req.file;
                     if (!file) {
                         return res.status(BAD_REQUEST).send('No file uploaded for checkout.');
@@ -629,15 +629,23 @@ export const updateAttendance = async (req, res, next) => {
                     });
                 }
             } else if (existingAttendance.position === "Service") {
-                existingAttendance.revenue = req.body.revenue;
-                existingAttendance.tips = req.body.tips;
-                existingAttendance.others = req.body.others;
-                await existingAttendance.save();
-                return res.status(OK).json({
-                    success: true,
-                    status: OK,
-                    message: existingAttendance,
-                });
+                if (existingAttendance.shift_info.time_slot.check_in === true && existingAttendance.shift_info.time_slot.check_out === true) {
+                    existingAttendance.revenue = req.body.revenue;
+                    existingAttendance.tips = req.body.tips;
+                    existingAttendance.others = req.body.others;
+                    await existingAttendance.save();
+                    return res.status(OK).json({
+                        success: true,
+                        status: OK,
+                        message: existingAttendance,
+                    });
+                } else {
+                    return res.status(BAD_REQUEST).json({
+                        success: false,
+                        status: BAD_REQUEST,
+                        message: "Not allow!",
+                    });
+                }
             } else {
                 return res.status(BAD_REQUEST).json({
                     success: false,

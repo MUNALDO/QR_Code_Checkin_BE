@@ -621,7 +621,8 @@ export const updateAttendance = async (req, res, next) => {
                         });
                     } catch (err) {
                         console.error(err);
-                        res.status(SYSTEM_ERROR).json({ success: false, message: 'Error uploading file.' });                    }
+                        res.status(SYSTEM_ERROR).json({ success: false, message: 'Error uploading file.' });
+                    }
                 } else {
                     return res.status(BAD_REQUEST).json({
                         success: false,
@@ -892,5 +893,32 @@ export const createRequest = async (req, res, next) => {
         }
     } catch (err) {
         next(err);
+    }
+}
+
+export const getAllRequestsForEmployee = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+    try {
+        const requests = await RequestSchema.find({ employee_id: employeeID });
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: requests,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getAllCarsCompany = async (req, res, next) => {
+    try {
+        const companyCars = await CarSchema.find();
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: companyCars,
+        });
+    } catch (error) {
+        next(error)
     }
 }

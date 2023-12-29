@@ -62,7 +62,6 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Schedule the autoCheck function to run every 15 minutes
 cron.schedule('*/15 * * * *', () => {
     console.log('Running autoCheck every 15 minutes');
     autoCheck();

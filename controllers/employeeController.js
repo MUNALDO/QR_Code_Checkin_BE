@@ -23,7 +23,7 @@ export const verifyWifi = async (req, res, next) => {
 
         const department = await DepartmentSchema.findOne({ name: department_name });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"));
-        if (!department.members.includes(employee)) return next(createError(CONFLICT, "Employee not exists in the department!"));
+        // if (!department.members.includes(employee)) return next(createError(CONFLICT, "Employee not exists in the department!"));
 
         const currentConnections = await wifi.getCurrentConnections();
         // console.log(currentConnections);

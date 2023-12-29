@@ -1,5 +1,5 @@
 import { s3Client } from "../awsConfig.js";
-import { BAD_REQUEST, CREATED, NOT_FOUND, OK, SYSTEM_ERROR } from "../constant/HttpStatus.js";
+import { BAD_REQUEST, CONFLICT, CREATED, NOT_FOUND, OK, SYSTEM_ERROR } from "../constant/HttpStatus.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import CarSchema from "../models/CarSchema.js";
 import DayOffSchema from "../models/DayOffSchema.js";

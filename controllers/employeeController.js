@@ -25,7 +25,6 @@ export const verifyWifi = async (req, res, next) => {
         if (!department) return next(createError(NOT_FOUND, "Department not found!"));
         if (!department.members.includes(employee)) return next(createError(CONFLICT, "Employee not exists in the department!"));
 
-        // Scan for available networks and get the currently connected SSID
         const currentConnections = await wifi.getCurrentConnections();
         // console.log(currentConnections);
 

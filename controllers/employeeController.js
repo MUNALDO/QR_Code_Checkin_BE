@@ -1,3 +1,4 @@
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "../awsConfig.js";
 import { BAD_REQUEST, CONFLICT, CREATED, FORBIDDEN, NOT_FOUND, OK, SYSTEM_ERROR } from "../constant/HttpStatus.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
@@ -619,8 +620,8 @@ export const updateAttendance = async (req, res, next) => {
                             imageUrl: imageUrl
                         });
                     } catch (err) {
-                        return res.status(SYSTEM_ERROR).send('Error uploading file.');
-                    }
+                        console.error(err);
+                        res.status(SYSTEM_ERROR).json({ success: false, message: 'Error uploading file.' });                    }
                 } else {
                     return res.status(BAD_REQUEST).json({
                         success: false,

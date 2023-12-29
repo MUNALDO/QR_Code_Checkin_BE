@@ -67,10 +67,11 @@ cron.schedule('*/15 * * * *', () => {
     autoCheck();
 });
 
+const PORT = process.env.PORT || 8800;
 async function startApp() {
     await connect();
-    app.listen(8800, () => {
-        console.log('Server is running on port 8800');
+    app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
     });
 }
 

@@ -212,7 +212,7 @@ export const registerManagerByAdmin = async (req, res, next) => {
             return res.status(BAD_REQUEST).json({
                 success: false,
                 status: BAD_REQUEST,
-                message: "Inhaber is already exists.",
+                message: "Manager is already exists.",
             });
         }
 
@@ -225,7 +225,7 @@ export const registerManagerByAdmin = async (req, res, next) => {
         if (!department) return next(createError(NOT_FOUND, "Department not found!"));
 
         if (department.members.some(member => member.name === req.body.name)) {
-            return next(createError(CONFLICT, `Inhaber already exists in department ${department.name}!`));
+            return next(createError(CONFLICT, `Manager already exists in department ${department.name}!`));
         }
 
         department.members.push({
@@ -306,7 +306,7 @@ export const registerManagerByInhaber = async (req, res, next) => {
             return res.status(BAD_REQUEST).json({
                 success: false,
                 status: BAD_REQUEST,
-                message: "Inhaber is already exists.",
+                message: "Manager is already exists.",
             });
         }
 

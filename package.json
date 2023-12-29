@@ -1,14 +1,17 @@
 {
-  "name": "be",
+  "name": "be-qr",
   "version": "1.0.0",
-  "description": "",
+  "description": "backend qrapp",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "start": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": [
+    "backend",
+    "qrapp"
+  ],
   "author": "ThaiNX",
   "license": "ISC",
   "dependencies": {
@@ -33,5 +36,8 @@
     "useragent": "^2.3.0",
     "wifi-control": "^2.0.1",
     "wifi-name": "^3.1.1"
+  },
+  "engines": {
+    "node": "18.10.0"
   }
 }

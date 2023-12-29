@@ -39,6 +39,7 @@ export const salaryCalculate = async (req, res, next) => {
     let b = req.body.b_new;
     let c = req.body.c_new;
     let d = req.body.d_new ?? 0.25;
+    let f = req.body.f_new;
 
     if (!a) {
         if (existSalary) {
@@ -76,6 +77,18 @@ export const salaryCalculate = async (req, res, next) => {
         }
     }
 
+    if (!f) {
+        if (existSalary) {
+            f = existSalary.f_parameter;
+        } else {
+            return res.status(BAD_REQUEST).json({
+                success: false,
+                status: BAD_REQUEST,
+                message: "You need to provided f parameter",
+            });
+        }
+    }
+
     // Define the date range for the whole month
     const dateRange = {
         $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
@@ -105,7 +118,8 @@ export const salaryCalculate = async (req, res, next) => {
         a_parameter: a,
         b_parameter: b,
         c_parameter: c,
-        d_parameter: d
+        d_parameter: d,
+        f_parameter: f
     };
 
     employeeAttendance.forEach(attendance => {
@@ -138,8 +152,10 @@ export const salaryCalculate = async (req, res, next) => {
     const days_off = employee.default_day_off - employee.realistic_day_off;
     const salary_day_off = [(b * 3) / 65] * days_off;
 
-    // Calculate total salary
-    salaryRecord.total_salary = salaryRecord.total_times * a - b - c + salary_day_off - employee.house_rent_money + salaryRecord.total_km * d;
+    if (salaryRecord.total_times > employee.total_time_per_month) {
+        salaryRecord.total_salary = (a / employee.total_time_per_month) * employee.total_time_per_month + (salaryRecord.total_times - employee.total_time_per_month) * f - b - c + salary_day_off - employee.house_rent_money + salaryRecord.total_km * d;
+    }
+    salaryRecord.total_salary = (a / employee.total_time_per_month) * salaryRecord.total_times - b - c + salary_day_off - employee.house_rent_money + salaryRecord.total_km * d;
 
     await employee.save();
     // Save or update the salary record
@@ -184,7 +200,7 @@ export const getSalary = async (req, res, next) => {
         // If department_name is provided, find all employees in that department
         let employeeIdsInDepartment = [];
         if (department_name) {
-            const employees = await EmployeeSchema.find({'department.name': department_name}).select('id');
+            const employees = await EmployeeSchema.find({ 'department.name': department_name }).select('id');
             employeeIdsInDepartment = employees.map(emp => emp.id);
         }
 

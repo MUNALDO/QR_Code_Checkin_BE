@@ -3,10 +3,64 @@ import { BAD_REQUEST, CREATED, NOT_FOUND, OK, SYSTEM_ERROR } from "../constant/H
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import CarSchema from "../models/CarSchema.js";
 import DayOffSchema from "../models/DayOffSchema.js";
+import DepartmentSchema from "../models/DepartmentSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import RequestSchema from "../models/RequestSchema.js";
 import StatsSchema from "../models/StatsSchema.js";
 import { createError } from "../utils/error.js";
+import wifi from 'node-wifi';
+
+wifi.init({
+    iface: null,
+});
+
+export const verifyWifi = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+    const department_name = req.query.department_name;
+    try {
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found"))
+
+        const department = await DepartmentSchema.findOne({ name: department_name });
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+        if (!department.members.includes(employee)) return next(createError(CONFLICT, "Employee not exists in the department!"));
+
+        // Scan for available networks and get the currently connected SSID
+        const currentConnections = await wifi.getCurrentConnections();
+        // console.log(currentConnections);
+
+        if (currentConnections.length > 0) {
+            const connectedSSID = currentConnections[0].ssid;
+            const allowedSSID = department.wifi_name;
+
+            if (connectedSSID === allowedSSID) {
+                // console.log(`Device connected to Wi-Fi with SSID: ${allowedSSID}`);
+                res.status(OK).json({
+                    success: true,
+                    status: OK,
+                    message: `Device connected to Wi-Fi with SSID: ${allowedSSID}`
+                });
+            } else {
+                // console.log(`Device is not connected to the allowed Wi-Fi SSID.`);
+                res.status(FORBIDDEN).json({
+                    success: false,
+                    status: FORBIDDEN,
+                    message: `Device is not connected to the allowed Wi-Fi SSID.`
+                });
+            }
+        } else {
+            // console.log(`Device is not connected to any Wi-Fi network.`);
+            res.status(FORBIDDEN).json({
+                success: false,
+                status: FORBIDDEN,
+                message: `Device is not connected to any Wi-Fi network.`
+            });
+        }
+    } catch (err) {
+        console.error('Error checking Wi-Fi SSID:', err);
+        next(err);
+    }
+}
 
 export const autoCheck = async (req, res, next) => {
     try {
@@ -505,7 +559,7 @@ export const updateAttendance = async (req, res, next) => {
                     existingAttendance.car_info.car_type = req.body.car_type;
                     if (existingAttendance.car_info.car_type === "company") {
                         existingAttendance.car_info.car_name === req.body.car_name;
-                        const carCompany = await CarSchema.findOne({car_name: req.body.car_name});
+                        const carCompany = await CarSchema.findOne({ car_name: req.body.car_name });
                         // console.log(carCompany);
                         existingAttendance.car_info.car_number = carCompany.car_number;
                         existingAttendance.car_info.register_date = carCompany.register_date;

@@ -75,6 +75,10 @@ const salarySchema = new mongoose.Schema(
             type: Number,
             default: 0.25
         },
+        f_parameter: {
+            type: Number,
+            default: 0
+        },
     },
     { timestamps: true }
 );

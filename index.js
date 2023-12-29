@@ -12,17 +12,12 @@ import authRoute from "./routes/auth.js";
 import inhaberRoute from "./routes/inhaber.js";
 import managerRoute from "./routes/manager.js"
 import { autoCheck } from './controllers/employeeController.js';
+import cron from 'node-cron';
 
 const app = express();
 dotenv.config();
 mongoose.set('strictQuery', false);
 process.env.TZ = 'Asia/Ho_Chi_Minh';
-
-async function autoChecking() {
-    await connect();
-    console.log("Processing...");
-    autoCheck();
-}
 
 const connect = async () => {
     try {
@@ -67,8 +62,13 @@ app.use((err, req, res, next) => {
     });
 });
 
+// Schedule the autoCheck function to run every 15 minutes
+cron.schedule('*/15 * * * *', () => {
+    console.log('Running autoCheck every 15 minutes');
+    autoCheck();
+});
+
 async function startApp() {
-    await autoChecking();
     await connect();
     app.listen(8800, () => {
         console.log('Server is running on port 8800');

@@ -187,33 +187,29 @@ export const getSalary = async (req, res, next) => {
         const { year, month, employeeID, department_name } = req.query;
 
         let query = {};
-        if (year) {
-            query.year = parseInt(year);
-        }
 
-        if (month) {
-            query.month = parseInt(month);
-        }
+        // Include time query only if provided
+        if (year) query.year = parseInt(year);
+        if (month) query.month = parseInt(month);
 
-        // Get employee IDs for the provided department_name
         let employeeIds = [];
         if (department_name) {
-            const employeesInDepartment = await EmployeeSchema.find({
-                'department.name': department_name
-            }).select('id');
+            const employeesInDepartment = await EmployeeSchema.find({ 'department.name': department_name }).select('id');
             employeeIds = employeesInDepartment.map(employee => employee.id);
-        }
-
-        // Construct the salary query
-        if (employeeID) {
-            // Ensure the employeeID is within the filtered department employees
-            query.employee_id = employeeIds.includes(employeeID) ? employeeID : null;
-        } else {
-            // If employeeID is not provided, filter by all employees in the department
             query.employee_id = { $in: employeeIds };
         }
 
-        // If employeeID was provided but not valid for the department, return not found
+        // Override employee_id in query if employeeID is provided
+        if (employeeID) {
+            if (department_name) {
+                // Check if employeeID is within the department
+                query.employee_id = employeeIds.includes(employeeID) ? employeeID : null;
+            } else {
+                // If department is not specified, search by employeeID directly
+                query.employee_id = employeeID;
+            }
+        }
+
         if (query.employee_id === null) {
             return res.status(NOT_FOUND).json({
                 success: false,
@@ -222,10 +218,7 @@ export const getSalary = async (req, res, next) => {
             });
         }
 
-        // Fetch the salaries with the constructed query
         const salaries = await SalarySchema.find(query);
-        console.log(query);
-
         if (salaries.length === 0) {
             return res.status(NOT_FOUND).json({
                 success: false,
@@ -243,3 +236,4 @@ export const getSalary = async (req, res, next) => {
         next(err);
     }
 };
+

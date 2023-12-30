@@ -377,12 +377,10 @@ export const createMultipleDateDesignsByInhaber = async (req, res, next) => {
     const inhaberName = req.query.inhaber_name;
     const dates = req.body.dates;
     const errorDates = [];
-
     const convertToMinutes = (timeString) => {
         const [hours, minutes] = timeString.split(':').map(Number);
         return hours * 60 + minutes;
     };
-
     try {
         const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
@@ -680,48 +678,49 @@ export const getAttendanceForInhaber = async (req, res, next) => {
 
 export const getSalaryForInhaber = async (req, res, next) => {
     try {
-        const { year, month, employeeID } = req.query;
-        const inhaber_name = req.query.inhaber_name;
+        const { year, month, employeeID, department_name } = req.query;
+        const inhaberName = req.query.inhaber_name;
+
+        // Fetch Inhaber details
+        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
+        if (!inhaber) {
+            return res.status(NOT_FOUND).json({ error: "Inhaber not found" });
+        }
 
         let query = {};
         if (year) query.year = parseInt(year);
         if (month) query.month = parseInt(month);
 
-        // Find the Inhaber and their departments
-        const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
-        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+        // Check if department_name is one of Inhaber's departments
+        let isInhaberDepartment = department_name ? inhaber.department.some(dep => dep.name === department_name) : false;
 
-        // Get all employee IDs from Inhaber's departments
-        const employeesInDepartments = await EmployeeSchema.find({
-            'department.name': { $in: inhaber.department.map(dep => dep.name) }
-        }).select('id');
-        const employeeIds = employeesInDepartments.map(emp => emp.id);
+        let employeeIds = [];
+        if (department_name && isInhaberDepartment) {
+            const employeesInDepartment = await EmployeeSchema.find({ 'department.name': department_name }).select('id');
+            employeeIds = employeesInDepartment.map(employee => employee.id);
+        } else if (!department_name) {
+            // If no department_name is provided, get all employees in Inhaber's departments
+            const employeesInInhaberDepartment = await EmployeeSchema.find({ 'department.name': { $in: inhaber.department.map(dep => dep.name) } }).select('id');
+            employeeIds = employeesInInhaberDepartment.map(employee => employee.id);
+        }
 
-        // Construct the query for SalarySchema
         if (employeeID) {
-            // Check if provided employeeID is in the list of Inhaber's department employee IDs
-            if (!employeeIds.includes(employeeID)) {
-                return res.status(NOT_FOUND).json({
-                    success: false,
-                    status: NOT_FOUND,
-                    message: "Employee not found in Inhaber's departments."
-                });
+            // Check if employeeID is in one of the Inhaber's departments
+            const isEmployeeInInhaberDepartment = employeeIds.includes(employeeID);
+            if (!isEmployeeInInhaberDepartment) {
+                return res.status(NOT_FOUND).json({ error: "Employee not found in Inhaber's departments" });
             }
             query.employee_id = employeeID;
         } else {
-            // If no specific employeeID provided, use all employee IDs from Inhaber's departments
             query.employee_id = { $in: employeeIds };
         }
 
-        // Fetch salaries using the constructed query
         const salaries = await SalarySchema.find(query);
-        // console.log(query);
-
         if (salaries.length === 0) {
             return res.status(NOT_FOUND).json({
                 success: false,
                 status: NOT_FOUND,
-                message: "No salary records found for the specified criteria."
+                message: "No salary records found for the provided criteria."
             });
         }
 

@@ -1,7 +1,7 @@
 import express from 'express';
 import {
     createMultipleDateDesignsByInhaber, deleteDateSpecificByInhaber, deleteEmployeeByIdByInhaber,
-    getAllRequestsForInhaber, getAttendanceForInhaber, getDateDesignForInhaber, getEmployeesSchedulesByInhaber,
+    getAllRequestsForInhaber, getAttendanceForInhaber, getDateDesignForInhaber, getEmployeeByIdForInhaber, getEmployeesSchedulesByInhaber,
     getRequestByIdForInhaber, getSalaryForInhaber, getStatsForInhaber, handleRequestForInhaber,
     madeEmployeeInactiveByInhaber, searchSpecificForInhaber, updateAttendanceForInhaber, updateEmployeeByInhaber
 } from '../controllers/inhaberController.js';
@@ -21,6 +21,7 @@ const router = express.Router();
 // manage employee
 router.put("/manage-employee/update", verifyTokenInhaber, updateEmployeeByInhaber);
 router.put('/manage-employee/make-inactive', verifyTokenInhaber, madeEmployeeInactiveByInhaber);
+router.get("/manage-employee/get-byId", verifyTokenInhaber, getEmployeeByIdForInhaber);
 router.delete("/manage-employee/delete-byId", verifyTokenInhaber, deleteEmployeeByIdByInhaber);
 router.get("/manage-employee/search-specific", verifyTokenInhaber, searchSpecificForInhaber);
 router.get("/manage-employee/get-all-schedules", verifyTokenInhaber, getEmployeesSchedulesByInhaber);
@@ -43,7 +44,7 @@ router.put('/manage-attendance/update/:_id', verifyTokenInhaber, updateAttendanc
 
 // manage salary
 router.post('/manage-salary/calculate/:employeeID', verifyTokenInhaber, salaryCalculate);
-router.get('/manage-salary/get-single', verifyTokenInhaber, getSalaryForInhaber);
+router.get('/manage-salary/get', verifyTokenInhaber, getSalaryForInhaber);
 
 // manage request
 router.get('/manage-request/get-all', verifyTokenInhaber, getAllRequestsForInhaber);

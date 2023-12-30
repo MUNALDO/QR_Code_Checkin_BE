@@ -187,43 +187,45 @@ export const getSalary = async (req, res, next) => {
         const { year, month, employeeID, department_name } = req.query;
 
         let query = {};
+        if (year) query.year = parseInt(year);
+        if (month) query.month = parseInt(month);
 
-        // Adding year and month to the query if they are provided
-        if (year) {
-            query.year = parseInt(year);
-        }
-
-        if (month) {
-            query.month = parseInt(month);
-        }
-
-        // If department_name is provided, find all employees in that department
-        let employeeIdsInDepartment = [];
+        // Get employee IDs for the provided department_name
+        let employeeIds = [];
         if (department_name) {
-            const employees = await EmployeeSchema.find({ 'department.name': department_name }).select('id');
-            employeeIdsInDepartment = employees.map(emp => emp.id);
+            const employeesInDepartment = await EmployeeSchema.find({
+                'department.name': department_name
+            }).select('id');
+            employeeIds = employeesInDepartment.map(employee => employee.id);
         }
 
-        // If employeeID is provided, add it to the query
+        // Construct the salary query
         if (employeeID) {
-            // Combine with department filter if both are provided
-            if (employeeIdsInDepartment.length > 0) {
-                query.employee_id = { $in: employeeIdsInDepartment, $eq: employeeID };
-            } else {
-                query.employee_id = employeeID;
-            }
-        } else if (employeeIdsInDepartment.length > 0) {
-            // Only department filter is provided
-            query.employee_id = { $in: employeeIdsInDepartment };
+            // Ensure the employeeID is within the filtered department employees
+            query.employee_id = employeeIds.includes(employeeID) ? employeeID : null;
+        } else {
+            // If employeeID is not provided, filter by all employees in the department
+            query.employee_id = { $in: employeeIds };
         }
 
-        const salaries = await SalarySchema.find(query);
+        // If employeeID was provided but not valid for the department, return not found
+        if (query.employee_id === null) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: "Employee not found in the provided department."
+            });
+        }
 
+        // Fetch the salaries with the constructed query
+        const salaries = await SalarySchema.find(query);
+        // console.log(query);
+        
         if (salaries.length === 0) {
             return res.status(NOT_FOUND).json({
                 success: false,
                 status: NOT_FOUND,
-                message: "No salary records found."
+                message: "No salary records found for the provided criteria."
             });
         }
 

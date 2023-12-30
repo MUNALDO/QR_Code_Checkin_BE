@@ -48,11 +48,13 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
                 year: currentYear,
                 month: currentMonth
             });
-            const spendSchedulesTime = stats.default_schedule_times - stats.realistic_schedule_times;
-            stats.default_schedule_times = req.body.total_time_per_month;
-            stats.realistic_schedule_times = req.body.total_time_per_month - spendSchedulesTime;
-            stats.attendance_overtime = stats.attendance_total_times - req.body.total_time_per_month;
-            await stats.save();
+            if (stats) {
+                const spendSchedulesTime = stats.default_schedule_times - stats.realistic_schedule_times;
+                stats.default_schedule_times = req.body.total_time_per_month;
+                stats.realistic_schedule_times = req.body.total_time_per_month - spendSchedulesTime;
+                stats.attendance_overtime = stats.attendance_total_times - req.body.total_time_per_month;
+                await stats.save();
+            }
         }
 
         const updatedEmployee = await EmployeeSchema.findOneAndUpdate(
@@ -99,25 +101,10 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
             }
         );
 
-        const newLog = new LogSchema({
-            year: currentYear,
-            month: currentMonth,
-            date: currentTime,
-            type_update: "Update employee",
-            editor_name: inhaber.name,
-            editor_role: inhaber.role,
-            edited_name: employee.name,
-            edited_role: employee.role,
-            detail_update: req.body,
-            object_update: updatedEmployee
-        })
-        await newLog.save();
-
         res.status(OK).json({
             success: true,
             status: OK,
             message: updatedEmployee,
-            log: newLog
         });
     } catch (err) {
         next(err);
@@ -279,7 +266,7 @@ export const searchSpecificForInhaber = async (req, res, next) => {
             ...(details && { '$or': [{ 'id': regex }, { 'name': regex }] })
         };
 
-        const employees = await EmployeeSchema.find(employeeQueryCriteria);
+        let employees = await EmployeeSchema.find(employeeQueryCriteria);
 
         if (employees.length === 0) {
             return res.status(NOT_FOUND).json({
@@ -288,6 +275,18 @@ export const searchSpecificForInhaber = async (req, res, next) => {
                 message: "No matching records found in your departments.",
             });
         }
+
+        // Filter out non-matching departments from each employee
+        employees = employees.map(employee => {
+            const filteredDepartments = employee.department.filter(dep =>
+                inhaber.department.some(inhaberDep => inhaberDep.name === dep.name)
+            );
+
+            return {
+                ...employee.toObject(),
+                department: filteredDepartments
+            };
+        });
 
         res.status(OK).json({
             success: true,

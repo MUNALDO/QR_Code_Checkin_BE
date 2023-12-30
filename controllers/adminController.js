@@ -92,25 +92,10 @@ export const updateEmployee = async (req, res, next) => {
         );
         await updatedEmployee.save();
 
-        // const newLog = new LogSchema({
-        //     year: currentYear,
-        //     month: currentMonth,
-        //     date: currentTime,
-        //     type_update: "Update employee",
-        //     editor_name: editor.name,
-        //     editor_role: editor.role,
-        //     edited_name: employee.name,
-        //     edited_role: employee.role,
-        //     detail_update: req.body,
-        //     object_update: updatedEmployee
-        // })
-        // await newLog.save();
-
         res.status(OK).json({
             success: true,
             status: OK,
             message: updatedEmployee,
-            // log: newLog
         });
     } catch (err) {
         next(err);

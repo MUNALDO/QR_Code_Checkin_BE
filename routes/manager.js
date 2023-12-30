@@ -2,8 +2,8 @@ import express from 'express';
 import { verifyTokenManager } from '../utils/verifyToken.js';
 import {
     createMultipleDateDesignsByManager, deleteDateSpecificByManager,
-    getAttendanceForManager, getDateDesignForManager, getEmployeeByIdForManager, getEmployeesSchedulesByManager, 
-    searchSpecificForManager
+    getAttendanceForManager, getDateDesignForManager, getEmployeeByIdForManager,
+    getEmployeesSchedulesByManager, searchSpecificForManager
 } from '../controllers/managerController.js';
 import { createShift, getAllShifts, getShiftByCode, getShiftByName, updateShift } from '../controllers/shiftController.js';
 

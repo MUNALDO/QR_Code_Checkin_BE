@@ -280,10 +280,10 @@ export const exportEmployeeSalaryDataToExcel = async (req, res, next) => {
         worksheet.columns = columns;
 
         salaries.forEach(salaryData => {
-            const normalHoursDetails = Array.isArray(salaryData.hour_normal) 
+            const normalHoursDetails = Array.isArray(salaryData.hour_normal)
                 ? salaryData.hour_normal.map(h => `${h.department_name}: ${h.total_hour}h ${h.total_minutes}m`).join('; ')
                 : '';
-            const overtimeHoursDetails = Array.isArray(salaryData.hour_overtime) 
+            const overtimeHoursDetails = Array.isArray(salaryData.hour_overtime)
                 ? salaryData.hour_overtime.map(h => `${h.department_name}: ${h.total_hour}h ${h.total_minutes}m`).join('; ')
                 : '';
 
@@ -531,19 +531,31 @@ export const exportEmployeeDataForInhaberToExcel = async (req, res, next) => {
 export const exportEmployeeSalaryDataForInhaberToExcel = async (req, res, next) => {
     const { year, month, inhaberName } = req.query;
     try {
-        // Fetch the Inhaber's departments
+        // Fetch Inhaber's data
         const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
         if (!inhaber) {
             return res.status(NOT_FOUND).json({ error: "Inhaber not found" });
         }
-        const inhaberDepartments = inhaber.department.map(dep => dep.name);
 
-        // Fetch employees in the Inhaber's departments
-        const employees = await EmployeeSchema.find({
-            'department.name': { $in: inhaberDepartments }
+        // Get departments under Inhaber's management
+        const managedDepartments = inhaber.department.map(dep => dep.name);
+
+        // Find all employees in the Inhaber's departments
+        const employeesInManagedDepartments = await EmployeeSchema.find({
+            'department.name': { $in: managedDepartments }
+        }).select('id');
+
+        // Extract employee IDs
+        const employeeIds = employeesInManagedDepartments.map(emp => emp.id);
+
+        // Fetch salary data for these employees
+        const salaries = await SalarySchema.find({
+            year: parseInt(year),
+            month: parseInt(month),
+            employee_id: { $in: employeeIds }
         });
 
-        if (!employees || employees.length === 0) {
+        if (!salaries || salaries.length === 0) {
             return res.status(NOT_FOUND).json({ error: "No salary data found for the specified month and year in Inhaber's departments" });
         }
 
@@ -554,8 +566,8 @@ export const exportEmployeeSalaryDataForInhaberToExcel = async (req, res, next) 
         const worksheet = workbook.addWorksheet('Employee Salary Data');
 
         const columns = [
-            { header: 'ID', key: 'id', width: 20 },
-            { header: 'Name', key: 'name', width: 20 },
+            { header: 'ID', key: 'employee_id', width: 20 },
+            { header: 'Name', key: 'employee_name', width: 20 },
             { header: 'Date Calculate', key: 'date_calculate', width: 15 },
             { header: 'Total Salary', key: 'total_salary', width: 15 },
             { header: 'Normal Hours', key: 'hour_normal', width: 25 },
@@ -565,23 +577,23 @@ export const exportEmployeeSalaryDataForInhaberToExcel = async (req, res, next) 
             { header: 'b Parameter', key: 'b_parameter', width: 15 },
             { header: 'c Parameter', key: 'c_parameter', width: 15 },
             { header: 'd Parameter', key: 'd_parameter', width: 15 },
+            { header: 'f Parameter', key: 'f_parameter', width: 15 },
         ];
         worksheet.columns = columns;
 
-        employees.forEach(employee => {
-            const salaryData = employee.salary.find(s => s.year === parseInt(year) && s.month === parseInt(month));
-
-            let normalHoursDetails, overtimeHoursDetails;
-            if (salaryData) {
-                normalHoursDetails = salaryData.hour_normal.map(h => `${h.department_name}: ${h.total_hour}h ${h.total_minutes}m`).join('; ');
-                overtimeHoursDetails = salaryData.hour_overtime.map(h => `${h.department_name}: ${h.total_hour}h ${h.total_minutes}m`).join('; ');
-            }
+        salaries.forEach(salaryData => {
+            const normalHoursDetails = Array.isArray(salaryData.hour_normal)
+                ? salaryData.hour_normal.map(h => `${h.department_name}: ${h.total_hour}h ${h.total_minutes}m`).join('; ')
+                : '';
+            const overtimeHoursDetails = Array.isArray(salaryData.hour_overtime)
+                ? salaryData.hour_overtime.map(h => `${h.department_name}: ${h.total_hour}h ${h.total_minutes}m`).join('; ')
+                : '';
 
             worksheet.addRow({
-                id: employee.id || '',
-                name: employee.name || '',
-                date_calculate: salaryData ? salaryData.date_calculate : '',
-                total_salary: salaryData ? salaryData.total_salary : '',
+                employee_id: salaryData.employee_id || '',
+                employee_name: salaryData.employee_name || '',
+                date_calculate: salaryData.date_calculate || '',
+                total_salary: salaryData.total_salary || '',
                 hour_normal: normalHoursDetails || '',
                 hour_overtime: overtimeHoursDetails || '',
                 total_km: salaryData ? salaryData.total_km : '',
@@ -589,6 +601,7 @@ export const exportEmployeeSalaryDataForInhaberToExcel = async (req, res, next) 
                 b_parameter: salaryData ? salaryData.b_parameter : '',
                 c_parameter: salaryData ? salaryData.c_parameter : '',
                 d_parameter: salaryData ? salaryData.d_parameter : '',
+                f_parameter: salaryData ? salaryData.f_parameter : '',
             });
         });
 

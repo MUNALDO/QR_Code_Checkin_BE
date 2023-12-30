@@ -9,7 +9,12 @@ export const createMultipleDateDesigns = async (req, res, next) => {
     const shiftCode = req.body.shift_code;
     const employeeID = req.query.employeeID;
     const departmentName = req.query.department_name;
-    const dates = req.body.dates; 
+    const dates = req.body.dates;
+    const convertToMinutes = (timeString) => {
+        const [hours, minutes] = timeString.split(':').map(Number);
+        return hours * 60 + minutes;
+    };
+    const errorDates = [];
     try {
         const department = await DepartmentSchema.findOne({ name: departmentName });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"));
@@ -49,6 +54,35 @@ export const createMultipleDateDesigns = async (req, res, next) => {
                 await stats.save();
             }
 
+            let schedule = employeeDepartment.schedules.find(s =>
+                s.date.toISOString().split('T')[0] === dateObj.toISOString().split('T')[0]);
+
+            let existsTimeRanges = schedule ? schedule.shift_design.map(design => ({
+                startTime: design.time_slot.start_time,
+                endTime: design.time_slot.end_time
+            })) : [];
+
+            const newShiftStartTime = shift.time_slot.start_time;
+            const newShiftEndTime = shift.time_slot.end_time;
+
+            const hasConflict = existsTimeRanges.some(range => {
+                const existingStartTime = convertToMinutes(range.startTime);
+                const existingEndTime = convertToMinutes(range.endTime);
+                const newStartTime = convertToMinutes(newShiftStartTime);
+                const newEndTime = convertToMinutes(newShiftEndTime);
+
+                const startsDuringExisting = newStartTime >= existingStartTime && newStartTime < existingEndTime;
+                const endsDuringExisting = newEndTime > existingStartTime && newEndTime <= existingEndTime;
+                const overlapsExistingEnd = newStartTime < existingEndTime && newStartTime >= existingEndTime - 30;
+
+                return startsDuringExisting || endsDuringExisting || overlapsExistingEnd;
+            });
+
+            if (hasConflict) {
+                errorDates.push({ date: dateString, message: "Shift time range conflict with existing shifts for the day" });                
+                continue;
+            }
+
             let shiftExistsInDepartment = employeeDepartment.schedules.some(schedule =>
                 schedule.date.toISOString().split('T')[0] === dateObj.toISOString().split('T')[0] &&
                 schedule.shift_design.some(design => design.shift_code === shiftCode)
@@ -75,17 +109,12 @@ export const createMultipleDateDesigns = async (req, res, next) => {
                     time_left: stats.realistic_schedule_times
                 });
             } else {
-                res.status(BAD_REQUEST).json({
-                    success: false,
-                    status: BAD_REQUEST,
-                    message: `Shift with code ${shiftCode} already exists for ${dateString} in the department.`
-                });
+                errorDates.push({ date: dateString, message: `Shift with code ${shiftCode} already exists for ${dateString} in the department.` });
                 continue;
             }
         }
 
         await employee.save();
-
         const objectReturn = {
             employee_id: employee.id,
             employee_name: employee.name,
@@ -94,6 +123,7 @@ export const createMultipleDateDesigns = async (req, res, next) => {
             role: employee.role,
             position: req.body.position,
             schedule: employeeDepartment.schedules,
+            error_date: errorDates
         };
 
         res.status(CREATED).json({

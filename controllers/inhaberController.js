@@ -366,6 +366,11 @@ export const createMultipleDateDesignsByInhaber = async (req, res, next) => {
     const specificEmployeeID = req.query.employeeID;
     const shiftCode = req.body.shift_code;
     const dates = req.body.dates;
+    const convertToMinutes = (timeString) => {
+        const [hours, minutes] = timeString.split(':').map(Number);
+        return hours * 60 + minutes;
+    };
+    const errorDates = [];
     try {
         const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
@@ -384,6 +389,8 @@ export const createMultipleDateDesignsByInhaber = async (req, res, next) => {
 
         const results = [];
         for (const employee of employees) {
+            const employeeDepartment = employee.department.find(dep => dep.name === departmentName);
+            if (!employeeDepartment) return next(createError(NOT_FOUND, "Employee does not belong to the specified department!"));
             for (const dateString of dates) {
                 const [month, day, year] = dateString.split('/');
                 const dateObj = new Date(year, month - 1, day);
@@ -407,6 +414,35 @@ export const createMultipleDateDesignsByInhaber = async (req, res, next) => {
                 } else {
                     stats.realistic_schedule_times -= shift.time_slot.duration;
                     await stats.save();
+                }
+
+                let schedule = employeeDepartment.schedules.find(s =>
+                    s.date.toISOString().split('T')[0] === dateObj.toISOString().split('T')[0]);
+
+                let existsTimeRanges = schedule ? schedule.shift_design.map(design => ({
+                    startTime: design.time_slot.start_time,
+                    endTime: design.time_slot.end_time
+                })) : [];
+
+                const newShiftStartTime = shift.time_slot.start_time;
+                const newShiftEndTime = shift.time_slot.end_time;
+
+                const hasConflict = existsTimeRanges.some(range => {
+                    const existingStartTime = convertToMinutes(range.startTime);
+                    const existingEndTime = convertToMinutes(range.endTime);
+                    const newStartTime = convertToMinutes(newShiftStartTime);
+                    const newEndTime = convertToMinutes(newShiftEndTime);
+
+                    const startsDuringExisting = newStartTime >= existingStartTime && newStartTime < existingEndTime;
+                    const endsDuringExisting = newEndTime > existingStartTime && newEndTime <= existingEndTime;
+                    const overlapsExistingEnd = newStartTime < existingEndTime && newStartTime >= existingEndTime - 30;
+
+                    return startsDuringExisting || endsDuringExisting || overlapsExistingEnd;
+                });
+
+                if (hasConflict) {
+                    errorDates.push({ date: dateString, message: "Shift time range conflict with existing shifts for the day" });
+                    continue;
                 }
 
                 let shiftExistsInAnyDepartment = false;
@@ -444,16 +480,21 @@ export const createMultipleDateDesignsByInhaber = async (req, res, next) => {
                             });
                         }
                     });
+                } else {
+                    errorDates.push({ date: dateString, message: `Shift with code ${shiftCode} already exists for ${dateString} in the department.` });
+                    continue;
                 }
             }
+            
             await employee.save();
-
             results.push({
                 employee_id: employee.id,
                 employee_name: employee.name,
                 email: employee.email,
                 departments: employee.department,
                 role: employee.role,
+                position: req.body.position,
+                error_date: errorDates
             });
         }
 

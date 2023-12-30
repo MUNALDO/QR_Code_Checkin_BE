@@ -3,7 +3,7 @@ import ExcelJS from 'exceljs';
 import fs from 'fs';
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
-import AdminSchema from "../models/AdminSchema.js";
+// import AdminSchema from "../models/AdminSchema.js";
 
 export const exportAttendanceToExcel = async (req, res, next) => {
     const { year, month, employeeID, department_name } = req.query;
@@ -194,13 +194,17 @@ export const exportEmployeeDataToExcel = async (req, res, next) => {
 
         // Add rows to the worksheet
         employees.forEach(employee => {
+            let departmentPositions = [];
+            employee.department.forEach(dept => {
+                let deptString = `${dept.name}: ${dept.position.join(', ')}`;
+                departmentPositions.push(deptString);
+            });
             const departmentsPositions = employee.department.map(dept => ({
                 name: dept.name,
                 positions: dept.position.join(', ')
             }));
-
             const departmentNames = departmentsPositions.map(dp => dp.name).join(', ');
-            const allPositions = departmentsPositions.map(dp => dp.positions).join(' / ');
+            let positionsString = departmentPositions.join(' / ');
 
             // Create a row for each employee
             const row = {
@@ -218,7 +222,7 @@ export const exportEmployeeDataToExcel = async (req, res, next) => {
                 active_day: employee.active_day || '',
                 inactive_day: employee.inactive_day || '',
                 departments: departmentNames,
-                positions: allPositions,
+                positions: positionsString,
             };
             worksheet.addRow(row);
         })
@@ -429,16 +433,19 @@ export const exportEmployeeDataForInhaberToExcel = async (req, res, next) => {
         const inhaber = await EmployeeSchema.findOne({
             name: inhaber_name,
             role: "Inhaber"
-        });
+        }).populate('department');;
         if (!inhaber) {
             return res.status(NOT_FOUND).json({ error: "Inhaber not found" });
         }
 
-        // Fetch employees who are in the Inhaber's department
-        const departmentNames = inhaber.department.map(dep => dep.name);
-        const employees = await EmployeeSchema.find({ 'department.name': { $in: departmentNames } });
+        const inhaberDepartmentNames = inhaber.department.map(dep => dep.name);
+
+        const employees = await EmployeeSchema.find({
+            'department.name': { $in: inhaber.department.map(dep => dep.name) }
+        });
+
         if (!employees || employees.length === 0) {
-            return res.status(NOT_FOUND).json({ error: "No employee data found in Inhaber's department" });
+            return res.status(NOT_FOUND).json({ error: "No employee data found in Inhaber's departments" });
         }
 
         const fileName = `Employee_Data_For_Inhaber_${inhaber_name}.xlsx`;
@@ -470,10 +477,16 @@ export const exportEmployeeDataForInhaberToExcel = async (req, res, next) => {
 
         // Add rows to the worksheet
         employees.forEach(employee => {
-            // Filter and format the data to include only the information relevant to the Inhaber's department
-            const departmentData = employee.department.find(dept => dept.name === inhaber.department_name);
-            if (departmentData) {
-                // Create a row with the necessary information
+            const departmentsData = employee.department.filter(dept => inhaberDepartmentNames.includes(dept.name));
+            let departmentPositions = [];
+            employee.department.forEach(dept => {
+                if (inhaberDepartmentNames.includes(dept.name)) {
+                    let deptString = `${dept.name}: ${dept.position.join(', ')}`;
+                    departmentPositions.push(deptString);
+                }
+            });
+            let positionsString = departmentPositions.join(' / ');
+            if (departmentsData.length > 0) {
                 const row = {
                     id: employee.id,
                     name: employee.name,
@@ -488,8 +501,8 @@ export const exportEmployeeDataForInhaberToExcel = async (req, res, next) => {
                     status: employee.status || '',
                     active_day: employee.active_day || '',
                     inactive_day: employee.inactive_day || '',
-                    departments: departmentData.name,
-                    positions: departmentData.position,
+                    departments: inhaberDepartmentNames.join(', '),
+                    positions: positionsString,
                 };
                 worksheet.addRow(row);
             }
@@ -518,20 +531,21 @@ export const exportEmployeeSalaryDataForInhaberToExcel = async (req, res, next) 
         const inhaber = await EmployeeSchema.findOne({
             name: inhaber_name,
             role: "Inhaber"
-        });
+        }).populate('department');;
         if (!inhaber) {
             return res.status(NOT_FOUND).json({ error: "Inhaber not found" });
         }
 
-        // Fetch employees who are in the Inhaber's department
-        const departmentNames = inhaber.department.map(dep => dep.name);
-        const employees = await EmployeeSchema.find({ 'department.name': { $in: departmentNames } });
-        if (!employees || employees.length === 0) {
-            return res.status(NOT_FOUND).json({ error: "No employee data found in Inhaber's department" });
-        }
+        console.log(inhaber);
+
+        const employees = await EmployeeSchema.find({
+            'department.name': { $in: inhaber.department.map(dep => dep.name) }
+        });
+
+        console.log(employees);
 
         if (!employees || employees.length === 0) {
-            return res.status(NOT_FOUND).json({ error: "No salary data found for Inhaber's department" });
+            return res.status(NOT_FOUND).json({ error: "No employee data found in Inhaber's departments" });
         }
 
         const fileName = `Employee_Salary_Data_For_Inhaber_${inhaber_name}_${year}_${month}.xlsx`;

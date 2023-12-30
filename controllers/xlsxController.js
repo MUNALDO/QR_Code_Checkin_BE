@@ -264,8 +264,8 @@ export const exportEmployeeSalaryDataToExcel = async (req, res, next) => {
         const worksheet = workbook.addWorksheet('Employee Salary Data');
 
         const columns = [
-            { header: 'ID', key: 'id', width: 20 },
-            { header: 'Name', key: 'name', width: 20 },
+            { header: 'ID', key: 'employee_id', width: 20 },
+            { header: 'Name', key: 'employee_name', width: 20 },
             { header: 'Date Calculate', key: 'date_calculate', width: 15 },
             { header: 'Total Salary', key: 'total_salary', width: 15 },
             { header: 'Normal Hours', key: 'hour_normal', width: 25 },
@@ -280,7 +280,6 @@ export const exportEmployeeSalaryDataToExcel = async (req, res, next) => {
         worksheet.columns = columns;
 
         salaries.forEach(salaryData => {
-            console.log(salaryData);
             const normalHoursDetails = Array.isArray(salaryData.hour_normal) 
                 ? salaryData.hour_normal.map(h => `${h.department_name}: ${h.total_hour}h ${h.total_minutes}m`).join('; ')
                 : '';

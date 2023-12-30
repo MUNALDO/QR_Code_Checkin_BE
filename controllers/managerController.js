@@ -52,6 +52,44 @@ export const searchSpecificForManager = async (req, res, next) => {
     }
 }
 
+export const getEmployeeByIdForManager = async (req, res, next) => {
+    const managerName = req.query.manager_name;
+    const employeeID = req.query.employeeID;
+    try {
+        const manager = await EmployeeSchema.findOne({ name: managerName, role: 'Manager' });
+        if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
+
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+
+        const isEmployeeInDepartment = employee.department.some(department =>
+            manager.department.some(managerDepartment => managerDepartment.name === department.name)
+        );
+
+        if (!isEmployeeInDepartment) {
+            return next(createError(FORBIDDEN, "Permission denied. manager can only access an employee in their departments."));
+        }
+
+        // Filter out non-matching departments from the employee
+        const filteredDepartments = employee.department.filter(dep =>
+            manager.department.some(managerDep => managerDep.name === dep.name)
+        );
+
+        const filteredEmployee = {
+            ...employee.toObject(),
+            department: filteredDepartments
+        };
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: [filteredEmployee],
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const getEmployeesSchedulesByManager = async (req, res, next) => {
     const targetYear = req.query.year ? parseInt(req.query.year) : null;
     const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null;

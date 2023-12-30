@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs';
 import fs from 'fs';
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
+import SalarySchema from "../models/SalarySchema.js";
 // import AdminSchema from "../models/AdminSchema.js";
 
 export const exportAttendanceToExcel = async (req, res, next) => {
@@ -249,9 +250,10 @@ export const exportEmployeeDataToExcel = async (req, res, next) => {
 export const exportEmployeeSalaryDataToExcel = async (req, res, next) => {
     const { year, month } = req.query;
     try {
-        const employees = await EmployeeSchema.find();
+        // Fetch salary data based on the year and month
+        const salaries = await SalarySchema.find({ year: parseInt(year), month: parseInt(month) });
 
-        if (!employees || employees.length === 0) {
+        if (!salaries || salaries.length === 0) {
             return res.status(NOT_FOUND).json({ error: "No salary data found for the specified month and year" });
         }
 
@@ -273,23 +275,24 @@ export const exportEmployeeSalaryDataToExcel = async (req, res, next) => {
             { header: 'b Parameter', key: 'b_parameter', width: 15 },
             { header: 'c Parameter', key: 'c_parameter', width: 15 },
             { header: 'd Parameter', key: 'd_parameter', width: 15 },
+            { header: 'f Parameter', key: 'f_parameter', width: 15 },
         ];
         worksheet.columns = columns;
 
-        employees.forEach(employee => {
-            const salaryData = employee.salary.find(s => s.year === parseInt(year) && s.month === parseInt(month));
-
-            let normalHoursDetails, overtimeHoursDetails;
-            if (salaryData) {
-                normalHoursDetails = salaryData.hour_normal.map(h => `${h.department_name}: ${h.total_hour}h ${h.total_minutes}m`).join('; ');
-                overtimeHoursDetails = salaryData.hour_overtime.map(h => `${h.department_name}: ${h.total_hour}h ${h.total_minutes}m`).join('; ');
-            }
+        salaries.forEach(salaryData => {
+            console.log(salaryData);
+            const normalHoursDetails = Array.isArray(salaryData.hour_normal) 
+                ? salaryData.hour_normal.map(h => `${h.department_name}: ${h.total_hour}h ${h.total_minutes}m`).join('; ')
+                : '';
+            const overtimeHoursDetails = Array.isArray(salaryData.hour_overtime) 
+                ? salaryData.hour_overtime.map(h => `${h.department_name}: ${h.total_hour}h ${h.total_minutes}m`).join('; ')
+                : '';
 
             worksheet.addRow({
-                id: employee.id || '',
-                name: employee.name || '',
-                date_calculate: salaryData ? salaryData.date_calculate : '',
-                total_salary: salaryData ? salaryData.total_salary : '',
+                employee_id: salaryData.employee_id || '',
+                employee_name: salaryData.employee_name || '',
+                date_calculate: salaryData.date_calculate || '',
+                total_salary: salaryData.total_salary || '',
                 hour_normal: normalHoursDetails || '',
                 hour_overtime: overtimeHoursDetails || '',
                 total_km: salaryData ? salaryData.total_km : '',
@@ -297,6 +300,7 @@ export const exportEmployeeSalaryDataToExcel = async (req, res, next) => {
                 b_parameter: salaryData ? salaryData.b_parameter : '',
                 c_parameter: salaryData ? salaryData.c_parameter : '',
                 d_parameter: salaryData ? salaryData.d_parameter : '',
+                f_parameter: salaryData ? salaryData.f_parameter : '',
             });
         });
 

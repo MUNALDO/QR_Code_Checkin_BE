@@ -211,7 +211,7 @@ export const getEmployeeByIdForInhaber = async (req, res, next) => {
         res.status(OK).json({
             success: true,
             status: OK,
-            message: filteredEmployee,
+            message: [filteredEmployee],
         });
     } catch (err) {
         next(err);

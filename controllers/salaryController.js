@@ -187,8 +187,13 @@ export const getSalary = async (req, res, next) => {
         const { year, month, employeeID, department_name } = req.query;
 
         let query = {};
-        if (year) query.year = parseInt(year);
-        if (month) query.month = parseInt(month);
+        if (year) {
+            query.year = parseInt(year);
+        }
+
+        if (month) {
+            query.month = parseInt(month);
+        }
 
         // Get employee IDs for the provided department_name
         let employeeIds = [];
@@ -219,8 +224,8 @@ export const getSalary = async (req, res, next) => {
 
         // Fetch the salaries with the constructed query
         const salaries = await SalarySchema.find(query);
-        // console.log(query);
-        
+        console.log(query);
+
         if (salaries.length === 0) {
             return res.status(NOT_FOUND).json({
                 success: false,

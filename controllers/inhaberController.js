@@ -313,8 +313,8 @@ export const getEmployeesSchedulesByInhaber = async (req, res, next) => {
     const targetYear = req.query.year ? parseInt(req.query.year) : null;
     const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null;
     const targetDate = req.query.date ? new Date(req.query.date) : null;
-    const departmentFilter = req.query.department_name;
     const inhaberName = req.query.inhaber_name;
+
     try {
         // Fetch Inhaber and validate departments
         const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
@@ -331,7 +331,7 @@ export const getEmployeesSchedulesByInhaber = async (req, res, next) => {
         const schedules = [];
         employees.forEach(employee => {
             employee.department.forEach(department => {
-                if (!departmentFilter || department.name === departmentFilter) {
+                if (inhaberDepartments.includes(department.name)) {
                     department.schedules.forEach(schedule => {
                         const scheduleDate = new Date(schedule.date);
 
@@ -349,8 +349,7 @@ export const getEmployeesSchedulesByInhaber = async (req, res, next) => {
                                     date: scheduleDate,
                                     shift_code: shift.shift_code,
                                     position: shift.position,
-                                    time_slot: shift.time_slot,
-                                    shift_type: shift.shift_type
+                                    time_slot: shift.time_slot
                                 });
                             });
                         }
@@ -376,7 +375,6 @@ export const getEmployeesSchedulesByInhaber = async (req, res, next) => {
         next(err);
     }
 };
-
 
 export const createMultipleDateDesignsByInhaber = async (req, res, next) => {
     const shiftCode = req.body.shift_code;

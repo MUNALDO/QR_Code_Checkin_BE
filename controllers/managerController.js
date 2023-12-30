@@ -20,7 +20,7 @@ export const searchSpecificForManager = async (req, res, next) => {
             ...(details && { '$or': [{ 'id': regex }, { 'name': regex }] })
         };
 
-        const employees = await EmployeeSchema.find(employeeQueryCriteria);
+        let employees = await EmployeeSchema.find(employeeQueryCriteria);
 
         if (employees.length === 0) {
             return res.status(NOT_FOUND).json({
@@ -30,6 +30,18 @@ export const searchSpecificForManager = async (req, res, next) => {
             });
         }
 
+        // Filter out non-matching departments from each employee
+        employees = employees.map(employee => {
+            const filteredDepartments = employee.department.filter(dep =>
+                manager.department.some(managerDep => managerDep.name === dep.name)
+            );
+
+            return {
+                ...employee.toObject(),
+                department: filteredDepartments
+            };
+        });
+
         res.status(OK).json({
             success: true,
             status: OK,
@@ -38,49 +50,53 @@ export const searchSpecificForManager = async (req, res, next) => {
     } catch (err) {
         next(err);
     }
-};
+}
 
 export const getEmployeesSchedulesByManager = async (req, res, next) => {
-    const manager_name = req.query.manager_name;
     const targetYear = req.query.year ? parseInt(req.query.year) : null;
     const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null;
     const targetDate = req.query.date ? new Date(req.query.date) : null;
+    const managerName = req.query.manager_name;
     try {
-        // Find the manager and get their department name
-        const manager = await EmployeeSchema.findOne({ name: manager_name, role: 'manager' });
-        if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
+        // Fetch manager and validate departments
+        const manager = await EmployeeSchema.findOne({ name: managerName, role: 'Manager' });
+        if (!manager) {
+            return res.status(NOT_FOUND).json({ error: "Manager not found" });
+        }
+        const managerDepartments = manager.department.map(dep => dep.name);
 
-        const departmentNames = manager.department.map(dep => dep.name);
+        // Fetch employees in manager's departments
+        const employees = await EmployeeSchema.find({
+            'department.name': { $in: managerDepartments }
+        });
 
-        // Find all employees in the manager's departments
-        const employees = await EmployeeSchema.find({ 'department.name': { $in: departmentNames } });
         const schedules = [];
-
         employees.forEach(employee => {
             employee.department.forEach(department => {
-                department.schedules.forEach(schedule => {
-                    const scheduleDate = new Date(schedule.date);
+                if (managerDepartments.includes(department.name)) {
+                    department.schedules.forEach(schedule => {
+                        const scheduleDate = new Date(schedule.date);
 
-                    // Check if the schedule matches the time criteria
-                    const matchesYear = targetYear === null || scheduleDate.getFullYear() === targetYear;
-                    const matchesMonth = targetMonth === null || scheduleDate.getMonth() === targetMonth;
-                    const matchesDate = !targetDate || scheduleDate.toISOString().split('T')[0] === targetDate.toISOString().split('T')[0];
+                        // Apply time filters
+                        const matchesYear = targetYear === null || scheduleDate.getFullYear() === targetYear;
+                        const matchesMonth = targetMonth === null || scheduleDate.getMonth() === targetMonth;
+                        const matchesDate = !targetDate || scheduleDate.toISOString().split('T')[0] === targetDate.toISOString().split('T')[0];
 
-                    if (matchesYear && matchesMonth && matchesDate) {
-                        schedule.shift_design.forEach(shift => {
-                            schedules.push({
-                                employee_id: employee.id,
-                                employee_name: employee.name,
-                                department_name: department.name,
-                                date: scheduleDate,
-                                shift_code: shift.shift_code,
-                                position: shift.position,
-                                time_slot: shift.time_slot,
-                                shift_type: shift.shift_type
+                        if (matchesYear && matchesMonth && matchesDate) {
+                            schedule.shift_design.forEach(shift => {
+                                schedules.push({
+                                    employee_id: employee.id,
+                                    employee_name: employee.name,
+                                    department_name: department.name,
+                                    date: scheduleDate,
+                                    shift_code: shift.shift_code,
+                                    position: shift.position,
+                                    time_slot: shift.time_slot
+                                });
                             });
-                        });
-                    }
-                });
+                        }
+                    });
+                }
             });
         });
 
@@ -88,7 +104,7 @@ export const getEmployeesSchedulesByManager = async (req, res, next) => {
             return res.status(NOT_FOUND).json({
                 success: false,
                 status: NOT_FOUND,
-                message: "No schedules found for the specified criteria in your department."
+                message: "No schedules found for the specified criteria."
             });
         }
 
@@ -100,7 +116,7 @@ export const getEmployeesSchedulesByManager = async (req, res, next) => {
     } catch (err) {
         next(err);
     }
-};
+}
 
 export const createMultipleDateDesignsByManager = async (req, res, next) => {
     const shiftCode = req.body.shift_code;

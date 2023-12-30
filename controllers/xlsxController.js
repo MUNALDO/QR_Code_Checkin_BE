@@ -526,29 +526,25 @@ export const exportEmployeeDataForInhaberToExcel = async (req, res, next) => {
 };
 
 export const exportEmployeeSalaryDataForInhaberToExcel = async (req, res, next) => {
-    const { year, month, inhaber_name } = req.query;
+    const { year, month, inhaberName } = req.query;
     try {
-        const inhaber = await EmployeeSchema.findOne({
-            name: inhaber_name,
-            role: "Inhaber"
-        }).populate('department');;
+        // Fetch the Inhaber's departments
+        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
         if (!inhaber) {
             return res.status(NOT_FOUND).json({ error: "Inhaber not found" });
         }
+        const inhaberDepartments = inhaber.department.map(dep => dep.name);
 
-        console.log(inhaber);
-
+        // Fetch employees in the Inhaber's departments
         const employees = await EmployeeSchema.find({
-            'department.name': { $in: inhaber.department.map(dep => dep.name) }
+            'department.name': { $in: inhaberDepartments }
         });
 
-        console.log(employees);
-
         if (!employees || employees.length === 0) {
-            return res.status(NOT_FOUND).json({ error: "No employee data found in Inhaber's departments" });
+            return res.status(NOT_FOUND).json({ error: "No salary data found for the specified month and year in Inhaber's departments" });
         }
 
-        const fileName = `Employee_Salary_Data_For_Inhaber_${inhaber_name}_${year}_${month}.xlsx`;
+        const fileName = `Employee_Salary_Data_${year}_${month}.xlsx`;
         const filePath = `../${fileName}`;
 
         const workbook = new ExcelJS.Workbook();
@@ -572,27 +568,25 @@ export const exportEmployeeSalaryDataForInhaberToExcel = async (req, res, next) 
         employees.forEach(employee => {
             const salaryData = employee.salary.find(s => s.year === parseInt(year) && s.month === parseInt(month));
 
-            // Ensure the salary data is related to the Inhaber's department
-            if (salaryData && employee.department.some(dept => dept.name === inhaber.department_name)) {
-                let normalHoursDetails, overtimeHoursDetails;
-
+            let normalHoursDetails, overtimeHoursDetails;
+            if (salaryData) {
                 normalHoursDetails = salaryData.hour_normal.map(h => `${h.department_name}: ${h.total_hour}h ${h.total_minutes}m`).join('; ');
                 overtimeHoursDetails = salaryData.hour_overtime.map(h => `${h.department_name}: ${h.total_hour}h ${h.total_minutes}m`).join('; ');
-                const row = {
-                    id: employee.id || '',
-                    name: employee.name || '',
-                    date_calculate: salaryData ? salaryData.date_calculate : '',
-                    total_salary: salaryData ? salaryData.total_salary : '',
-                    hour_normal: normalHoursDetails || '',
-                    hour_overtime: overtimeHoursDetails || '',
-                    total_km: salaryData ? salaryData.total_km : '',
-                    a_parameter: salaryData ? salaryData.a_parameter : '',
-                    b_parameter: salaryData ? salaryData.b_parameter : '',
-                    c_parameter: salaryData ? salaryData.c_parameter : '',
-                    d_parameter: salaryData ? salaryData.d_parameter : '',
-                };
-                worksheet.addRow(row);
             }
+
+            worksheet.addRow({
+                id: employee.id || '',
+                name: employee.name || '',
+                date_calculate: salaryData ? salaryData.date_calculate : '',
+                total_salary: salaryData ? salaryData.total_salary : '',
+                hour_normal: normalHoursDetails || '',
+                hour_overtime: overtimeHoursDetails || '',
+                total_km: salaryData ? salaryData.total_km : '',
+                a_parameter: salaryData ? salaryData.a_parameter : '',
+                b_parameter: salaryData ? salaryData.b_parameter : '',
+                c_parameter: salaryData ? salaryData.c_parameter : '',
+                d_parameter: salaryData ? salaryData.d_parameter : '',
+            });
         });
 
         const buffer = await workbook.xlsx.writeBuffer();
@@ -607,7 +601,7 @@ export const exportEmployeeSalaryDataForInhaberToExcel = async (req, res, next) 
             next(error);
         }
     } catch (error) {
-        console.error('Error exporting salary data for Inhaber to Excel:', error);
+        console.error('Error exporting salary data to Excel:', error);
         return res.status(SYSTEM_ERROR).json({ error: 'Internal server error' });
     }
 };

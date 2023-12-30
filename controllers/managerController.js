@@ -4,6 +4,7 @@ import EmployeeSchema from "../models/EmployeeSchema.js";
 import AdminSchema from "../models/AdminSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
+import StatsSchema from "../models/StatsSchema.js";
 
 export const searchSpecificForManager = async (req, res, next) => {
     const { role, details, status } = req.query;
@@ -167,7 +168,6 @@ export const createMultipleDateDesignsByManager = async (req, res, next) => {
         return hours * 60 + minutes;
     };
     const errorDates = [];
-
     try {
         // Fetch manager and validate the department
         const manager = await EmployeeSchema.findOne({ name: managerName, role: 'Manager' });
@@ -298,7 +298,6 @@ export const getDateDesignForManager = async (req, res, next) => {
     const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null;
     const targetDate = req.query.date ? new Date(req.query.date) : null;
     const specificEmployeeID = req.query.employeeID;
-
     try {
         const manager = await EmployeeSchema.findOne({ name: managerName, role: 'Manager' });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));

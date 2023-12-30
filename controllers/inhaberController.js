@@ -372,154 +372,133 @@ export const getEmployeesSchedulesByInhaber = async (req, res, next) => {
 };
 
 export const createMultipleDateDesignsByInhaber = async (req, res, next) => {
-    const inhaber_name = req.query.inhaber_name;
-    const specificEmployeeID = req.query.employeeID;
     const shiftCode = req.body.shift_code;
+    const employeeID = req.query.employeeID;
+    const inhaberName = req.query.inhaber_name;
     const dates = req.body.dates;
+    const errorDates = [];
+
     const convertToMinutes = (timeString) => {
         const [hours, minutes] = timeString.split(':').map(Number);
         return hours * 60 + minutes;
     };
-    const errorDates = [];
+
     try {
-        const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
+        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
         const shift = await ShiftSchema.findOne({ code: shiftCode });
         if (!shift) return next(createError(NOT_FOUND, "Shift not found!"));
 
-        const departmentNames = inhaber.department.map(dep => dep.name);
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
-        let employeeQuery = { 'department.name': { $in: departmentNames } };
-        if (specificEmployeeID) {
-            employeeQuery.id = specificEmployeeID;
-        }
+        const isInhaberDepartment = employee.department.some(dept =>
+            inhaber.department.some(inhaberDept => inhaberDept.name === dept.name)
+        );
+        if (!isInhaberDepartment) return next(createError(NOT_FOUND, "Employee not in Inhaber's department!"));
 
-        const employees = await EmployeeSchema.find(employeeQuery);
+        for (const dateString of dates) {
+            const [month, day, year] = dateString.split('/');
+            const dateObj = new Date(year, month - 1, day);
 
-        const results = [];
-        for (const employee of employees) {
-            const employeeDepartment = employee.department.find(dep => dep.name === departmentName);
-            if (!employeeDepartment) return next(createError(NOT_FOUND, "Employee does not belong to the specified department!"));
-            for (const dateString of dates) {
-                const [month, day, year] = dateString.split('/');
-                const dateObj = new Date(year, month - 1, day);
-
-                let stats = await StatsSchema.findOne({
-                    employee_id: employee.id,
-                    year: year,
-                    month: month
-                });
-
-                if (!stats) {
-                    stats = new StatsSchema({
+            for (const department of employee.department) {
+                if (inhaber.department.some(inhaberDept => inhaberDept.name === department.name)) {
+                    let stats = await StatsSchema.findOne({
                         employee_id: employee.id,
-                        employee_name: employee.name,
                         year: year,
-                        month: month,
-                        default_schedule_times: employee.total_time_per_month,
-                        realistic_schedule_times: employee.total_time_per_month - shift.time_slot.duration
+                        month: month
                     });
-                    await stats.save();
-                } else {
-                    stats.realistic_schedule_times -= shift.time_slot.duration;
-                    await stats.save();
-                }
 
-                let schedule = employeeDepartment.schedules.find(s =>
-                    s.date.toISOString().split('T')[0] === dateObj.toISOString().split('T')[0]);
-
-                let existsTimeRanges = schedule ? schedule.shift_design.map(design => ({
-                    startTime: design.time_slot.start_time,
-                    endTime: design.time_slot.end_time
-                })) : [];
-
-                const newShiftStartTime = shift.time_slot.start_time;
-                const newShiftEndTime = shift.time_slot.end_time;
-
-                const hasConflict = existsTimeRanges.some(range => {
-                    const existingStartTime = convertToMinutes(range.startTime);
-                    const existingEndTime = convertToMinutes(range.endTime);
-                    const newStartTime = convertToMinutes(newShiftStartTime);
-                    const newEndTime = convertToMinutes(newShiftEndTime);
-
-                    const startsDuringExisting = newStartTime >= existingStartTime && newStartTime < existingEndTime;
-                    const endsDuringExisting = newEndTime > existingStartTime && newEndTime <= existingEndTime;
-                    const overlapsExistingEnd = newStartTime < existingEndTime && newStartTime >= existingEndTime - 30;
-
-                    return startsDuringExisting || endsDuringExisting || overlapsExistingEnd;
-                });
-
-                if (hasConflict) {
-                    errorDates.push({ date: dateString, message: "Shift time range conflict with existing shifts for the day" });
-                    continue;
-                }
-
-                let shiftExistsInAnyDepartment = false;
-                employee.department.forEach(dep => {
-                    if (departmentNames.includes(dep.name)) {
-                        const existingDateInSchedule = dep.schedules.find(s => s.date.toISOString().split('T')[0] === dateObj.toISOString().split('T')[0]);
-                        if (existingDateInSchedule && existingDateInSchedule.shift_design.some(design => design.shift_code === shiftCode)) {
-                            shiftExistsInAnyDepartment = true;
-                        }
+                    if (!stats) {
+                        stats = new StatsSchema({
+                            employee_id: employee.id,
+                            employee_name: employee.name,
+                            year: year,
+                            month: month,
+                            default_schedule_times: employee.total_time_per_month,
+                            realistic_schedule_times: employee.total_time_per_month - shift.time_slot.duration
+                        });
+                        await stats.save();
+                    } else {
+                        stats.realistic_schedule_times -= shift.time_slot.duration;
+                        await stats.save();
                     }
-                });
 
-                if (!shiftExistsInAnyDepartment) {
-                    employee.department.forEach(dep => {
-                        if (departmentNames.includes(dep.name)) {
-                            let schedule = dep.schedules.find(s => s.date.toISOString().split('T')[0] === dateObj.toISOString().split('T')[0]);
-                            if (!schedule) {
-                                schedule = {
-                                    date: dateObj,
-                                    shift_design: [{
-                                        position: req.body.position,
-                                        shift_code: shiftCode,
-                                        time_slot: shift.time_slot,
-                                        time_left: stats.realistic_schedule_times
-                                    }]
-                                };
-                                dep.schedules.push(schedule);
-                            }
+                    let schedule = department.schedules.find(s =>
+                        s.date.toISOString().split('T')[0] === dateObj.toISOString().split('T')[0]);
 
-                            schedule.shift_design.push({
+                    let existsTimeRanges = schedule ? schedule.shift_design.map(design => ({
+                        startTime: design.time_slot.start_time,
+                        endTime: design.time_slot.end_time
+                    })) : [];
+
+                    const newShiftStartTime = shift.time_slot.start_time;
+                    const newShiftEndTime = shift.time_slot.end_time;
+
+                    const hasConflict = existsTimeRanges.some(range => {
+                        const existingStartTime = convertToMinutes(range.startTime);
+                        const existingEndTime = convertToMinutes(range.endTime);
+                        const newStartTime = convertToMinutes(newShiftStartTime);
+                        const newEndTime = convertToMinutes(newShiftEndTime);
+
+                        const startsDuringExisting = newStartTime >= existingStartTime && newStartTime < existingEndTime;
+                        const endsDuringExisting = newEndTime > existingStartTime && newEndTime <= existingEndTime;
+                        const overlapsExistingEnd = newStartTime < existingEndTime && newStartTime >= existingEndTime - 30;
+
+                        return startsDuringExisting || endsDuringExisting || overlapsExistingEnd;
+                    });
+
+                    let shiftExistsInDepartment = department.schedules.some(sch =>
+                        sch.date.toISOString().split('T')[0] === dateObj.toISOString().split('T')[0] &&
+                        sch.shift_design.some(design => design.shift_code === shiftCode)
+                    );
+
+                    if (hasConflict || shiftExistsInDepartment) {
+                        errorDates.push({ date: dateString, message: "Shift conflict or duplicate shift code detected." });
+                        break;
+                    }
+
+                    if (!schedule) {
+                        schedule = {
+                            date: dateObj,
+                            shift_design: [{
                                 position: req.body.position,
-                                shift_code: shiftCode,
+                                shift_code: shift.code,
                                 time_slot: shift.time_slot,
                                 time_left: stats.realistic_schedule_times
-                            });
-                        }
+                            }]
+                        };
+                        department.schedules.push(schedule);
+                    }
+                    schedule.shift_design.push({
+                        position: req.body.position,
+                        shift_code: shift.code,
+                        time_slot: shift.time_slot,
+                        time_left: stats.realistic_schedule_times
                     });
-                } else {
-                    errorDates.push({ date: dateString, message: `Shift with code ${shiftCode} already exists for ${dateString} in the department.` });
-                    continue;
                 }
             }
-            
-            await employee.save();
-            results.push({
-                employee_id: employee.id,
-                employee_name: employee.name,
-                email: employee.email,
-                departments: employee.department,
-                role: employee.role,
-                position: req.body.position,
-                error_date: errorDates
-            });
         }
 
-        if (results.length === 0) {
-            return res.status(NOT_FOUND).json({
-                success: false,
-                status: NOT_FOUND,
-                message: "No schedules created. No employees found in the Inhaber's departments."
-            });
-        }
+        await employee.save();
+        const filteredSchedules = employee.department
+            .filter(dep => inhaber.department.some(inhaberDept => inhaberDept.name === dep.name))
+            .map(dep => dep.schedules);
+
+        const responseMessage = {
+            employee_id: employee.id,
+            employee_name: employee.name,
+            email: employee.email,
+            schedule: filteredSchedules,
+            error_dates: errorDates
+        };
 
         res.status(CREATED).json({
             success: true,
             status: CREATED,
-            message: results
+            message: responseMessage
         });
     } catch (err) {
         next(err);

@@ -48,10 +48,8 @@ export const createMultipleDateDesigns = async (req, res, next) => {
                     default_schedule_times: employee.total_time_per_month,
                     realistic_schedule_times: employee.total_time_per_month - shift.time_slot.duration
                 });
-                await stats.save();
             } else {
                 stats.realistic_schedule_times -= shift.time_slot.duration;
-                await stats.save();
             }
 
             let conflictFound = false;
@@ -94,6 +92,8 @@ export const createMultipleDateDesigns = async (req, res, next) => {
 
             if (conflictFound) continue;
 
+            let schedule = employeeDepartment.schedules.find(s => s.date.toISOString().split('T')[0] === dateObj.toISOString().split('T')[0]);
+            await stats.save();
             if (!schedule) {
                 schedule = {
                     date: dateObj,
@@ -115,21 +115,18 @@ export const createMultipleDateDesigns = async (req, res, next) => {
         }
 
         await employee.save();
-        const objectReturn = {
+        const responseMessage = {
             employee_id: employee.id,
             employee_name: employee.name,
             email: employee.email,
-            department_name: departmentName,
-            role: employee.role,
-            position: req.body.position,
-            schedule: employeeDepartment.schedules,
-            error_date: errorDates
+            schedule: employee.department.map(dep => dep.schedules),
+            error_dates: errorDates
         };
 
         res.status(CREATED).json({
             success: true,
             status: CREATED,
-            message: objectReturn
+            message: responseMessage
         });
     } catch (err) {
         next(err);

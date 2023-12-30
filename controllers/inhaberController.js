@@ -193,14 +193,25 @@ export const getEmployeeByIdForInhaber = async (req, res, next) => {
         const isEmployeeInDepartment = employee.department.some(department =>
             inhaber.department.some(inhaberDepartment => inhaberDepartment.name === department.name)
         );
+
         if (!isEmployeeInDepartment) {
-            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only delete an employee in their departments."));
+            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only access an employee in their departments."));
         }
+
+        // Filter out non-matching departments from the employee
+        const filteredDepartments = employee.department.filter(dep =>
+            inhaber.department.some(inhaberDep => inhaberDep.name === dep.name)
+        );
+
+        const filteredEmployee = {
+            ...employee.toObject(),
+            department: filteredDepartments
+        };
 
         res.status(OK).json({
             success: true,
             status: OK,
-            message: [employee],
+            message: filteredEmployee,
         });
     } catch (err) {
         next(err);

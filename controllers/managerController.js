@@ -127,6 +127,9 @@ export const createMultipleDateDesignsByManager = async (req, res, next) => {
             return res.status(NOT_FOUND).json({ error: "Employee not found in the specified department" });
         }
 
+        const employeeDepartment = employee.department.find(dep => dep.name === departmentName);
+        if (!employeeDepartment) return next(createError(NOT_FOUND, "Employee does not belong to the specified department!"));
+
         const shift = await ShiftSchema.findOne({ code: shiftCode });
         if (!shift) return res.status(NOT_FOUND).json({ error: "Shift not found" });
 

@@ -792,52 +792,58 @@ export const getRequestByIdForInhaber = async (req, res, next) => {
 };
 
 export const handleRequestForInhaber = async (req, res, next) => {
-    const inhaber_name = req.query.inhaber_name;
-    const requestId = req.params._id;
+    const inhaberName = req.query.inhaber_name;
     try {
-        const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
+        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
-        const updateRequest = await RequestSchema.findById(requestId).populate('employee_id');
+        const updateRequest = await RequestSchema.findOneAndUpdate(
+            { _id: req.params._id },
+            { $set: { answer_status: req.body.answer_status } },
+            { new: true }
+        );
         if (!updateRequest) return next(createError(NOT_FOUND, "Request not found!"));
 
-        const departmentNames = inhaber.department.map(dep => dep.name);
-        if (!departmentNames.includes(updateRequest.employee_id.department.name)) {
-            return next(createError(NOT_FOUND, "Request not from an employee in Inhaber's department"));
+        const employee = await EmployeeSchema.findOne({ id: updateRequest.employee_id });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
+
+        // Check if the employee is in one of the Inhaber's departments
+        const isEmployeeInInhaberDepartment = employee.department.some(dept =>
+            inhaber.department.some(inhaberDept => inhaberDept.name === dept.name)
+        );
+        if (!isEmployeeInInhaberDepartment) {
+            return next(createError(FORBIDDEN, "You do not have permission to handle requests for this employee."));
         }
 
-        // Check if the request is from an employee in the Inhaber's department
-        const employee = await EmployeeSchema.findOne({ id: updateRequest.employee_id, 'department.name': { $in: departmentNames } });
-        if (!employee) return next(createError(NOT_FOUND, "Request not from an employee in Inhaber's department"));
-
-        const day_off = await DayOffSchema.findOne({
+        const dayOffRequest = await DayOffSchema.findOne({
             date_start: new Date(updateRequest.request_dayOff_start),
             date_end: new Date(updateRequest.request_dayOff_end),
-            'members.id': employee.id
         });
-        if (!day_off) return next(createError(NOT_FOUND, "Day Off not found!"));
+        if (!dayOffRequest) return next(createError(NOT_FOUND, "Day Off request not found!"));
 
         if (updateRequest.answer_status === "approved") {
-            day_off.allowed = true;
-            await day_off.save();
+            dayOffRequest.allowed = true;
+            await dayOffRequest.save();
             const employeeDayOff = employee.dayOff_schedule.find(dayOffSchedule =>
-                dayOffSchedule.date_start.getTime() === day_off.date_start.getTime() &&
-                dayOffSchedule.date_end.getTime() === day_off.date_end.getTime()
+                dayOffSchedule.date_start.getTime() === dayOffRequest.date_start.getTime() &&
+                dayOffSchedule.date_end.getTime() === dayOffRequest.date_end.getTime()
             );
 
             if (employeeDayOff) {
                 employeeDayOff.allowed = true;
-                employee.realistic_day_off = employee.realistic_day_off - day_off.duration;
+                employee.realistic_day_off = employee.realistic_day_off - dayOffRequest.duration;
+
                 employee.markModified('dayOff_schedule');
                 await employee.save();
             }
         } else if (updateRequest.answer_status === "denied") {
             employee.dayOff_schedule = employee.dayOff_schedule.filter(dayOffSchedule =>
-                dayOffSchedule.date_start.getTime() !== day_off.date_start.getTime() ||
-                dayOffSchedule.date_end.getTime() !== day_off.date_end.getTime()
+                dayOffSchedule.date_start.getTime() !== dayOffRequest.date_start.getTime() ||
+                dayOffSchedule.date_end.getTime() !== dayOffRequest.date_end.getTime()
             );
             await employee.save();
-            await DayOffSchema.findOneAndDelete({ _id: day_off._id });
+            await DayOffSchema.findOneAndDelete({ _id: dayOffRequest._id });
         }
 
         res.status(OK).json({
@@ -1023,4 +1029,93 @@ export const getStatsForInhaber = async (req, res, next) => {
     }
 };
 
+export const addMemberToDepartmentByInhaber = async (req, res, next) => {
+    const departmentName = req.params.name;
+    const employeeID = req.body.employeeID;
+    const inhaberName = req.query.inhaber_name;
+
+    try {
+        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        // Check if the department is managed by the Inhaber
+        if (!inhaber.department.some(dep => dep.name === departmentName)) {
+            return next(createError(FORBIDDEN, "You do not have permission to add members to this department."));
+        }
+
+        const department = await DepartmentSchema.findOne({ name: departmentName });
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+
+        if (department.members.includes(employee)) return next(createError(CONFLICT, "Employee already exists in the department!"));
+
+        const departmentObject = {
+            name: departmentName,
+            position: req.body.position
+        };
+
+        department.members.push({
+            id: employee.id,
+            name: employee.name,
+            email: employee.email,
+            role: employee.role,
+            position: departmentObject.position,
+            status: employee.status
+        });
+        employee.department.push(departmentObject);
+
+        await department.save();
+        await employee.save();
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: "Member added to department successfully."
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const removeMemberFromDepartmentByInhaber = async (req, res, next) => {
+    const departmentName = req.params.name;
+    const employeeID = req.body.employeeID;
+    const inhaberName = req.query.inhaber_name;
+
+    try {
+        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        // Check if the department is managed by the Inhaber
+        if (!inhaber.department.some(dep => dep.name === departmentName)) {
+            return next(createError(FORBIDDEN, "You do not have permission to remove members from this department."));
+        }
+
+        const department = await DepartmentSchema.findOne({ name: departmentName });
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+
+        if (!department.members.some(member => member.id === employeeID)) {
+            return next(createError(NOT_FOUND, "Employee not a member of the department."));
+        }
+
+        department.members = department.members.filter(member => member.id !== employeeID);
+        employee.department = employee.department.filter(dep => dep.name !== departmentName);
+
+        await department.save();
+        await employee.save();
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: "Member removed from department successfully."
+        });
+    } catch (err) {
+        next(err);
+    }
+};
 

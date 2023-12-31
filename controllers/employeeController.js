@@ -611,10 +611,31 @@ export const updateAttendance = async (req, res, next) => {
                     existingAttendance.bar = req.body.bar;
                     existingAttendance.gesamt = req.body.gesamt;
                     existingAttendance.trinked_ec = req.body.trinked_ec;
-                    existingAttendance.trink_geld = req.body.trink_geld;
-                    existingAttendance.auf_rechnung = req.body.auf_rechnung;
+                    if (!req.body.bar || !req.body.gesamt || !req.body.trinked_ec) {
+                        return res.status(BAD_REQUEST).json({
+                            success: false,
+                            status: BAD_REQUEST,
+                            message: "Missing bar or gesamt or trinked_ec",
+                        });
+                    }
                     if (existingAttendance.department_name === "C2") {
-                        existingAttendance.results = req.body.bar - req.body.trinked_ec - req.body.trink_geld + (1.5 / 100) * req.body.gesamt;
+                        if (req.body.trink_geld && !req.body.auf_rechnung) {
+                            existingAttendance.trink_geld = req.body.trink_geld;
+                            existingAttendance.results = req.body.bar - req.body.trinked_ec - req.body.trink_geld + (1.5 / 100) * req.body.gesamt;
+                        } else if (req.body.auf_rechnung && !req.body.trink_geld) {
+                            existingAttendance.auf_rechnung = req.body.auf_rechnung;
+                            existingAttendance.results = req.body.bar - req.body.trinked_ec - req.body.auf_rechnung + (1.5 / 100) * req.body.gesamt;
+                        } else if (req.body.auf_rechnung && req.body.trink_geld) {
+                            existingAttendance.trink_geld = req.body.trink_geld;
+                            existingAttendance.auf_rechnung = req.body.auf_rechnung;
+                            existingAttendance.results = req.body.bar - req.body.trinked_ec - (req.body.auf_rechnung + req.body.trink_geld) + (1.5 / 100) * req.body.gesamt;
+                        } else if (!req.body.auf_rechnung && !req.body.trink_geld) {
+                            return res.status(BAD_REQUEST).json({
+                                success: false,
+                                status: BAD_REQUEST,
+                                message: "Missing auf_rechnung or trink_geld",
+                            });
+                        }
                     } else {
                         existingAttendance.results = req.body.bar - req.body.trinked_ec - req.body.trink_geld + (1 / 100) * req.body.gesamt;
                     }
@@ -639,6 +660,13 @@ export const updateAttendance = async (req, res, next) => {
                     existingAttendance.kassen_schniff = req.body.kassen_schniff;
                     existingAttendance.gesamt_ligerbude = req.body.gesamt_ligerbude;
                     existingAttendance.gesamt_liegerando = req.body.gesamt_liegerando;
+                    if (!req.body.bar || !req.body.kredit_karte || !req.body.kassen_schniff || !req.body.gesamt_ligerbude || !req.body.gesamt_liegerando) {
+                        return res.status(BAD_REQUEST).json({
+                            success: false,
+                            status: BAD_REQUEST,
+                            message: "Missing bar or kredit_karte or kassen_schniff or gesamt_ligerbude or gesamt_liegerando",
+                        });
+                    }
                     if (existingAttendance.department_name === "C Ulm") {
                         existingAttendance.results = req.body.bar + req.body.kassen_schniff - req.body.kredit_karte - (0.7 / 100) * req.body.gesamt_ligerbude - (0.3 / 100) * req.body.gesamt_liegerando;
                     } else if (existingAttendance.department_name === "C6") {

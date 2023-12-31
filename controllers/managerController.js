@@ -467,3 +467,91 @@ export const getAttendanceForManager = async (req, res, next) => {
         next(err);
     }
 };
+
+export const addMemberToDepartmentByInhaber = async (req, res, next) => {
+    const departmentName = req.params.name;
+    const employeeID = req.body.employeeID;
+    const inhaberName = req.query.inhaber_name;
+    try {
+        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        // Check if the department is managed by the Inhaber
+        if (!inhaber.department.some(dep => dep.name === departmentName)) {
+            return next(createError(FORBIDDEN, "You do not have permission to add members to this department."));
+        }
+
+        const department = await DepartmentSchema.findOne({ name: departmentName });
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+
+        if (department.members.includes(employee)) return next(createError(CONFLICT, "Employee already exists in the department!"));
+
+        const departmentObject = {
+            name: departmentName,
+            position: req.body.position
+        };
+
+        department.members.push({
+            id: employee.id,
+            name: employee.name,
+            email: employee.email,
+            role: employee.role,
+            position: departmentObject.position,
+            status: employee.status
+        });
+        employee.department.push(departmentObject);
+
+        await department.save();
+        await employee.save();
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: "Member added to department successfully."
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const removeMemberFromDepartmentByInhaber = async (req, res, next) => {
+    const departmentName = req.params.name;
+    const employeeID = req.body.employeeID;
+    const inhaberName = req.query.inhaber_name;
+    try {
+        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        // Check if the department is managed by the Inhaber
+        if (!inhaber.department.some(dep => dep.name === departmentName)) {
+            return next(createError(FORBIDDEN, "You do not have permission to remove members from this department."));
+        }
+
+        const department = await DepartmentSchema.findOne({ name: departmentName });
+        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+
+        if (!department.members.some(member => member.id === employeeID)) {
+            return next(createError(NOT_FOUND, "Employee not a member of the department."));
+        }
+
+        department.members = department.members.filter(member => member.id !== employeeID);
+        employee.department = employee.department.filter(dep => dep.name !== departmentName);
+
+        await department.save();
+        await employee.save();
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: "Member removed from department successfully."
+        });
+    } catch (err) {
+        next(err);
+    }
+};

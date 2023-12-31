@@ -65,6 +65,7 @@ export const logoutAdmin = (req, res, next) => {
 };
 
 export const registerInhaberByAdmin = async (req, res, next) => {
+    let departmentNames = req.body.department_name;
     try {
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
@@ -76,38 +77,47 @@ export const registerInhaberByAdmin = async (req, res, next) => {
             active_day: new Date()
         });
 
-        const isIdExists = await EmployeeSchema.findOne({ id: newInhaber.id, role: newInhaber.role })
-        const isNameExists = await EmployeeSchema.findOne({ name: newInhaber.name, role: newInhaber.role })
+        const isIdExists = await EmployeeSchema.findOne({ id: newInhaber.id });
+        const isNameExists = await EmployeeSchema.findOne({ name: newInhaber.name });
 
         if (isIdExists || isNameExists) {
             return res.status(BAD_REQUEST).json({
                 success: false,
                 status: BAD_REQUEST,
-                message: "Inhaber is already exists.",
+                message: "Inhaber already exists.",
             });
         }
 
-        const departmentObject = {
-            name: req.body.department_name,
-            position: req.body.position
+        // Convert departmentNames to an array if it's a string
+        if (typeof departmentNames === 'string') {
+            departmentNames = departmentNames.split(',');
         }
 
-        const department = await DepartmentSchema.findOne({ name: departmentObject.name });
-        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+        for (const deptName of departmentNames) {
+            const department = await DepartmentSchema.findOne({ name: deptName });
+            if (!department) {
+                return next(createError(NOT_FOUND, `Department ${deptName} not found!`));
+            }
 
-        if (department.members.some(member => member.name === req.body.name)) {
-            return next(createError(CONFLICT, `Inhaber already exists in department ${department.name}!`));
+            if (department.members.some(member => member.name === newInhaber.name)) {
+                return next(createError(CONFLICT, `Inhaber already exists in department ${deptName}!`));
+            }
+
+            department.members.push({
+                id: newInhaber.id,
+                name: newInhaber.name,
+                email: newInhaber.email,
+                role: newInhaber.role,
+                position: req.body.position,
+                status: newInhaber.status
+            });
+            await department.save();
+
+            newInhaber.department.push({
+                name: deptName,
+                position: req.body.position
+            });
         }
-
-        department.members.push({
-            id: newInhaber.id,
-            name: newInhaber.name,
-            email: newInhaber.email,
-            role: newInhaber.role,
-            position: departmentObject.position,
-            status: newInhaber.status
-        });
-        await department.save();
 
         const globalDayOffs = await DayOffSchema.find({ type: 'global' });
         globalDayOffs.forEach(globalDayOff => {
@@ -128,9 +138,8 @@ export const registerInhaberByAdmin = async (req, res, next) => {
                 status: newInhaber.status
             });
             globalDayOff.save();
-        })
+        });
 
-        newInhaber.department.push(departmentObject);
         newInhaber.realistic_day_off = newInhaber.default_day_off;
         await newInhaber.save();
 
@@ -176,6 +185,7 @@ export const logoutInhaber = (req, res, next) => {
 };
 
 export const registerManagerByAdmin = async (req, res, next) => {
+    let departmentNames = req.body.department_name;
     try {
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
@@ -187,38 +197,47 @@ export const registerManagerByAdmin = async (req, res, next) => {
             active_day: new Date()
         });
 
-        const isIdExists = await EmployeeSchema.findOne({ id: newManager.id, role: newManager.role })
-        const isNameExists = await EmployeeSchema.findOne({ name: newManager.name, role: newManager.role })
+        const isIdExists = await EmployeeSchema.findOne({ id: newManager.id });
+        const isNameExists = await EmployeeSchema.findOne({ name: newManager.name });
 
         if (isIdExists || isNameExists) {
             return res.status(BAD_REQUEST).json({
                 success: false,
                 status: BAD_REQUEST,
-                message: "Manager is already exists.",
+                message: "Manager already exists.",
             });
         }
 
-        const departmentObject = {
-            name: req.body.department_name,
-            position: req.body.position
+        // Convert departmentNames to an array if it's a string
+        if (typeof departmentNames === 'string') {
+            departmentNames = departmentNames.split(',');
         }
 
-        const department = await DepartmentSchema.findOne({ name: departmentObject.name });
-        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+        for (const deptName of departmentNames) {
+            const department = await DepartmentSchema.findOne({ name: deptName });
+            if (!department) {
+                return next(createError(NOT_FOUND, `Department ${deptName} not found!`));
+            }
 
-        if (department.members.some(member => member.name === req.body.name)) {
-            return next(createError(CONFLICT, `Manager already exists in department ${department.name}!`));
+            if (department.members.some(member => member.name === newManager.name)) {
+                return next(createError(CONFLICT, `Manager already exists in department ${deptName}!`));
+            }
+
+            department.members.push({
+                id: newManager.id,
+                name: newManager.name,
+                email: newManager.email,
+                role: newManager.role,
+                position: req.body.position,
+                status: newManager.status
+            });
+            await department.save();
+
+            newManager.department.push({
+                name: deptName,
+                position: req.body.position
+            });
         }
-
-        department.members.push({
-            id: newManager.id,
-            name: newManager.name,
-            email: newManager.email,
-            role: newManager.role,
-            position: departmentObject.position,
-            status: newManager.status
-        });
-        await department.save();
 
         const globalDayOffs = await DayOffSchema.find({ type: 'global' });
         globalDayOffs.forEach(globalDayOff => {
@@ -239,9 +258,8 @@ export const registerManagerByAdmin = async (req, res, next) => {
                 status: newManager.status
             });
             globalDayOff.save();
-        })
+        });
 
-        newManager.department.push(departmentObject);
         newManager.realistic_day_off = newManager.default_day_off;
         await newManager.save();
 
@@ -256,10 +274,25 @@ export const registerManagerByAdmin = async (req, res, next) => {
 };
 
 export const registerManagerByInhaber = async (req, res, next) => {
-    const inhaber_name = req.query.inhaber_name;
+    const inhaberName = req.query.inhaber_name;
+    let departmentNames = req.query.department_name;
     try {
-        const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: "Inhaber" });
+        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: "Inhaber" });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        // Convert departmentNames to an array if it's a string
+        if (typeof departmentNames === 'string') {
+            departmentNames = departmentNames.split(',');
+        }
+
+        // Filter out departments not in the Inhaber's departments
+        const validDepartments = departmentNames.filter(deptName =>
+            inhaber.department.some(dept => dept.name === deptName)
+        );
+
+        if (validDepartments.length === 0) {
+            return next(createError(NOT_FOUND, "No valid departments found in Inhaber's departments!"));
+        }
 
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
@@ -272,51 +305,44 @@ export const registerManagerByInhaber = async (req, res, next) => {
         });
         newManager.realistic_day_off = newManager.default_day_off;
 
-        const isIdExists = await EmployeeSchema.findOne({
-            id: newManager.id,
-            role: newManager.role
-        })
-        const isNameExists = await EmployeeSchema.findOne({
-            name: newManager.name,
-            role: newManager.role
-        })
+        const isIdExists = await EmployeeSchema.findOne({ id: newManager.id });
+        const isNameExists = await EmployeeSchema.findOne({ name: newManager.name });
 
         if (isIdExists || isNameExists) {
             return res.status(BAD_REQUEST).json({
                 success: false,
                 status: BAD_REQUEST,
-                message: "Manager is already exists.",
+                message: "Manager already exists.",
             });
         }
 
-        const inhaberDepartments = inhaber.department;
-        for (const inhaberDepartment of inhaberDepartments) {
-            const department = await DepartmentSchema.findOne({ name: inhaberDepartment.name });
-            if (!department) return next(createError(NOT_FOUND, "Department not found!"));
-
-            if (department.members.some(member => member.name === req.body.name)) {
-                return next(createError(CONFLICT, `Inhaber already exists in department ${department.name}!`));
+        for (const deptName of validDepartments) {
+            const department = await DepartmentSchema.findOne({ name: deptName });
+            if (!department) {
+                return next(createError(NOT_FOUND, `Department ${deptName} not found!`));
             }
 
-            const departmentObject = {
-                name: department.name,
-                position: req.body.position
+            if (department.members.some(member => member.name === newManager.name)) {
+                return next(createError(CONFLICT, `Manager already exists in department ${deptName}!`));
             }
-
             department.members.push({
                 id: newManager.id,
                 name: newManager.name,
                 email: newManager.email,
                 role: newManager.role,
-                position: departmentObject.position,
+                position: req.body.position,
                 status: newManager.status
             });
             await department.save();
 
-            newManager.department.push(departmentObject);
-            await newManager.save();
+            newManager.department.push({
+                name: deptName,
+                position: req.body.position
+            });
         }
+        await newManager.save();
 
+        // Handle global day offs
         const globalDayOffs = await DayOffSchema.find({ type: 'global' });
         globalDayOffs.forEach(globalDayOff => {
             newManager.dayOff_schedule.push({
@@ -336,7 +362,7 @@ export const registerManagerByInhaber = async (req, res, next) => {
                 status: newManager.status
             });
             globalDayOff.save();
-        })
+        });
 
         return res.status(CREATED).json({
             success: true,
@@ -380,6 +406,7 @@ export const logoutManager = (req, res, next) => {
 };
 
 export const registerEmployeeByAdmin = async (req, res, next) => {
+    let departmentNames = req.body.department_name;
     try {
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
@@ -391,38 +418,47 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
             active_day: new Date()
         });
 
-        const isIdExists = await EmployeeSchema.findOne({ id: newEmployee.id, role: newEmployee.role })
-        const isNameExists = await EmployeeSchema.findOne({ name: newEmployee.name, role: newEmployee.role })
+        const isIdExists = await EmployeeSchema.findOne({ id: newEmployee.id });
+        const isNameExists = await EmployeeSchema.findOne({ name: newEmployee.name });
 
         if (isIdExists || isNameExists) {
             return res.status(BAD_REQUEST).json({
                 success: false,
                 status: BAD_REQUEST,
-                message: "Employee is already exists.",
+                message: "Employee already exists.",
             });
         }
 
-        const departmentObject = {
-            name: req.body.department_name,
-            position: req.body.position
+        // Convert departmentNames to an array if it's a string
+        if (typeof departmentNames === 'string') {
+            departmentNames = departmentNames.split(',');
         }
 
-        const department = await DepartmentSchema.findOne({ name: departmentObject.name });
-        if (!department) return next(createError(NOT_FOUND, "Department not found!"));
+        for (const deptName of departmentNames) {
+            const department = await DepartmentSchema.findOne({ name: deptName.trim() });
+            if (!department) {
+                return next(createError(NOT_FOUND, `Department ${deptName} not found!`));
+            }
 
-        if (department.members.some(member => member.name === req.body.name)) {
-            return next(createError(CONFLICT, `Employee already exists in department ${department.name}!`));
+            if (department.members.some(member => member.id === newEmployee.id)) {
+                return next(createError(CONFLICT, `Employee already exists in department ${deptName}!`));
+            }
+
+            department.members.push({
+                id: newEmployee.id,
+                name: newEmployee.name,
+                email: newEmployee.email,
+                role: newEmployee.role,
+                position: req.body.position,
+                status: newEmployee.status
+            });
+            await department.save();
+
+            newEmployee.department.push({
+                name: deptName,
+                position: req.body.position
+            });
         }
-
-        department.members.push({
-            id: newEmployee.id,
-            name: newEmployee.name,
-            email: newEmployee.email,
-            role: newEmployee.role,
-            position: departmentObject.position,
-            status: newEmployee.status
-        });
-        await department.save();
 
         const globalDayOffs = await DayOffSchema.find({ type: 'global' });
         globalDayOffs.forEach(globalDayOff => {
@@ -443,9 +479,8 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
                 status: newEmployee.status
             });
             globalDayOff.save();
-        })
+        });
 
-        newEmployee.department.push(departmentObject);
         newEmployee.realistic_day_off = newEmployee.default_day_off;
         await newEmployee.save();
 
@@ -460,10 +495,23 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
 };
 
 export const registerEmployeeByInhaber = async (req, res, next) => {
-    const inhaber_name = req.query.inhaber_name;
+    const inhaberName = req.query.inhaber_name;
+    let departmentNames = req.body.department_name;
     try {
-        const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: "Inhaber" });
+        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: "Inhaber" });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        if (typeof departmentNames === 'string') {
+            departmentNames = departmentNames.split(',');
+        }
+
+        const validDepartments = departmentNames.filter(deptName =>
+            inhaber.department.some(dept => dept.name === deptName)
+        );
+
+        if (validDepartments.length === 0) {
+            return next(createError(NOT_FOUND, "No valid departments found in Inhaber's departments!"));
+        }
 
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
@@ -476,45 +524,44 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
         });
         newEmployee.realistic_day_off = newEmployee.default_day_off;
 
-        const isIdExists = await EmployeeSchema.findOne({ id: newEmployee.id, role: newEmployee.role })
-        const isNameExists = await EmployeeSchema.findOne({ name: newEmployee.name, role: newEmployee.role })
+        const isIdExists = await EmployeeSchema.findOne({ id: newEmployee.id });
+        const isNameExists = await EmployeeSchema.findOne({ name: newEmployee.name });
 
         if (isIdExists || isNameExists) {
             return res.status(BAD_REQUEST).json({
                 success: false,
                 status: BAD_REQUEST,
-                message: "Employee is already exists.",
+                message: "Employee already exists.",
             });
         }
 
-        const inhaberDepartments = inhaber.department;
-        for (const inhaberDepartment of inhaberDepartments) {
-            const department = await DepartmentSchema.findOne({ name: inhaberDepartment.name });
-            if (!department) return next(createError(NOT_FOUND, "Department not found!"));
-
-            if (department.members.some(member => member.name === req.body.name)) {
-                return next(createError(CONFLICT, `Inhaber already exists in department ${department.name}!`));
+        for (const deptName of validDepartments) {
+            const department = await DepartmentSchema.findOne({ name: deptName });
+            if (!department) {
+                return next(createError(NOT_FOUND, `Department ${deptName} not found!`));
             }
 
-            const departmentObject = {
-                name: department.name,
-                position: req.body.position
+            if (department.members.some(member => member.name === newManager.name)) {
+                return next(createError(CONFLICT, `Employee already exists in department ${deptName}!`));
             }
-
             department.members.push({
                 id: newEmployee.id,
                 name: newEmployee.name,
                 email: newEmployee.email,
                 role: newEmployee.role,
-                position: departmentObject.position,
+                position: req.body.position,
                 status: newEmployee.status
             });
             await department.save();
 
-            newEmployee.department.push(departmentObject);
-            await newEmployee.save();
+            newEmployee.department.push({
+                name: deptName,
+                position: req.body.position
+            });
         }
+        await newEmployee.save();
 
+        // Handle global day offs
         const globalDayOffs = await DayOffSchema.find({ type: 'global' });
         globalDayOffs.forEach(globalDayOff => {
             newEmployee.dayOff_schedule.push({
@@ -534,7 +581,7 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
                 status: newEmployee.status
             });
             globalDayOff.save();
-        })
+        });
 
         return res.status(CREATED).json({
             success: true,
@@ -547,10 +594,23 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
 };
 
 export const registerEmployeeByManager = async (req, res, next) => {
-    const manager_name = req.query.manager_name;
+    const managerName = req.query.manager_name;
+    let departmentNames = req.body.department_name;
     try {
-        const manager = await EmployeeSchema.findOne({ name: manager_name, role: "Manager" });
+        const manager = await EmployeeSchema.findOne({ name: managerName, role: "Inhaber" });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
+
+        if (typeof departmentNames === 'string') {
+            departmentNames = departmentNames.split(',');
+        }
+
+        const validDepartments = departmentNames.filter(deptName =>
+            manager.department.some(dept => dept.name === deptName)
+        );
+
+        if (validDepartments.length === 0) {
+            return next(createError(NOT_FOUND, "No valid departments found in Manager's departments!"));
+        }
 
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(req.body.password, salt);
@@ -563,45 +623,44 @@ export const registerEmployeeByManager = async (req, res, next) => {
         });
         newEmployee.realistic_day_off = newEmployee.default_day_off;
 
-        const isIdExists = await EmployeeSchema.findOne({ id: newEmployee.id, role: newEmployee.role })
-        const isNameExists = await EmployeeSchema.findOne({ name: newEmployee.name, role: newEmployee.role })
+        const isIdExists = await EmployeeSchema.findOne({ id: newEmployee.id });
+        const isNameExists = await EmployeeSchema.findOne({ name: newEmployee.name });
 
         if (isIdExists || isNameExists) {
             return res.status(BAD_REQUEST).json({
                 success: false,
                 status: BAD_REQUEST,
-                message: "Employee is already exists.",
+                message: "Employee already exists.",
             });
         }
 
-        const managerDepartments = manager.department;
-        for (const managerDepartment of managerDepartments) {
-            const department = await DepartmentSchema.findOne({ name: managerDepartment.name });
-            if (!department) return next(createError(NOT_FOUND, "Department not found!"));
-
-            if (department.members.some(member => member.name === req.body.name)) {
-                return next(createError(CONFLICT, `Manager already exists in department ${department.name}!`));
+        for (const deptName of validDepartments) {
+            const department = await DepartmentSchema.findOne({ name: deptName });
+            if (!department) {
+                return next(createError(NOT_FOUND, `Department ${deptName} not found!`));
             }
 
-            const departmentObject = {
-                name: department.name,
-                position: req.body.position
-            }
-
+            if (department.members.some(member => member.name === newManager.name)) {
+                return next(createError(CONFLICT, `Employee already exists in department ${deptName}!`));
+            } 
             department.members.push({
                 id: newEmployee.id,
                 name: newEmployee.name,
                 email: newEmployee.email,
                 role: newEmployee.role,
-                position: departmentObject.position,
+                position: req.body.position,
                 status: newEmployee.status
             });
             await department.save();
 
-            newEmployee.department.push(departmentObject);
-            await newEmployee.save();
+            newEmployee.department.push({
+                name: deptName,
+                position: req.body.position
+            });
         }
+        await newEmployee.save();
 
+        // Handle global day offs
         const globalDayOffs = await DayOffSchema.find({ type: 'global' });
         globalDayOffs.forEach(globalDayOff => {
             newEmployee.dayOff_schedule.push({
@@ -621,7 +680,7 @@ export const registerEmployeeByManager = async (req, res, next) => {
                 status: newEmployee.status
             });
             globalDayOff.save();
-        })
+        });
 
         return res.status(CREATED).json({
             success: true,

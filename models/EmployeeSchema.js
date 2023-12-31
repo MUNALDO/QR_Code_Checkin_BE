@@ -43,9 +43,10 @@ const employeeSchema = new mongoose.Schema(
         },
         default_day_off: {
             type: Number,
+            default: 0
         },
         realistic_day_off: {
-            type: Number,
+            type: Number
         },
         department: [
             {

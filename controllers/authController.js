@@ -597,7 +597,7 @@ export const registerEmployeeByManager = async (req, res, next) => {
     const managerName = req.query.manager_name;
     let departmentNames = req.body.department_name;
     try {
-        const manager = await EmployeeSchema.findOne({ name: managerName, role: "Inhaber" });
+        const manager = await EmployeeSchema.findOne({ name: managerName, role: "Manager" });
         if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
 
         if (typeof departmentNames === 'string') {

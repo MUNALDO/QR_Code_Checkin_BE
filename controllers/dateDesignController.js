@@ -129,24 +129,20 @@ export const createMultipleDateDesigns = async (req, res, next) => {
                 employee_id: employee.id,
                 employee_name: employee.name,
                 role: employee.role,
-                department_name: department.name,
+                department_name: departmentName,
                 position: employee.position,
                 shift_info: {
-                    shift_code: shift.shift_code,
-                    shift_type: shift.shift_type,
-                    total_hour: 0,
+                    shift_code: shift.code,
+                    total_hour: 8,
                     total_minutes: 0,
                 },
-                check_in_km: 0,
-                check_out_km: 0,
-                total_km: 0,
-                status: "missing",
+                status: "checked",
             });
-            const departmentIndex = employee.department.findIndex(dep => dep.name === department.name);
+            const departmentIndex = employee.department.findIndex(dep => dep.name === departmentName);
             const statsIndex = employee.department[departmentIndex].attendance_stats.findIndex(stat =>
                 stat.year === currentYear && stat.month === currentMonth
             );
-        
+
             if (statsIndex > -1) {
                 employee.department[departmentIndex].attendance_stats[statsIndex].date_missing += 1;
             } else {
@@ -162,7 +158,7 @@ export const createMultipleDateDesigns = async (req, res, next) => {
             await newAttendance.save();
             await employee.save();
             console.log('Missing attendance created for employee:', employee.id);
-        
+
             let stats = await StatsSchema.findOne({
                 employee_id: employee.id,
                 year: currentYear,

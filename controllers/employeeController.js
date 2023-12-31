@@ -160,7 +160,6 @@ const createMissingAttendance = async (employee, department, schedule, shift) =>
         position: employee.position,
         shift_info: {
             shift_code: shift.shift_code,
-            shift_type: shift.shift_type,
             total_hour: 0,
             total_minutes: 0,
         },

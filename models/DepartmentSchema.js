@@ -10,7 +10,7 @@ const departmentSchema = new mongoose.Schema(
         },
         members: [],
         cars: [],
-        wifi_name: {
+        wifi_ip: {
             type: String
         }
     },

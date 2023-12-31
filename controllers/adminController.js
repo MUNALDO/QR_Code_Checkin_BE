@@ -692,6 +692,9 @@ export const getLogs = async (req, res, next) => {
     }
 };
 
+export const getForm = async (req, res, next) => {
+    
+}
 
 
 

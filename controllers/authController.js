@@ -541,7 +541,7 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
                 return next(createError(NOT_FOUND, `Department ${deptName} not found!`));
             }
 
-            if (department.members.some(member => member.name === newManager.name)) {
+            if (department.members.some(member => member.name === newEmployee.name)) {
                 return next(createError(CONFLICT, `Employee already exists in department ${deptName}!`));
             }
             department.members.push({
@@ -640,7 +640,7 @@ export const registerEmployeeByManager = async (req, res, next) => {
                 return next(createError(NOT_FOUND, `Department ${deptName} not found!`));
             }
 
-            if (department.members.some(member => member.name === newManager.name)) {
+            if (department.members.some(member => member.name === newEmployee.name)) {
                 return next(createError(CONFLICT, `Employee already exists in department ${deptName}!`));
             } 
             department.members.push({

@@ -73,7 +73,7 @@ export const createMultipleDateDesigns = async (req, res, next) => {
 
                     const startsDuringExisting = newStartTime >= existingStartTime && newStartTime < existingEndTime;
                     const endsDuringExisting = newEndTime > existingStartTime && newEndTime <= existingEndTime;
-                    const overlapsExistingEnd = newStartTime < existingEndTime && newStartTime >= existingEndTime - 30;
+                    const overlapsExistingEnd = newStartTime <= existingEndTime + 30;
 
                     return startsDuringExisting || endsDuringExisting || overlapsExistingEnd;
                 });

@@ -32,7 +32,11 @@ mongoose.connection.on('disconnected', () => {
     console.log("Database disconnected");
 });
 
-app.use(cors());
+app.use(cors({
+    origin: ['http://localhost:3000', 'https://fe-qr-project.vercel.app', 'fe-qr-project-uh5f.vercel.app',
+        'https://qr-code-checkin-employee.vercel.app', 'https://qrcodecheckin-d350fcfb1cb9.herokuapp.com'],
+    credentials: true,
+}));
 // app.options('*', cors());
 
 app.use(cookieParser());

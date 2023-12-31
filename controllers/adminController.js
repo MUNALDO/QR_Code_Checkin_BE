@@ -707,7 +707,7 @@ export const getForm = async (req, res, next) => {
     // Additional queries
     if (employeeID) query.employee_id = employeeID;
     if (department_name) query.department_name = department_name;
-    if (position) query['shift_info.position'] = position;
+    if (position) query.position = position;
 
     try {
         const attendanceRecords = await AttendanceSchema.find(query);

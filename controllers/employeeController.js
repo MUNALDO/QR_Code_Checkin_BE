@@ -612,7 +612,7 @@ export const updateAttendance = async (req, res, next) => {
                         message: existingAttendance,
                     });
                 }
-            } else if (existingAttendance.position === "Lito") {
+            } else if (existingAttendance.position === "Service") {
                 if (existingAttendance.shift_info.time_slot.check_in === true && existingAttendance.shift_info.time_slot.check_out === true) {
                     // const file = req.file;
                     // if (!file) {
@@ -666,7 +666,7 @@ export const updateAttendance = async (req, res, next) => {
                         message: "Not allow!",
                     });
                 }
-            } else if (existingAttendance.position === "Service") {
+            } else if (existingAttendance.position === "Lito") {
                 if (existingAttendance.shift_info.time_slot.check_in === true && existingAttendance.shift_info.time_slot.check_out === true) {
                     existingAttendance.bar = req.body.bar;
                     existingAttendance.kredit_karte = req.body.kredit_karte;

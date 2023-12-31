@@ -123,6 +123,60 @@ export const createMultipleDateDesigns = async (req, res, next) => {
             error_dates: errorDates
         };
 
+        if (departmentName === "School") {
+            const newAttendance = new AttendanceSchema({
+                date: schedule.date,
+                employee_id: employee.id,
+                employee_name: employee.name,
+                role: employee.role,
+                department_name: department.name,
+                position: employee.position,
+                shift_info: {
+                    shift_code: shift.shift_code,
+                    shift_type: shift.shift_type,
+                    total_hour: 0,
+                    total_minutes: 0,
+                },
+                check_in_km: 0,
+                check_out_km: 0,
+                total_km: 0,
+                status: "missing",
+            });
+            const departmentIndex = employee.department.findIndex(dep => dep.name === department.name);
+            const statsIndex = employee.department[departmentIndex].attendance_stats.findIndex(stat =>
+                stat.year === currentYear && stat.month === currentMonth
+            );
+        
+            if (statsIndex > -1) {
+                employee.department[departmentIndex].attendance_stats[statsIndex].date_missing += 1;
+            } else {
+                const newStat = {
+                    year: currentYear,
+                    month: currentMonth,
+                    date_on_time: 0,
+                    date_late: 0,
+                    date_missing: 1,
+                };
+                employee.department[departmentIndex].attendance_stats.push(newStat);
+            }
+            await newAttendance.save();
+            await employee.save();
+            console.log('Missing attendance created for employee:', employee.id);
+        
+            let stats = await StatsSchema.findOne({
+                employee_id: employee.id,
+                year: currentYear,
+                month: currentMonth
+            });
+            if (stats) {
+                stats.attendance_total_times = stats.attendance_total_times;
+                stats.attendance_overtime = stats.attendance_total_times - stats.default_schedule_times;
+                await stats.save();
+            } else {
+                console.log("Employee's stats not found");
+            }
+        }
+
         res.status(CREATED).json({
             success: true,
             status: CREATED,

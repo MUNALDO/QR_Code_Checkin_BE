@@ -49,9 +49,9 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
                 month: currentMonth
             });
             if (stats) {
-                const spendSchedulesTime = stats.default_schedule_times - stats.realistic_schedule_times;
+                // const spendSchedulesTime = stats.default_schedule_times - stats.realistic_schedule_times;
                 stats.default_schedule_times = req.body.total_time_per_month;
-                stats.realistic_schedule_times = req.body.total_time_per_month - spendSchedulesTime;
+                stats.realistic_schedule_times = req.body.total_time_per_month + stats.realistic_schedule_times;
                 stats.attendance_overtime = stats.attendance_total_times - req.body.total_time_per_month;
                 await stats.save();
             }

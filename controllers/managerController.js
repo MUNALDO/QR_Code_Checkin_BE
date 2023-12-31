@@ -468,16 +468,16 @@ export const getAttendanceForManager = async (req, res, next) => {
     }
 };
 
-export const addMemberToDepartmentByInhaber = async (req, res, next) => {
+export const addMemberToDepartmentByManager = async (req, res, next) => {
     const departmentName = req.params.name;
     const employeeID = req.body.employeeID;
-    const inhaberName = req.query.inhaber_name;
+    const managerName = req.query.manager_name;
     try {
-        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
-        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+        const manager = await EmployeeSchema.findOne({ name: managerName, role: 'Manager' });
+        if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
 
-        // Check if the department is managed by the Inhaber
-        if (!inhaber.department.some(dep => dep.name === departmentName)) {
+        // Check if the department is managed by the manager
+        if (!manager.department.some(dep => dep.name === departmentName)) {
             return next(createError(FORBIDDEN, "You do not have permission to add members to this department."));
         }
 
@@ -517,16 +517,16 @@ export const addMemberToDepartmentByInhaber = async (req, res, next) => {
     }
 };
 
-export const removeMemberFromDepartmentByInhaber = async (req, res, next) => {
+export const removeMemberFromDepartmentByManager = async (req, res, next) => {
     const departmentName = req.params.name;
     const employeeID = req.body.employeeID;
-    const inhaberName = req.query.inhaber_name;
+    const managerName = req.query.manager_name;
     try {
-        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
-        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+        const manager = await EmployeeSchema.findOne({ name: managerName, role: 'Manager' });
+        if (!manager) return next(createError(NOT_FOUND, "Manager not found!"));
 
-        // Check if the department is managed by the Inhaber
-        if (!inhaber.department.some(dep => dep.name === departmentName)) {
+        // Check if the department is managed by the manager
+        if (!manager.department.some(dep => dep.name === departmentName)) {
             return next(createError(FORBIDDEN, "You do not have permission to remove members from this department."));
         }
 

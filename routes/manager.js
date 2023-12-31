@@ -1,9 +1,10 @@
 import express from 'express';
 import { verifyTokenManager } from '../utils/verifyToken.js';
 import {
+    addMemberToDepartmentByManager,
     createMultipleDateDesignsByManager, deleteDateSpecificByManager,
     getAttendanceForManager, getDateDesignForManager, getEmployeeByIdForManager,
-    getEmployeesSchedulesByManager, searchSpecificForManager
+    getEmployeesSchedulesByManager, removeMemberFromDepartmentByManager, searchSpecificForManager
 } from '../controllers/managerController.js';
 import { createShift, getAllShifts, getShiftByCode, getShiftByName, updateShift } from '../controllers/shiftController.js';
 
@@ -28,5 +29,9 @@ router.put('/manage-shift/update', verifyTokenManager, updateShift);
 
 // manage attendance
 router.get('/manage-attendance/get-by-specific', verifyTokenManager, getAttendanceForManager);
+
+// manage department
+router.put('/manage-department/add-member/:name', verifyTokenManager, addMemberToDepartmentByManager);
+router.put('/manage-department/remove-member/:name', verifyTokenManager, removeMemberFromDepartmentByManager);
 
 export default router;

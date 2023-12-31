@@ -109,7 +109,9 @@ export const madeEmployeeInactive = async (req, res, next) => {
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
         if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee already inactive!"));
 
-        const inactiveDate = new Date(req.body.inactive_day);
+        const [month, day, year] = req.body.inactive_day.split('/').map(Number);
+        const inactiveDate = new Date(year, month - 1, day);
+        // console.log(inactiveDate);
         const currentDate = new Date();
 
         // Check if the inactive date is in the future
@@ -117,13 +119,8 @@ export const madeEmployeeInactive = async (req, res, next) => {
             return next(createError(BAD_REQUEST, "Inactive day must be in the future."));
         }
 
-        const minute = inactiveDate.getMinutes();
-        const hour = inactiveDate.getHours();
-        const day = inactiveDate.getDate();
-        const month = inactiveDate.getMonth();
-
-        // Schedule the status update
-        cron.schedule(`${minute} ${hour} ${day} ${month + 1} *`, async () => {
+        // Schedule the status update to run at midnight (00:00) of the specified date
+        cron.schedule(`0 0 ${day} ${month} *`, async () => {
             employee.inactive_day = inactiveDate;
             employee.status = "inactive";
 
@@ -151,7 +148,7 @@ export const madeEmployeeInactive = async (req, res, next) => {
         res.status(OK).json({
             success: true,
             status: OK,
-            message: "Employee will be made inactive on the specified date."
+            message: `Employee will be made inactive on the specified date: ${inactiveDate}.`
         });
     } catch (err) {
         next(err);

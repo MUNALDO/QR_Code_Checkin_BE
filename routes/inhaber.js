@@ -1,9 +1,10 @@
 import express from 'express';
 import {
+    addMemberToDepartmentByInhaber,
     createMultipleDateDesignsByInhaber, deleteDateSpecificByInhaber, deleteEmployeeByIdByInhaber,
     getAllRequestsForInhaber, getAttendanceForInhaber, getDateDesignForInhaber, getEmployeeByIdForInhaber, getEmployeesSchedulesByInhaber,
     getRequestByIdForInhaber, getSalaryForInhaber, getStatsForInhaber, handleRequestForInhaber,
-    madeEmployeeInactiveByInhaber, searchSpecificForInhaber, updateAttendanceForInhaber, updateEmployeeByInhaber
+    madeEmployeeInactiveByInhaber, removeMemberFromDepartmentByInhaber, searchSpecificForInhaber, updateAttendanceForInhaber, updateEmployeeByInhaber
 } from '../controllers/inhaberController.js';
 import {
     createShift, getAllShifts, getShiftByCode,
@@ -58,5 +59,9 @@ router.get('/manage-xlsx/attendance-data', verifyTokenInhaber, exportAttendanceF
 
 // manage stats
 router.get('/manage-stats/get', verifyTokenInhaber, getStatsForInhaber);
+
+// manage department
+router.put('/manage-department/add-member/:name', verifyTokenInhaber, addMemberToDepartmentByInhaber);
+router.put('/manage-department/remove-member/:name', verifyTokenInhaber, removeMemberFromDepartmentByInhaber);
 
 export default router;

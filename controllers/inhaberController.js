@@ -112,8 +112,8 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
 };
 
 export const madeEmployeeInactiveByInhaber = async (req, res, next) => {
-    const inhaberName = req.query.inhaber_name;
     const employeeID = req.query.employeeID;
+    const inhaberName = req.query.inhaber_name;
     try {
         const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
@@ -122,45 +122,38 @@ export const madeEmployeeInactiveByInhaber = async (req, res, next) => {
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
         if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee already inactive!"));
 
-        // Verify if the employee belongs to the Inhaber's department
-        const isEmployeeInDepartment = employee.department.some(department =>
-            inhaber.department.some(inhaberDepartment => inhaberDepartment.name === department.name)
+        // Check if the employee is in one of the Inhaber's departments
+        const isInhaberDepartment = employee.department.some(dept =>
+            inhaber.department.some(inhaberDept => inhaberDept.name === dept.name)
         );
-        if (!isEmployeeInDepartment) {
-            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only modify an employee in their departments."));
-        }
+        if (!isInhaberDepartment) return next(createError(NOT_FOUND, "Employee not in Inhaber's department!"));
 
-        const inactiveDate = new Date(req.body.inactive_day);
+        const [month, day, year] = req.body.inactive_day.split('/').map(Number);
+        const inactiveDate = new Date(year, month - 1, day);
         const currentDate = new Date();
 
-        // Check if the inactive date is in the future
         if (inactiveDate <= currentDate) {
             return next(createError(BAD_REQUEST, "Inactive day must be in the future."));
         }
 
-        const minute = inactiveDate.getMinutes();
-        const hour = inactiveDate.getHours();
-        const day = inactiveDate.getDate();
-        const month = inactiveDate.getMonth();
-
-        // Schedule the status update
-        cron.schedule(`${minute} ${hour} ${day} ${month + 1} *`, async () => {
+        cron.schedule(`0 0 ${day} ${month} *`, async () => {
             employee.inactive_day = inactiveDate;
             employee.status = "inactive";
 
-            // Update status in departments
+            // Update status in shared departments between employee and Inhaber
             for (let departmentObject of employee.department) {
-                const department = await DepartmentSchema.findOne({ name: departmentObject.name });
-                if (department) {
-                    const memberIndex = department.members.findIndex(member => member.id === employee.id);
-                    if (memberIndex !== -1) {
-                        department.members[memberIndex].status = "inactive";
-                        await department.save();
+                if (inhaber.department.some(inhaberDept => inhaberDept.name === departmentObject.name)) {
+                    const department = await DepartmentSchema.findOne({ name: departmentObject.name });
+                    if (department) {
+                        const memberIndex = department.members.findIndex(member => member.id === employee.id);
+                        if (memberIndex !== -1) {
+                            department.members[memberIndex].status = "inactive";
+                            await department.save();
+                        }
                     }
                 }
             }
 
-            // Update status in day off records
             await DayOffSchema.updateMany(
                 { 'members.id': employeeID },
                 { $set: { 'members.$.status': "inactive" } }
@@ -172,8 +165,7 @@ export const madeEmployeeInactiveByInhaber = async (req, res, next) => {
         res.status(OK).json({
             success: true,
             status: OK,
-            message: `Employee will be made inactive on the specified date:
-            ${minute} ${hour} ${day} ${month + 1}.`
+            message: "Employee will be made inactive on the specified date."
         });
     } catch (err) {
         next(err);
@@ -1031,7 +1023,6 @@ export const addMemberToDepartmentByInhaber = async (req, res, next) => {
     const departmentName = req.params.name;
     const employeeID = req.body.employeeID;
     const inhaberName = req.query.inhaber_name;
-
     try {
         const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
@@ -1081,7 +1072,6 @@ export const removeMemberFromDepartmentByInhaber = async (req, res, next) => {
     const departmentName = req.params.name;
     const employeeID = req.body.employeeID;
     const inhaberName = req.query.inhaber_name;
-
     try {
         const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));

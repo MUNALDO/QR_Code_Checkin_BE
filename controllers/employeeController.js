@@ -62,6 +62,20 @@ export const verifyWifi = async (req, res, next) => {
     }
 }
 
+export const collectIP = async (req, res, next) => {
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    try {
+        // console.log('User IP Address:', ip);
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: ip,
+        });
+    } catch (error) {
+        console.log(error);
+    }
+}
+
 export const autoCheck = async (req, res, next) => {
     try {
         const employees = await EmployeeSchema.find({ status: 'active' });

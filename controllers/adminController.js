@@ -693,8 +693,92 @@ export const getLogs = async (req, res, next) => {
 };
 
 export const getForm = async (req, res, next) => {
-    
-}
+    const { year, month, employeeID, department_name, position } = req.query;
+
+    let query = {};
+
+    // Time query
+    if (year) {
+        const startDate = new Date(year, month ? month - 1 : 0, 1);
+        const endDate = new Date(year, month ? month : 12, 0);
+        query.date = { $gte: startDate, $lt: endDate };
+    }
+
+    // Additional queries
+    if (employeeID) query.employee_id = employeeID;
+    if (department_name) query.department_name = department_name;
+    if (position) query['shift_info.position'] = position;
+
+    try {
+        const attendanceRecords = await AttendanceSchema.find(query);
+
+        if (attendanceRecords.length === 0) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: "No attendance records found."
+            });
+        }
+
+        const formattedResults = attendanceRecords.map(record => {
+            let result = {
+                date: record.date,
+                employee_id: record.employee_id,
+                employee_name: record.employee_name,
+                department_name: record.department_name,
+                position: record.position,
+            };
+
+            switch (record.position) {
+                case "Autofahrer":
+                    result = {
+                        ...result,
+                        car_info: record.car_info,
+                        check_in_km: record.check_in_km,
+                        check_out_km: record.check_out_km,
+                        total_km: record.total_km
+                    };
+                    break;
+                case "Service":
+                    result = {
+                        ...result,
+                        bar: record.bar,
+                        gesamt: record.gesamt,
+                        trinked_ec: record.trinked_ec,
+                        trink_geld: record.trink_geld,
+                        auf_rechnung: record.auf_rechnung,
+                        results: record.results
+                    };
+                    break;
+                case "Lito":
+                    result = {
+                        ...result,
+                        bar: record.bar,
+                        kredit_karte: record.kredit_karte,
+                        kassen_schniff: record.kassen_schniff,
+                        gesamt_ligerbude: record.gesamt_ligerbude,
+                        gesamt_liegerando: record.gesamt_liegerando,
+                        results: record.results
+                    };
+                    break;
+                default:
+                    // Handle other cases or do nothing
+                    break;
+            }
+
+            return result;
+        });
+
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: formattedResults
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 
 
 

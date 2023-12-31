@@ -1,7 +1,7 @@
 import express from 'express';
 import {
     deleteEmployeeById, getAllEmployeesSchedules, getAllRequests, getAttendance,
-    getEmployeeById, getLogs, getRequestById, getStats, handleRequest,
+    getEmployeeById, getForm, getLogs, getRequestById, getStats, handleRequest,
     madeEmployeeInactive, searchSpecific, updateAttendance, updateEmployee
 } from '../controllers/adminController.js';
 import {
@@ -96,5 +96,8 @@ router.get('/manage-stats/get', verifyTokenAdmin, getStats);
 
 // manage logs
 router.get('/manage-logs/get', verifyTokenAdmin, getLogs);
+
+// manage form
+router.get('/manage-form/get', verifyTokenAdmin, getForm);
 
 export default router;

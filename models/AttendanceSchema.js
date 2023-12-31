@@ -74,25 +74,65 @@ const attendanceSchema = new mongoose.Schema(
                 type: Date
             }
         },
-        check_out_image: {
-            type: String
-        },
         check_in_km: {
             type: Number,
+            default: 0
         },
         check_out_km: {
             type: Number,
+            default: 0
         },
         total_km: {
             type: Number,
+            default: 0
         },
-        revenue: {
-            type: Number
+        bar: {
+            // both service & lito
+            type: Number,
+            default: 0
         },
-        tips: {
-            type: Number
+        gesamt: {
+            // service: tổng
+            type: Number,
+            default: 0
         },
-        others: {
+        trinked_ec: {
+            // service: tips
+            type: Number,
+            default: 0
+        },
+        trink_geld: {
+            // service: phiếu tip
+            type: Number,
+            default: 0
+        },
+        auf_rechnung: {
+            // service: hóa đơn
+            type: Number,
+            default: 0
+        },
+        kredit_karte: {
+            // lito: thẻ ngân hàng
+            type: Number,
+            default: 0
+        },
+        kassen_schniff: {
+            // lito: tiền mặt
+            type: Number,
+            default: 0
+        },
+        gesamt_ligerbude: {
+            // lito: tổng gian hàng giao hàng
+            type: Number,
+            default: 0
+        },
+        gesamt_liegerando: {
+            // lito: tổng số lần giao hàng
+            type: Number,
+            default: 0
+        },
+        results: {
+            // both service & lito
             type: Number
         },
         status: {

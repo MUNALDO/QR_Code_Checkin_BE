@@ -526,22 +526,22 @@ export const checkAttendance = async (req, res, next) => {
     }
 }
 
-async function uploadImageToS3(file) {
-    const uploadParams = {
-        Bucket: process.env.AWS_S3_BUCKET,
-        Key: `${file.originalname}-${Date.now()}`,
-        Body: file.buffer,
-        ContentType: file.mimetype
-    };
+// async function uploadImageToS3(file) {
+//     const uploadParams = {
+//         Bucket: process.env.AWS_S3_BUCKET,
+//         Key: `${file.originalname}-${Date.now()}`,
+//         Body: file.buffer,
+//         ContentType: file.mimetype
+//     };
 
-    try {
-        const command = new PutObjectCommand(uploadParams);
-        await s3Client.send(command);
-        return `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
-    } catch (error) {
-        throw error;
-    }
-}
+//     try {
+//         const command = new PutObjectCommand(uploadParams);
+//         await s3Client.send(command);
+//         return `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+//     } catch (error) {
+//         throw error;
+//     }
+// }
 
 export const updateAttendance = async (req, res, next) => {
     const attendanceID = req.query.attendanceID;
@@ -601,28 +601,30 @@ export const updateAttendance = async (req, res, next) => {
                 }
             } else if (existingAttendance.position === "Lito") {
                 if (existingAttendance.shift_info.time_slot.check_in === true && existingAttendance.shift_info.time_slot.check_out === true) {
-                    const file = req.file;
-                    if (!file) {
-                        return res.status(BAD_REQUEST).send('No file uploaded for checkout.');
-                    }
+                    // const file = req.file;
+                    // if (!file) {
+                    //     return res.status(BAD_REQUEST).send('No file uploaded for checkout.');
+                    // }
 
-                    try {
-                        const imageUrl = await uploadImageToS3(file);
-                        existingAttendance.check_out_image = imageUrl;
-                        existingAttendance.revenue = req.body.revenue;
-                        existingAttendance.tips = req.body.tips;
-                        existingAttendance.others = req.body.others;
-                        await existingAttendance.save();
-                        return res.status(OK).json({
-                            success: true,
-                            status: OK,
-                            message: existingAttendance,
-                            imageUrl: imageUrl
-                        });
-                    } catch (err) {
-                        console.error(err);
-                        res.status(SYSTEM_ERROR).json({ success: false, message: 'Error uploading file.' });
+                    // const imageUrl = await uploadImageToS3(file);
+                    // existingAttendance.check_out_image = imageUrl;
+                    existingAttendance.bar = req.body.bar;
+                    existingAttendance.gesamt = req.body.gesamt;
+                    existingAttendance.trinked_ec = req.body.trinked_ec;
+                    existingAttendance.trink_geld = req.body.trink_geld;
+                    existingAttendance.auf_rechnung = req.body.auf_rechnung;
+                    if (existingAttendance.department_name === "C2") {
+                        existingAttendance.results = req.body.bar - req.body.trinked_ec - req.body.trink_geld + (1.5 / 100) * req.body.gesamt;
+                    } else {
+                        existingAttendance.results = req.body.bar - req.body.trinked_ec - req.body.trink_geld + (1 / 100) * req.body.gesamt;
                     }
+                    await existingAttendance.save();
+                    return res.status(OK).json({
+                        success: true,
+                        status: OK,
+                        message: existingAttendance,
+                        // imageUrl: imageUrl
+                    });
                 } else {
                     return res.status(BAD_REQUEST).json({
                         success: false,
@@ -632,9 +634,22 @@ export const updateAttendance = async (req, res, next) => {
                 }
             } else if (existingAttendance.position === "Service") {
                 if (existingAttendance.shift_info.time_slot.check_in === true && existingAttendance.shift_info.time_slot.check_out === true) {
-                    existingAttendance.revenue = req.body.revenue;
-                    existingAttendance.tips = req.body.tips;
-                    existingAttendance.others = req.body.others;
+                    existingAttendance.bar = req.body.bar;
+                    existingAttendance.kredit_karte = req.body.kredit_karte;
+                    existingAttendance.kassen_schniff = req.body.kassen_schniff;
+                    existingAttendance.gesamt_ligerbude = req.body.gesamt_ligerbude;
+                    existingAttendance.gesamt_liegerando = req.body.gesamt_liegerando;
+                    if (existingAttendance.department_name === "C Ulm") {
+                        existingAttendance.results = req.body.bar + req.body.kassen_schniff - req.body.kredit_karte - (0.7 / 100) * req.body.gesamt_ligerbude - (0.3 / 100) * req.body.gesamt_liegerando;
+                    } else if (existingAttendance.department_name === "C6") {
+                        if (req.body.gesamt_ligerbude + req.body.gesamt_liegerando > 1000) {
+                            existingAttendance.results = req.body.bar + req.body.kassen_schniff - req.body.kredit_karte - (0.5 / 100) * (req.body.gesamt_ligerbude + req.body.gesamt_liegerando);
+                        } else {
+                            existingAttendance.results = req.body.bar + req.body.kassen_schniff - req.body.kredit_karte;
+                        }
+                    } else {
+                        existingAttendance.results = req.body.bar + req.body.kassen_schniff - req.body.kredit_karte - (0.5 / 100) * (req.body.gesamt_ligerbude + req.body.gesamt_liegerando);
+                    }
                     await existingAttendance.save();
                     return res.status(OK).json({
                         success: true,

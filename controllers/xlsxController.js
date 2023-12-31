@@ -53,9 +53,16 @@ export const exportAttendanceToExcel = async (req, res, next) => {
             { header: 'Check In Km', key: 'check_in_km', width: 10 },
             { header: 'Check Out Km', key: 'check_out_km', width: 10 },
             { header: 'Total Km', key: 'total_km', width: 10 },
-            { header: 'Revenue', key: 'revenue', width: 10 },
-            { header: 'Tips', key: 'tips', width: 10 },
-            { header: 'Others', key: 'others', width: 10 },
+            { header: 'Bar', key: 'bar', width: 10 },
+            { header: 'Gesamt', key: 'gesamt', width: 10 },
+            { header: 'Trinked EC', key: 'trinked_ec', width: 10 },
+            { header: 'Trinked Geld', key: 'trink_geld', width: 10 },
+            { header: 'Auf Rechnung', key: 'auf_rechnung', width: 10 },
+            { header: 'Kredit Karte', key: 'kredit_karte', width: 10 },
+            { header: 'Kassen Schniff', key: 'kassen_schniff', width: 10 },
+            { header: 'Gesamt Ligerbude', key: 'gesamt_ligerbude', width: 10 },
+            { header: 'Gesamt Liegerando', key: 'gesamt_liegerando', width: 10 },
+            { header: 'Results (Lito/Service)', key: 'results', width: 10 },
         ];
 
         worksheet.columns = columns;
@@ -85,9 +92,16 @@ export const exportAttendanceToExcel = async (req, res, next) => {
                             check_in_km: attendance.check_in_km ? attendance.check_in_km : '',
                             check_out_km: attendance.check_out_km ? attendance.check_out_km : '',
                             total_km: attendance.total_km ? attendance.total_km : '',
-                            revenue: attendance.revenue ? attendance.revenue : '',
-                            tips: attendance.tips ? attendance.tips : '',
-                            others: attendance.others ? attendance.others : ''
+                            bar: attendance.bar ? attendance.bar : '',
+                            gesamt: attendance.gesamt ? attendance.gesamt : '',
+                            trinked_ec: attendance.trinked_ec ? attendance.trinked_ec : '',
+                            trink_geld: attendance.trink_geld ? attendance.trink_geld : '',
+                            auf_rechnung: attendance.auf_rechnung ? attendance.auf_rechnung : '',
+                            kredit_karte: attendance.kredit_karte ? attendance.kredit_karte : '',
+                            kassen_schniff: attendance.kassen_schniff ? attendance.kassen_schniff : '',
+                            gesamt_ligerbude: attendance.gesamt_ligerbude ? attendance.gesamt_ligerbude : '',
+                            gesamt_liegerando: attendance.gesamt_liegerando ? attendance.gesamt_liegerando : '',
+                            results: attendance.results ? attendance.results : '',
                         };
                         worksheet.addRow(rowData);
                     })
@@ -375,9 +389,16 @@ export const exportAttendanceForInhaberToExcel = async (req, res, next) => {
             { header: 'Check In Km', key: 'check_in_km', width: 10 },
             { header: 'Check Out Km', key: 'check_out_km', width: 10 },
             { header: 'Total Km', key: 'total_km', width: 10 },
-            { header: 'Revenue', key: 'revenue', width: 10 },
-            { header: 'Tips', key: 'tips', width: 10 },
-            { header: 'Others', key: 'others', width: 10 },
+            { header: 'Bar', key: 'bar', width: 10 },
+            { header: 'Gesamt', key: 'gesamt', width: 10 },
+            { header: 'Trinked EC', key: 'trinked_ec', width: 10 },
+            { header: 'Trinked Geld', key: 'trink_geld', width: 10 },
+            { header: 'Auf Rechnung', key: 'auf_rechnung', width: 10 },
+            { header: 'Kredit Karte', key: 'kredit_karte', width: 10 },
+            { header: 'Kassen Schniff', key: 'kassen_schniff', width: 10 },
+            { header: 'Gesamt Ligerbude', key: 'gesamt_ligerbude', width: 10 },
+            { header: 'Gesamt Liegerando', key: 'gesamt_liegerando', width: 10 },
+            { header: 'Results (Lito/Service)', key: 'results', width: 10 },
         ];
         worksheet.columns = columns;
 
@@ -404,9 +425,16 @@ export const exportAttendanceForInhaberToExcel = async (req, res, next) => {
                         check_in_km: attendance.check_in_km ? attendance.check_in_km : '',
                         check_out_km: attendance.check_out_km ? attendance.check_out_km : '',
                         total_km: attendance.total_km ? attendance.total_km : '',
-                        revenue: attendance.revenue ? attendance.revenue : '',
-                        tips: attendance.tips ? attendance.tips : '',
-                        others: attendance.others ? attendance.others : ''
+                        bar: attendance.bar ? attendance.bar : '',
+                        gesamt: attendance.gesamt ? attendance.gesamt : '',
+                        trinked_ec: attendance.trinked_ec ? attendance.trinked_ec : '',
+                        trink_geld: attendance.trink_geld ? attendance.trink_geld : '',
+                        auf_rechnung: attendance.auf_rechnung ? attendance.auf_rechnung : '',
+                        kredit_karte: attendance.kredit_karte ? attendance.kredit_karte : '',
+                        kassen_schniff: attendance.kassen_schniff ? attendance.kassen_schniff : '',
+                        gesamt_ligerbude: attendance.gesamt_ligerbude ? attendance.gesamt_ligerbude : '',
+                        gesamt_liegerando: attendance.gesamt_liegerando ? attendance.gesamt_liegerando : '',
+                        results: attendance.results ? attendance.results : '',
                     };
                     worksheet.addRow(rowData);
                 });

@@ -476,6 +476,58 @@ export const createMultipleDateDesignsByInhaber = async (req, res, next) => {
                 time_slot: shift.time_slot,
                 time_left: stats.realistic_schedule_times
             });
+
+            if (departmentName === "School") {
+                const currentYear = currentTime.getFullYear();
+                const currentMonth = currentTime.getMonth() + 1;
+                const newAttendance = new AttendanceSchema({
+                    date: schedule.date,
+                    employee_id: employee.id,
+                    employee_name: employee.name,
+                    role: employee.role,
+                    department_name: departmentName,
+                    position: employee.position,
+                    shift_info: {
+                        shift_code: "School Shift",
+                        total_hour: 8,
+                        total_minutes: 0,
+                    },
+                    status: "checked",
+                });
+                const departmentIndex = employee.department.findIndex(dep => dep.name === departmentName);
+                const statsIndex = employee.department[departmentIndex].attendance_stats.findIndex(stat =>
+                    stat.year === currentYear && stat.month === currentMonth
+                );
+
+                if (statsIndex > -1) {
+                    employee.department[departmentIndex].attendance_stats[statsIndex].date_on_time += 1;
+                } else {
+                    const newStat = {
+                        year: currentYear,
+                        month: currentMonth,
+                        date_on_time: 1,
+                        date_late: 0,
+                        date_missing: 0,
+                    };
+                    employee.department[departmentIndex].attendance_stats.push(newStat);
+                }
+                await newAttendance.save();
+                await employee.save();
+                console.log('Attendance created for employee in school:', employee.id);
+
+                let stats = await StatsSchema.findOne({
+                    employee_id: employee.id,
+                    year: currentYear,
+                    month: currentMonth
+                });
+                if (stats) {
+                    stats.attendance_total_times = stats.attendance_total_times;
+                    stats.attendance_overtime = stats.attendance_total_times - stats.default_schedule_times;
+                    await stats.save();
+                } else {
+                    console.log("Employee's stats not found");
+                }
+            }
         }
 
         await employee.save();

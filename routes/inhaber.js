@@ -4,7 +4,7 @@ import {
     getAllRequestsForInhaber, getAttendanceForInhaber, getDateDesignForInhaber, getEmployeeByIdForInhaber,
     getRequestByIdForInhaber, getSalaryForInhaber, getStatsForInhaber, handleRequestForInhaber,
     madeEmployeeInactiveByInhaber, removeMemberFromDepartmentByInhaber, searchSpecificForInhaber,
-    updateAttendanceForInhaber, updateEmployeeByInhaber, getEmployeesSchedulesByInhaber, deleteEmployeeByIdByInhaber, getFormByInhaber
+    updateAttendanceForInhaber, updateEmployeeByInhaber, getEmployeesSchedulesByInhaber, deleteEmployeeByIdByInhaber, getFormByInhaber, createCarByInhaber, getCarByInhaber, deleteCarByInhaber
 } from '../controllers/inhaberController.js';
 import {
     createShift, getAllShifts, getShiftByCode,
@@ -66,5 +66,11 @@ router.put('/manage-department/remove-member/:name', verifyTokenInhaber, removeM
 
 // manage form
 router.get('/manage-form/get', verifyTokenInhaber, getFormByInhaber);
+
+// manage cars
+router.post('/manage-car/create', verifyTokenInhaber, createCarByInhaber);
+router.get('/manage-car/get', verifyTokenInhaber, getCarByInhaber);
+router.put('/manage-car/update', verifyTokenInhaber, updateCarByInhaber);
+router.delete('/manage-car/delete', verifyTokenInhaber, deleteCarByInhaber);
 
 export default router;

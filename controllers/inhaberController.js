@@ -11,6 +11,7 @@ import LogSchema from "../models/LogSchema.js";
 import StatsSchema from "../models/StatsSchema.js";
 import SalarySchema from "../models/SalarySchema.js";
 import DayOffSchema from "../models/DayOffSchema.js";
+import CarSchema from "../models/CarSchema.js";
 
 export const updateEmployeeByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
@@ -49,7 +50,6 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
                 month: currentMonth
             });
             if (stats) {
-                // const spendSchedulesTime = stats.default_schedule_times - stats.realistic_schedule_times;
                 stats.default_schedule_times = req.body.total_time_per_month;
                 stats.realistic_schedule_times = req.body.total_time_per_month + stats.realistic_schedule_times;
                 stats.attendance_overtime = stats.attendance_total_times - req.body.total_time_per_month;
@@ -220,7 +220,6 @@ export const deleteEmployeeByIdByInhaber = async (req, res, next) => {
         const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
-        // Verify if the employee belongs to the Inhaber's department
         const isEmployeeInDepartment = employee.department.some(department =>
             inhaber.department.some(inhaberDepartment => inhaberDepartment.name === department.name)
         );
@@ -236,13 +235,11 @@ export const deleteEmployeeByIdByInhaber = async (req, res, next) => {
             }
         }
 
-        // Remove the employee from all day off records
         await DayOffSchema.updateMany(
             { 'members.id': employeeID },
             { $pull: { members: { id: employeeID } } }
         );
 
-        // Finally, delete the employee record
         await EmployeeSchema.findOneAndDelete({ id: employeeID });
         res.status(OK).json({
             success: true,
@@ -279,7 +276,6 @@ export const searchSpecificForInhaber = async (req, res, next) => {
             });
         }
 
-        // Filter out non-matching departments from each employee
         employees = employees.map(employee => {
             const filteredDepartments = employee.department.filter(dep =>
                 inhaber.department.some(inhaberDep => inhaberDep.name === dep.name)
@@ -306,7 +302,6 @@ export const getEmployeesSchedulesByInhaber = async (req, res, next) => {
     const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null;
     const targetDate = req.query.date ? new Date(req.query.date) : null;
     const inhaberName = req.query.inhaber_name;
-
     try {
         // Fetch Inhaber and validate departments
         const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
@@ -516,7 +511,6 @@ export const getDateDesignForInhaber = async (req, res, next) => {
         const departmentNames = inhaber.department.map(dep => dep.name);
         const shiftDesigns = [];
 
-        // Adjust the query to optionally include a specific employee ID
         let employeeQuery = { 'department.name': { $in: departmentNames } };
         if (specificEmployeeID) {
             employeeQuery.id = specificEmployeeID; // Filter by specific employee ID if provided
@@ -681,7 +675,6 @@ export const getSalaryForInhaber = async (req, res, next) => {
         const { year, month, employeeID, department_name } = req.query;
         const inhaberName = req.query.inhaber_name;
 
-        // Fetch Inhaber details
         const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
         if (!inhaber) {
             return res.status(NOT_FOUND).json({ error: "Inhaber not found" });
@@ -691,7 +684,6 @@ export const getSalaryForInhaber = async (req, res, next) => {
         if (year) query.year = parseInt(year);
         if (month) query.month = parseInt(month);
 
-        // Check if department_name is one of Inhaber's departments
         let isInhaberDepartment = department_name ? inhaber.department.some(dep => dep.name === department_name) : false;
 
         let employeeIds = [];
@@ -699,7 +691,6 @@ export const getSalaryForInhaber = async (req, res, next) => {
             const employeesInDepartment = await EmployeeSchema.find({ 'department.name': department_name }).select('id');
             employeeIds = employeesInDepartment.map(employee => employee.id);
         } else if (!department_name) {
-            // If no department_name is provided, get all employees in Inhaber's departments
             const employeesInInhaberDepartment = await EmployeeSchema.find({ 'department.name': { $in: inhaber.department.map(dep => dep.name) } }).select('id');
             employeeIds = employeesInInhaberDepartment.map(employee => employee.id);
         }
@@ -1108,7 +1099,6 @@ export const removeMemberFromDepartmentByInhaber = async (req, res, next) => {
 
 export const getFormByInhaber = async (req, res, next) => {
     const { year, month, employeeID, department_name, position, inhaber_name } = req.query;
-
     try {
         // Find the Inhaber and their departments
         const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
@@ -1237,10 +1227,9 @@ function formatAttendanceResults(attendanceRecords) {
     });
 }
 
-export const createCar = async (req, res, next) => {
+export const createCarByInhaber = async (req, res, next) => {
     const inhaberName = req.query.inhaber_name;
     const carDepartmentNames = req.body.department_name;
-
     try {
         // Check if Inhaber exists and get their departments
         const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: "Inhaber" });
@@ -1285,9 +1274,8 @@ export const createCar = async (req, res, next) => {
     }
 }
 
-export const getCar = async (req, res, next) => {
+export const getCarByInhaber = async (req, res, next) => {
     const { inhaber_name, car_name, car_number, department_name } = req.query;
-
     try {
         // Validate Inhaber and get their departments
         const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: "Inhaber" });
@@ -1322,12 +1310,22 @@ export const getCar = async (req, res, next) => {
     }
 };
 
-export const updateCar = async (req, res, next) => {
+export const updateCarByInhaber = async (req, res, next) => {
     const { car_number } = req.params;
+    const inhaberName = req.query.inhaber_name;
     try {
+        // Validate Inhaber and get their departments
+        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: "Inhaber" });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        const inhaberDepartments = inhaber.department.map(dep => dep.name);
+
+        // Find the car and validate if it belongs to Inhaber's departments
         const car = await CarSchema.findOne({ car_number: car_number });
-        if (!car) {
-            return next(createError(NOT_FOUND, "Car not found!"));
+        if (!car) return next(createError(NOT_FOUND, "Car not found!"));
+
+        if (!inhaberDepartments.includes(car.department_name)) {
+            return next(createError(FORBIDDEN, "Access denied to modify car in this department."));
         }
 
         // Updating car details
@@ -1336,7 +1334,8 @@ export const updateCar = async (req, res, next) => {
 
         // Reflect changes in departments
         const departments = await DepartmentSchema.find({
-            'cars.number': car_number
+            'cars.number': car_number,
+            'name': { $in: inhaberDepartments }
         });
 
         for (const department of departments) {
@@ -1362,23 +1361,33 @@ export const updateCar = async (req, res, next) => {
     }
 };
 
-export const deleteCar = async (req, res, next) => {
+export const deleteCarByInhaber = async (req, res, next) => {
     const { car_number } = req.params;
+    const inhaberName = req.query.inhaber_name;
     try {
-        const car = await CarSchema.findOneAndDelete({ car_number: car_number });
-        if (!car) {
-            return next(createError(NOT_FOUND, "Car not found!"));
+        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: "Inhaber" });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        const inhaberDepartments = inhaber.department.map(dep => dep.name);
+
+        const car = await CarSchema.findOne({ car_number: car_number });
+        if (!car) return next(createError(NOT_FOUND, "Car not found!"));
+
+        if (!inhaberDepartments.includes(car.department_name)) {
+            return next(createError(FORBIDDEN, "Access denied to delete car in this department."));
         }
 
-        // Remove car from departments
         const departments = await DepartmentSchema.find({
-            'cars.number': car_number
+            'cars.number': car_number,
+            'name': { $in: inhaberDepartments }
         });
 
         for (const department of departments) {
             department.cars = department.cars.filter(c => c.number !== car_number);
             await department.save();
         }
+
+        await CarSchema.findOneAndDelete({ car_number: car_number });
 
         return res.status(OK).json({
             success: true,

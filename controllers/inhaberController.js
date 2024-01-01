@@ -850,7 +850,6 @@ export const updateAttendanceForInhaber = async (req, res, next) => {
     const attendanceId = req.params._id;
     const inhaber_name = req.query.inhaber_name;
     const updateData = req.body;
-
     try {
         const attendance = await AttendanceSchema.findById(attendanceId);
         if (!attendance) return next(createError(NOT_FOUND, "Attendance record not found."));

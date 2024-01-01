@@ -1,10 +1,11 @@
 import { createError } from "../utils/error.js";
-import { FORBIDDEN, NOT_FOUND, OK } from "../constant/HttpStatus.js";
+import { BAD_REQUEST, CONFLICT, CREATED, FORBIDDEN, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import AdminSchema from "../models/AdminSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import StatsSchema from "../models/StatsSchema.js";
+import DepartmentSchema from "../models/DepartmentSchema.js";
 
 export const searchSpecificForManager = async (req, res, next) => {
     const { role, details, status } = req.query;

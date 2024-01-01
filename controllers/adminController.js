@@ -10,30 +10,44 @@ import cron from 'node-cron';
 import StatsSchema from "../models/StatsSchema.js";
 import LogSchema from "../models/LogSchema.js";
 
-export const updateEmployeeBasicInfor = async (req, res, next) => {
+export const updateEmployee = async (req, res, next) => {
     const employeeID = req.query.employeeID;
+    const editor_name = req.query.editor_name;
     try {
-        // Find the employee before updating
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const currentTime = new Date();
+        const currentYear = currentTime.getFullYear();
+        const currentMonth = currentTime.getMonth() + 1;
+        const editor = await AdminSchema.findOne({ name: editor_name });
 
+        const employee = await EmployeeSchema.findOne({ id: employeeID });
         if (!employee) {
             return next(createError(NOT_FOUND, "Employee not found!"));
         }
+
         if (employee.status === "inactive") {
             return next(createError(NOT_FOUND, "Employee not active!"));
         }
 
-        // Calculate the change in day offs if default_day_off is in the request
         if (req.body.default_day_off !== undefined) {
             const day_off_change = req.body.default_day_off - employee.default_day_off;
             if (day_off_change > 0) {
-                // Case 1: Increase in default_day_off
                 req.body.realistic_day_off = employee.realistic_day_off + day_off_change;
             } else if (day_off_change < 0) {
-                // Case 2: Decrease in default_day_off
                 req.body.realistic_day_off = Math.max(0, employee.realistic_day_off + day_off_change);
             }
-            // Case 3: No change, req.body.realistic_day_off remains unaffected
+        }
+
+        if (req.body.total_time_per_month !== undefined) {
+            let stats = await StatsSchema.findOne({
+                employee_id: employee.id,
+                year: currentYear,
+                month: currentMonth
+            });
+            const spendSchedulesTime = stats.default_schedule_times - stats.realistic_schedule_times;
+            stats.default_schedule_times = req.body.total_time_per_month;
+            stats.realistic_schedule_times = req.body.total_time_per_month - spendSchedulesTime;
+            stats.attendance_overtime = stats.attendance_total_times - req.body.total_time_per_month;
+            await stats.save();
         }
 
         // Update employee with the new information
@@ -75,12 +89,27 @@ export const updateEmployeeBasicInfor = async (req, res, next) => {
                 }
             }
         );
-
         await updatedEmployee.save();
+
+        const newLog = new LogSchema({
+            year: currentYear,
+            month: currentMonth,
+            date: currentTime,
+            type_update: "Update employee",
+            editor_name: editor.name,
+            editor_role: editor.role,
+            edited_name: employee.name,
+            edited_role: employee.role,
+            detail_update: req.body,
+            object_update: updatedEmployee
+        })
+        await newLog.save();
+
         res.status(OK).json({
             success: true,
             status: OK,
             message: updatedEmployee,
+            log: newLog
         });
     } catch (err) {
         next(err);
@@ -152,7 +181,7 @@ export const getEmployeeById = async (req, res, next) => {
         res.status(OK).json({
             success: true,
             status: OK,
-            message: employee,
+            message: [employee],
         });
     } catch (err) {
         next(err);
@@ -630,6 +659,51 @@ export const updateAttendance = async (req, res, next) => {
     }
 };
 
+export const getLog = async (req, res, next) => {
+    try {
+        const { year, month, date, editor_name, editor_role, edited_name, edited_role,
+            type_update, department_name } = req.query;
+
+        // Building the query
+        let query = {};
+
+        if (year) query.year = parseInt(year);
+        if (month) query.month = parseInt(month);
+        if (date) query.date = new Date(date);
+        if (editor_name) query.editor_name = editor_name;
+        if (editor_role) query.editor_role = editor_role;
+        if (edited_name) query.edited_name = edited_name;
+        if (edited_role) query.edited_role = edited_role;
+        if (type_update) query.type_update = type_update;
+
+        // Handling department_name for editor and edited roles
+        if (department_name) {
+            if (['Inhaber', 'Manager'].includes(editor_role)) {
+                // Add logic to filter logs based on department_name for editor
+            } else if (edited_role === 'Employee') {
+                // Add logic to filter logs based on department_name for edited employee
+            }
+        }
+
+        const logs = await LogSchema.find(query);
+
+        if (!logs || logs.length === 0) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: "No logs found."
+            });
+        }
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: logs
+        });
+    } catch (err) {
+        next(err);
+    }
+};
 
 
 

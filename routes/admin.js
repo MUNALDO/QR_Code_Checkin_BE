@@ -1,8 +1,8 @@
 import express from 'express';
 import {
-    deleteEmployeeById, getAllEmployeesSchedules,
-    getAllRequests, getAttendance, getEmployeeById, getRequestById, getStats, handleRequest,
-    madeEmployeeInactive, searchSpecific, updateAttendance, updateEmployeeBasicInfor
+    deleteEmployeeById, getAllEmployeesSchedules, getAllRequests, getAttendance,
+    getEmployeeById, getLog, getRequestById, getStats, handleRequest,
+    madeEmployeeInactive, searchSpecific, updateAttendance, updateEmployee
 } from '../controllers/adminController.js';
 import {
     addMemberDepartment, createCar, createDepartment, deleteCar, deleteDepartmentByName, getAllDepartments,
@@ -35,7 +35,7 @@ router.get('/manage-all/search-specific', verifyTokenAdmin, searchSpecific);
 router.get('/manage-employee/get-all-schedules', verifyTokenAdmin, getAllEmployeesSchedules);
 router.get('/manage-employee/get-byId', verifyTokenAdmin, getEmployeeById);
 router.delete('/manage-employee/delete-byId', verifyTokenAdmin, deleteEmployeeById);
-router.put('/manage-employee/update-basic', verifyTokenAdmin, updateEmployeeBasicInfor);
+router.put('/manage-employee/update-basic', verifyTokenAdmin, updateEmployee);
 router.put('/manage-employee/make-inactive', verifyTokenAdmin, madeEmployeeInactive);
 
 // department
@@ -94,5 +94,8 @@ router.delete('/manage-car/delete', verifyTokenAdmin, deleteCar);
 
 // manage stats
 router.get('/manage-stats/get', verifyTokenAdmin, getStats);
+
+// manage logs
+router.get('/manage-logs/get', verifyTokenAdmin, getLog);
 
 export default router;

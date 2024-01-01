@@ -34,7 +34,8 @@ mongoose.connection.on('disconnected', () => {
 
 app.use(cors({
     origin: ['http://localhost:3000', 'https://fe-qr-project.vercel.app', 'fe-qr-project-uh5f.vercel.app',
-        'https://qr-code-checkin-employee.vercel.app', 'https://qrcodecheckin-d350fcfb1cb9.herokuapp.com'],
+        'https://qr-code-checkin-employee.vercel.app', 'https://qrcodecheckin-d350fcfb1cb9.herokuapp.com',
+        'https://fe-qr-project-uh5f.vercel.app'],
     credentials: true,
 }));
 // app.options('*', cors());

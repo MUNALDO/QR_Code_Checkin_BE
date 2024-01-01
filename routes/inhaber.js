@@ -4,7 +4,8 @@ import {
     getAllRequestsForInhaber, getAttendanceForInhaber, getDateDesignForInhaber, getEmployeeByIdForInhaber,
     getRequestByIdForInhaber, getSalaryForInhaber, getStatsForInhaber, handleRequestForInhaber,
     madeEmployeeInactiveByInhaber, removeMemberFromDepartmentByInhaber, searchSpecificForInhaber,
-    updateAttendanceForInhaber, updateEmployeeByInhaber, getEmployeesSchedulesByInhaber, deleteEmployeeByIdByInhaber, getFormByInhaber, createCarByInhaber, getCarByInhaber, deleteCarByInhaber
+    updateAttendanceForInhaber, updateEmployeeByInhaber, getEmployeesSchedulesByInhaber, deleteEmployeeByIdByInhaber,
+    getFormByInhaber, createCarByInhaber, getCarByInhaber, deleteCarByInhaber, updateCarByInhaber
 } from '../controllers/inhaberController.js';
 import {
     createShift, getAllShifts, getShiftByCode,

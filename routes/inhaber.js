@@ -1,10 +1,10 @@
 import express from 'express';
 import {
-    addMemberToDepartmentByInhaber,
-    createMultipleDateDesignsByInhaber, deleteDateSpecificByInhaber, deleteEmployeeByIdByInhaber,
-    getAllRequestsForInhaber, getAttendanceForInhaber, getDateDesignForInhaber, getEmployeeByIdForInhaber, getEmployeesSchedulesByInhaber,
+    addMemberToDepartmentByInhaber, createMultipleDateDesignsByInhaber, deleteDateSpecificByInhaber,
+    getAllRequestsForInhaber, getAttendanceForInhaber, getDateDesignForInhaber, getEmployeeByIdForInhaber,
     getRequestByIdForInhaber, getSalaryForInhaber, getStatsForInhaber, handleRequestForInhaber,
-    madeEmployeeInactiveByInhaber, removeMemberFromDepartmentByInhaber, searchSpecificForInhaber, updateAttendanceForInhaber, updateEmployeeByInhaber
+    madeEmployeeInactiveByInhaber, removeMemberFromDepartmentByInhaber, searchSpecificForInhaber,
+    updateAttendanceForInhaber, updateEmployeeByInhaber, getEmployeesSchedulesByInhaber, deleteEmployeeByIdByInhaber, getFormByInhaber
 } from '../controllers/inhaberController.js';
 import {
     createShift, getAllShifts, getShiftByCode,
@@ -63,5 +63,8 @@ router.get('/manage-stats/get', verifyTokenInhaber, getStatsForInhaber);
 // manage department
 router.put('/manage-department/add-member/:name', verifyTokenInhaber, addMemberToDepartmentByInhaber);
 router.put('/manage-department/remove-member/:name', verifyTokenInhaber, removeMemberFromDepartmentByInhaber);
+
+// manage form
+router.get('/manage-form/get', verifyTokenInhaber, getFormByInhaber);
 
 export default router;

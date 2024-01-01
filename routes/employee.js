@@ -1,6 +1,7 @@
 import express from 'express';
 import {
-    checkAttendance, collectIP, createRequest, getAllCarsCompany, getAllRequestsForEmployee, getDateDesignCurrentByEmployee,
+    checkAttendance, collectIP, createRequest, getAllCarsCompany,
+    getAllRequestsForEmployee, getDateDesignCurrentByEmployee,
     getEmployeeAttendanceCurrentMonth, updateAttendance, verifyWifi
 } from '../controllers/employeeController.js';
 // import { verifyTokenEmployee } from '../utils/verifyToken.js';

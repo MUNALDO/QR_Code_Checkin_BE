@@ -1106,3 +1106,133 @@ export const removeMemberFromDepartmentByInhaber = async (req, res, next) => {
     }
 };
 
+export const getFormByInhaber = async (req, res, next) => {
+    const { year, month, employeeID, department_name, position, inhaber_name } = req.query;
+
+    try {
+        // Find the Inhaber and their departments
+        const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
+        if (!inhaber) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: "Inhaber not found."
+            });
+        }
+
+        // Extract the department names of the Inhaber
+        const inhaberDepartments = inhaber.department.map(dep => dep.name);
+
+        let query = {};
+
+        // Time query
+        if (year) {
+            const startDate = new Date(year, month ? month - 1 : 0, 1);
+            const endDate = new Date(year, month ? month : 12, 0);
+            query.date = { $gte: startDate, $lt: endDate };
+        }
+
+        // Employee query
+        if (employeeID) {
+            const employee = await EmployeeSchema.findOne({ id: employeeID });
+            if (!employee || !employee.department.some(dep => inhaberDepartments.includes(dep.name))) {
+                return res.status(NOT_FOUND).json({
+                    success: false,
+                    status: NOT_FOUND,
+                    message: "Employee not found or not in Inhaber's department."
+                });
+            }
+            query.employee_id = employeeID;
+        }
+
+        // Department query
+        if (department_name) {
+            if (!inhaberDepartments.includes(department_name)) {
+                return res.status(NOT_FOUND).json({
+                    success: false,
+                    status: NOT_FOUND,
+                    message: "Department not in Inhaber's department."
+                });
+            }
+            query.department_name = department_name;
+        } else {
+            query.department_name = { $in: inhaberDepartments };
+        }
+
+        if (position && ['Autofahrer', 'Service', 'Lito'].includes(position)) {
+            query.position = position;
+        } else if (position) {
+            return res.status(BAD_REQUEST).json({
+                success: false,
+                status: BAD_REQUEST,
+                message: "Invalid position value."
+            });
+        }
+
+        // Find attendance records
+        const attendanceRecords = await AttendanceSchema.find(query);
+
+        if (attendanceRecords.length === 0) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: "No attendance records found."
+            });
+        }
+
+        // Format the results
+        const formattedResults = formatAttendanceResults(attendanceRecords);
+
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: formattedResults
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+function formatAttendanceResults(attendanceRecords) {
+    return attendanceRecords.map(record => {
+        let result = {
+            date: record.date,
+            employee_id: record.employee_id,
+            employee_name: record.employee_name,
+            department_name: record.department_name,
+            position: record.position,
+        };
+
+        switch (record.position) {
+            case "Autofahrer":
+                return {
+                    ...result,
+                    car_info: record.car_info,
+                    check_in_km: record.check_in_km,
+                    check_out_km: record.check_out_km,
+                    total_km: record.total_km
+                };
+            case "Service":
+                return {
+                    ...result,
+                    bar: record.bar,
+                    gesamt: record.gesamt,
+                    trinked_ec: record.trinked_ec,
+                    trink_geld: record.trink_geld,
+                    auf_rechnung: record.auf_rechnung,
+                    results: record.results
+                };
+            case "Lito":
+                return {
+                    ...result,
+                    bar: record.bar,
+                    kredit_karte: record.kredit_karte,
+                    kassen_schniff: record.kassen_schniff,
+                    gesamt_ligerbude: record.gesamt_ligerbude,
+                    gesamt_liegerando: record.gesamt_liegerando,
+                    results: record.results
+                };
+        }
+        return result;
+    });
+}

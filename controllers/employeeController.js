@@ -439,6 +439,9 @@ export const checkAttendance = async (req, res, next) => {
                         message: `Error parsing check-in time: ${checkInTimeString}`,
                     });
                 }
+                const [startHours, startMinutes] = time_slot.start_time.split(':').map(Number);
+                const startTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), startHours, startMinutes);
+                // const startTimeCheckIn = new Date(startTime);
                 const [endHours, endMinutes] = time_slot.end_time.split(':').map(Number);
                 const endTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), endHours, endMinutes);
                 // Calculate endTime + 30 minutes
@@ -447,7 +450,7 @@ export const checkAttendance = async (req, res, next) => {
                 const departmentIndex = employee.department.findIndex(dep => dep.name === currentDepartment);
                 const currentYear = currentTime.getFullYear();
                 const currentMonth = currentTime.getMonth() + 1;
-                if (currentTime > endTime && currentTime < endTimePlus30) {
+                if (currentTime > startTime && currentTime < endTimePlus30) {
                     // check out on time
                     existingAttendance.shift_info.time_slot.check_out = true;
                     existingAttendance.shift_info.time_slot.check_out_time = `${currentTime.toLocaleTimeString()}`;
@@ -513,7 +516,7 @@ export const checkAttendance = async (req, res, next) => {
                         status: OK,
                         message: existingAttendance,
                     });
-                } else if (currentTime < endTime) {
+                } else if (currentTime > endTimePlus30 || currentTime < startTime) {
                     return res.status(BAD_REQUEST).json({
                         success: false,
                         status: BAD_REQUEST,
@@ -733,7 +736,7 @@ export const getEmployeeAttendanceCurrentMonth = async (req, res, next) => {
         // Use current year and month
         const currentDate = new Date();
         const year = currentDate.getFullYear();
-        const month = currentDate.getMonth(); // Month is 0-indexed
+        const month = currentDate.getMonth();
 
         // Define date range for the entire current month
         const dateRange = {

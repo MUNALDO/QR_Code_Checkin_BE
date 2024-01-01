@@ -693,7 +693,11 @@ export const getLogs = async (req, res, next) => {
 };
 
 export const getForm = async (req, res, next) => {
-    const { year, month, employeeID, department_name, position } = req.query;
+    const year = req.query.year;
+    const month = req.query.month;
+    const employeeID = req.query.employeeID;
+    const department_name = req.query.department_name;
+    const position = req.query.position;
 
     let query = {};
 
@@ -707,7 +711,16 @@ export const getForm = async (req, res, next) => {
     // Additional queries
     if (employeeID) query.employee_id = employeeID;
     if (department_name) query.department_name = department_name;
-    if (position) query.position = position;
+
+    if (position && ['Autofahrer', 'Service', 'Lito'].includes(position)) {
+        query.position = position;
+    } else if (position) {
+        return res.status(BAD_REQUEST).json({
+            success: false,
+            status: BAD_REQUEST,
+            message: "Invalid position value."
+        });
+    }
 
     try {
         const attendanceRecords = await AttendanceSchema.find(query);
@@ -731,16 +744,15 @@ export const getForm = async (req, res, next) => {
 
             switch (record.position) {
                 case "Autofahrer":
-                    result = {
+                    return {
                         ...result,
                         car_info: record.car_info,
                         check_in_km: record.check_in_km,
                         check_out_km: record.check_out_km,
                         total_km: record.total_km
                     };
-                    break;
                 case "Service":
-                    result = {
+                    return {
                         ...result,
                         bar: record.bar,
                         gesamt: record.gesamt,
@@ -749,9 +761,8 @@ export const getForm = async (req, res, next) => {
                         auf_rechnung: record.auf_rechnung,
                         results: record.results
                     };
-                    break;
                 case "Lito":
-                    result = {
+                    return {
                         ...result,
                         bar: record.bar,
                         kredit_karte: record.kredit_karte,
@@ -760,13 +771,9 @@ export const getForm = async (req, res, next) => {
                         gesamt_liegerando: record.gesamt_liegerando,
                         results: record.results
                     };
-                    break;
                 default:
-                    // Handle other cases or do nothing
-                    break;
+                    return result;
             }
-
-            return result;
         });
 
         return res.status(OK).json({
@@ -778,6 +785,7 @@ export const getForm = async (req, res, next) => {
         next(err);
     }
 };
+
 
 
 

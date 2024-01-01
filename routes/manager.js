@@ -1,10 +1,9 @@
 import express from 'express';
 import { verifyTokenManager } from '../utils/verifyToken.js';
 import {
-    addMemberToDepartmentByManager,
-    createMultipleDateDesignsByManager, deleteDateSpecificByManager,
-    getAttendanceForManager, getDateDesignForManager, getEmployeeByIdForManager,
-    getEmployeesSchedulesByManager, getStatsForManager, removeMemberFromDepartmentByManager, searchSpecificForManager
+    addMemberToDepartmentByManager, createMultipleDateDesignsByManager, deleteDateSpecificByManager,
+    getAttendanceForManager, getDateDesignForManager, getEmployeeByIdForManager, searchSpecificForManager,
+    getEmployeesSchedulesByManager, getStatsForManager, removeMemberFromDepartmentByManager
 } from '../controllers/managerController.js';
 import { createShift, getAllShifts, getShiftByCode, getShiftByName, updateShift } from '../controllers/shiftController.js';
 

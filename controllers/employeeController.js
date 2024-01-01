@@ -4,6 +4,7 @@ import AttendanceSchema from "../models/AttendanceSchema.js";
 import DayOffSchema from "../models/DayOffSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import RequestSchema from "../models/RequestSchema.js";
+import StatsSchema from "../models/StatsSchema.js";
 import { createError } from "../utils/error.js";
 
 export const autoCheck = async (req, res, next) => {
@@ -119,6 +120,19 @@ const createMissingAttendance = async (employee, department, schedule, shift) =>
     await newAttendance.save();
     await employee.save();
     console.log('Missing attendance created for employee:', employee.id);
+
+    let stats = await StatsSchema.findOne({
+        employee_id: employee.id,
+        year: currentYear,
+        month: currentMonth
+    });
+    if (stats) {
+        stats.attendance_total_times = stats.attendance_total_times;
+        stats.attendance_overtime = stats.attendance_total_times - stats.default_schedule_times;
+        await stats.save();
+    } else {
+        console.log("Employee's stats not found");
+    }
 };
 
 const updateExistingAttendance = async (employee, department, attendance, shiftTimes) => {
@@ -130,7 +144,6 @@ const updateExistingAttendance = async (employee, department, attendance, shiftT
         const checkInTime = new Date(`${currentTime.toDateString()} ${checkInTimeString}`);
 
         if (isNaN(checkInTime)) {
-            // Handle the case where parsing fails
             return res.status(BAD_REQUEST).json({
                 success: false,
                 status: BAD_REQUEST,
@@ -158,6 +171,7 @@ const updateExistingAttendance = async (employee, department, attendance, shiftT
         const totalMinutes = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
         attendance.shift_info.total_hour = totalHours;
         attendance.shift_info.total_minutes = totalMinutes;
+        const total_times = totalHours + totalMinutes / 60;
 
         const departmentIndex = employee.department.findIndex(dep => dep.name === department.name);
         const statsIndex = employee.department[departmentIndex].attendance_stats.findIndex(stat =>
@@ -165,20 +179,49 @@ const updateExistingAttendance = async (employee, department, attendance, shiftT
         );
 
         if (statsIndex > -1) {
-            employee.department[departmentIndex].attendance_stats[statsIndex].date_late += 1;
+            if (attendance.shift_info.time_slot.check_in_status = 'on time') {
+                employee.department[departmentIndex].attendance_stats[statsIndex].date_on_time += 0.5;
+                employee.department[departmentIndex].attendance_stats[statsIndex].date_late += 0.5;
+            } else {
+                employee.department[departmentIndex].attendance_stats[statsIndex].date_late += 1;
+            }
         } else {
-            const newStat = {
-                year: currentYear,
-                month: currentMonth,
-                date_on_time: 0,
-                date_late: 1,
-                date_missing: 0,
-            };
-            employee.department[departmentIndex].attendance_stats.push(newStat);
+            if (attendance.shift_info.time_slot.check_in_status = 'on time') {
+                const newStat = {
+                    year: currentYear,
+                    month: currentMonth,
+                    date_on_time: 0.5,
+                    date_late: 0.5,
+                    date_missing: 0,
+                };
+                employee.department[departmentIndex].attendance_stats.push(newStat);
+            } else {
+                const newStat = {
+                    year: currentYear,
+                    month: currentMonth,
+                    date_on_time: 0,
+                    date_late: 1,
+                    date_missing: 0,
+                };
+                employee.department[departmentIndex].attendance_stats.push(newStat);
+            }
         }
         await attendance.save();
         await employee.save();
         console.log('Attendance updated for employee:', attendance.employee_id);
+
+        let stats = await StatsSchema.findOne({
+            employee_id: employee.id,
+            year: currentYear,
+            month: currentMonth
+        });
+        if (stats) {
+            stats.attendance_total_times = stats.attendance_total_times + total_times;
+            stats.attendance_overtime = stats.attendance_total_times - stats.default_schedule_times;
+            await stats.save();
+        } else {
+            console.log("Employee's stats not found");
+        }
     } else {
         console.log('No update required for employee:', attendance.employee_id);
     }
@@ -251,9 +294,7 @@ export const checkAttendance = async (req, res, next) => {
             'shift_info.shift_code': currentShiftDesign.shift_code,
         });
 
-        // const shift_code = currentShiftDesign.shift_code;
         const time_slot = currentShiftDesign.time_slot;
-
         if (!existingAttendance) {
             // only check in
             const newAttendance = new AttendanceSchema({
@@ -357,24 +398,47 @@ export const checkAttendance = async (req, res, next) => {
                     );
 
                     if (statsIndex > -1) {
-                        // Update existing stats
                         if (existingAttendance.shift_info.time_slot.check_in_status === "on time") {
                             employee.department[departmentIndex].attendance_stats[statsIndex].date_on_time += 1;
                         } else {
-                            employee.department[departmentIndex].attendance_stats[statsIndex].date_late += 1;
+                            employee.department[departmentIndex].attendance_stats[statsIndex].date_on_time += 0.5;
+                            employee.department[departmentIndex].attendance_stats[statsIndex].date_late += 0.5;
                         }
                     } else {
-                        // Create a new attendance_stats object for the current month and year
-                        const newStat = {
-                            year: currentYear,
-                            month: currentMonth,
-                            date_on_time: existingAttendance.shift_info.time_slot.check_in_status === "on time" ? 1 : 0,
-                            date_late: existingAttendance.shift_info.time_slot.check_in_status === "late" ? 1 : 0,
-                            date_missing: 0,
-                        };
-                        employee.department[departmentIndex].attendance_stats.push(newStat);
+                        if (existingAttendance.shift_info.time_slot.check_in_status === "on time") {
+                            const newStat = {
+                                year: currentYear,
+                                month: currentMonth,
+                                date_on_time: 1,
+                                date_late: 0,
+                                date_missing: 0,
+                            };
+                            employee.department[departmentIndex].attendance_stats.push(newStat);
+                        } else {
+                            const newStat = {
+                                year: currentYear,
+                                month: currentMonth,
+                                date_on_time: 0.5,
+                                date_late: 0.5,
+                                date_missing: 0,
+                            };
+                            employee.department[departmentIndex].attendance_stats.push(newStat);
+                        }
                     }
                     await employee.save();
+                    const total_times = totalHours + totalMinutes / 60;
+                    let stats = await StatsSchema.findOne({
+                        employee_id: employeeID,
+                        year: currentYear,
+                        month: currentMonth
+                    });
+                    if (stats) {
+                        stats.attendance_total_times = stats.attendance_total_times + total_times;
+                        stats.attendance_overtime = stats.attendance_total_times - stats.default_schedule_times;
+                        await stats.save();
+                    } else {
+                        console.log("Employee's stats not found");
+                    }
 
                     return res.status(OK).json({
                         success: true,

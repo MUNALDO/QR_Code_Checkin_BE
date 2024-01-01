@@ -4,10 +4,28 @@ import { createError } from "../utils/error.js";
 
 export const createShift = async (req, res, next) => {
     const shift_code = req.body.code;
+    const start_time = req.body.time_slot?.start_time;
+    const end_time = req.body.time_slot?.end_time;
     try {
+        const [startHours, startMinutes] = start_time.split(":").map(Number);
+        const [endHours, endMinutes] = end_time.split(":").map(Number);
+
+        let durationHours = endHours - startHours;
+        let durationMinutes = endMinutes - startMinutes;
+
+        if (durationMinutes < 0) {
+            durationHours -= 1;
+            durationMinutes += 60;
+        }
+
+        const duration = durationHours + durationMinutes / 60;
         const newShift = new ShiftSchema({
             code: shift_code,
             ...req.body,
+            time_slot: {
+                ...req.body.time_slot,
+                duration: duration
+            }
         });
 
         await newShift.save();

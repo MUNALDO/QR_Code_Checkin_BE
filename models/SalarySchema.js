@@ -2,20 +2,75 @@ import mongoose from "mongoose";
 
 const salarySchema = new mongoose.Schema(
     {
-        code: {
+        employee_id: {
             type: String,
-            required: true,
-            unique: true
+            required: true
         },
-        name: {
+        employee_name: {
             type: String,
-            required: true,
+            required: true
         },
-        basic_salary: {
+        year: {
             type: Number,
             required: true
         },
-        members: []
+        month: {
+            type: Number,
+            required: true
+        },
+        date_calculate: {
+            type: Date,
+            required: true
+        },
+        total_salary: {
+            type: Number,
+            required: true
+        },
+        total_times: {
+            type: Number,
+            default: 0
+        },
+        day_off: {
+            type: Number,
+            default: 0
+        },
+        hour_normal: [
+            {
+                department_name: {
+                    type: String
+                },
+                total_hour: {
+                    type: Number
+                },
+                total_minutes: {
+                    type: Number
+                }
+            }
+        ],
+        hour_overtime: {
+            type: Number,
+            default: 0
+        },
+        total_km: {
+            type: Number,
+            default: 0
+        },
+        a_parameter: {
+            type: Number,
+            default: 0
+        },
+        b_parameter: {
+            type: Number,
+            default: 0
+        },
+        c_parameter: {
+            type: Number,
+            default: 0
+        },
+        d_parameter: {
+            type: Number,
+            default: 0.25
+        },
     },
     { timestamps: true }
 );

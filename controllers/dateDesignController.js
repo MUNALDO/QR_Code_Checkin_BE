@@ -2,6 +2,7 @@ import { BAD_REQUEST, CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import DepartmentSchema from "../models/DepartmentSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";
+import StatsSchema from "../models/StatsSchema.js";
 import { createError } from "../utils/error.js";
 
 export const createMultipleDateDesigns = async (req, res, next) => {
@@ -56,7 +57,6 @@ export const createMultipleDateDesigns = async (req, res, next) => {
                         position: req.body.position,
                         shift_code: shift.code,
                         time_slot: shift.time_slot,
-                        shift_type: req.body.shift_type
                     }]
                 };
                 employeeDepartment.schedules.push(existingDateInDepartmentSchedule);
@@ -66,7 +66,6 @@ export const createMultipleDateDesigns = async (req, res, next) => {
                 position: req.body.position,
                 shift_code: shift.code,
                 time_slot: shift.time_slot,
-                shift_type: req.body.shift_type
             });
         }
 
@@ -82,10 +81,38 @@ export const createMultipleDateDesigns = async (req, res, next) => {
             schedule: employeeDepartment.schedules
         };
 
+        let totalDuration = 0;
+        totalDuration = dates.length * shift.time_slot.duration;
+
+        // Find or create stats for the current month and year
+        const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1;
+        let stats = await StatsSchema.findOne({
+            employee_id: employeeID,
+            year: currentYear,
+            month: currentMonth
+        });
+
+        if (stats) {
+            stats.realistic_schedule_times = stats.realistic_schedule_times - totalDuration;
+            await stats.save();
+        } else {
+            stats = new StatsSchema({
+                employee_id: employee.id,
+                employee_name: employee.name,
+                year: currentYear,
+                month: currentMonth,
+                default_schedule_times: employee.total_time_per_month,
+                realistic_schedule_times: employee.total_time_per_month - totalDuration
+            });
+            await stats.save();
+        }
+
         res.status(CREATED).json({
             success: true,
             status: CREATED,
-            message: objectReturn
+            message: objectReturn,
+            time_left: stats.realistic_schedule_times
         });
     } catch (err) {
         next(err);

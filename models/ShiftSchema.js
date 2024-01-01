@@ -19,6 +19,9 @@ const shiftSchema = new mongoose.Schema(
             end_time: {
                 type: String,
             },
+            duration: {
+                type: Number
+            }
         },
     },
     { timestamps: true }

@@ -31,6 +31,20 @@ const employeeSchema = new mongoose.Schema(
             type: String,
             default: 'Employee',
         },
+        total_time_per_month: {
+            type: Number,
+            required: true
+        },
+        house_rent_money: {
+            type: Number,
+            default: 0
+        },
+        default_day_off: {
+            type: Number,
+        },
+        realistic_day_off: {
+            type: Number,
+        },
         department: [
             {
                 name: {
@@ -62,10 +76,6 @@ const employeeSchema = new mongoose.Schema(
                                 time_slot: {
                                     type: Object,
                                 },
-                                shift_type: {
-                                    type: String,
-                                    enum: ['normal', 'overtime']
-                                }
                             }
                         ],
                     },
@@ -91,74 +101,6 @@ const employeeSchema = new mongoose.Schema(
                 ],
             }
         ],
-        house_rent_money: {
-            type: Number,
-            default: 0
-        },
-        salary: [
-            {
-                year: {
-                    type: Number
-                },
-                month: {
-                    type: Number
-                },
-                date_calculate: {
-                    type: Date
-                },
-                total_salary: {
-                    type: Number
-                },
-                hour_normal: [
-                    {
-                        department_name: {
-                            type: String
-                        },
-                        total_hour: {
-                            type: Number
-                        },
-                        total_minutes: {
-                            type: Number
-                        }
-                    }
-                ],
-                hour_overtime: [
-                    {
-                        department_name: {
-                            type: String
-                        },
-                        total_hour: {
-                            type: Number
-                        },
-                        total_minutes: {
-                            type: Number
-                        }
-                    }
-                ],
-                total_km: {
-                    type: Number
-                },
-                a_parameter: {
-                    type: Number
-                },
-                b_parameter: {
-                    type: Number
-                },
-                c_parameter: {
-                    type: Number
-                },
-                d_parameter: {
-                    type: Number,
-                    default: 0.25
-                },
-            }
-        ],
-        default_day_off: {
-            type: Number,
-        },
-        realistic_day_off: {
-            type: Number,
-        },
         dayOff_schedule: [],
         status: {
             type: String,

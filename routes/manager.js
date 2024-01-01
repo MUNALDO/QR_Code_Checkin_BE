@@ -4,7 +4,7 @@ import {
     addMemberToDepartmentByManager,
     createMultipleDateDesignsByManager, deleteDateSpecificByManager,
     getAttendanceForManager, getDateDesignForManager, getEmployeeByIdForManager,
-    getEmployeesSchedulesByManager, removeMemberFromDepartmentByManager, searchSpecificForManager
+    getEmployeesSchedulesByManager, getStatsForManager, removeMemberFromDepartmentByManager, searchSpecificForManager
 } from '../controllers/managerController.js';
 import { createShift, getAllShifts, getShiftByCode, getShiftByName, updateShift } from '../controllers/shiftController.js';
 
@@ -33,5 +33,8 @@ router.get('/manage-attendance/get-by-specific', verifyTokenManager, getAttendan
 // manage department
 router.put('/manage-department/add-member/:name', verifyTokenManager, addMemberToDepartmentByManager);
 router.put('/manage-department/remove-member/:name', verifyTokenManager, removeMemberFromDepartmentByManager);
+
+// manage stats
+router.get('/manage-stats/get', verifyTokenManager, getStatsForManager);
 
 export default router;

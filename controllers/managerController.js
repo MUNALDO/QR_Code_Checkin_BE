@@ -556,3 +556,54 @@ export const removeMemberFromDepartmentByManager = async (req, res, next) => {
         next(err);
     }
 };
+
+export const getStatsForManager = async (req, res, next) => {
+    try {
+        const { year, month, employeeID, department_name } = req.query;
+        const managerName = req.query.manager_name;
+        let query = {};
+
+        // Fetch manager and their departments
+        const manager = await EmployeeSchema.findOne({ name: managerName, role: 'Manager' });
+        if (!manager) {
+            return res.status(NOT_FOUND).json({ error: "Manager not found" });
+        }
+        const managerDepartments = manager.department.map(dep => dep.name);
+
+        if (year) query.year = parseInt(year);
+        if (month) query.month = parseInt(month);
+
+        let employeeIds = [];
+        if (department_name) {
+            if (!managerDepartments.includes(department_name)) {
+                return res.status(NOT_FOUND).json({ error: "Department not managed by manager" });
+            }
+            const employees = await EmployeeSchema.find({ 'department.name': department_name });
+            employeeIds = employees.map(emp => emp.id);
+        } else {
+            // Get all employees from manager's departments
+            const employees = await EmployeeSchema.find({ 'department.name': { $in: managerDepartments } });
+            employeeIds = employees.map(emp => emp.id);
+        }
+
+        if (employeeID) {
+            if (!employeeIds.includes(employeeID)) {
+                return res.status(NOT_FOUND).json({ error: "Employee not found in manager's departments" });
+            }
+            employeeIds = [employeeID];
+        }
+
+        if (employeeIds.length > 0) {
+            query.employee_id = { $in: employeeIds };
+        }
+
+        const stats = await StatsSchema.find(query);
+        if (stats.length === 0) {
+            return res.status(NOT_FOUND).json({ success: false, status: NOT_FOUND, message: "Statistics not found." });
+        }
+
+        return res.status(OK).json({ success: true, status: OK, message: stats });
+    } catch (err) {
+        next(err);
+    }
+};

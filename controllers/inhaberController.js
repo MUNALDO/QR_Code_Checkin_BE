@@ -397,6 +397,18 @@ export const createMultipleDateDesignsByInhaber = async (req, res, next) => {
             const [month, day, year] = dateString.split('/');
             const dateObj = new Date(year, month - 1, day);
 
+            // Check if date falls within any allowed day off period
+            const isDayOff = employee.dayOff_schedule.some(dayOff => {
+                const start = new Date(dayOff.date_start);
+                const end = new Date(dayOff.date_end);
+                return dayOff.allowed && dateObj >= start && dateObj <= end;
+            });
+
+            if (isDayOff) {
+                errorDates.push({ date: dateString, message: "Date conflicts with an allowed day off." });
+                continue;
+            }
+
             let stats = await StatsSchema.findOne({
                 employee_id: employee.id,
                 year: year,

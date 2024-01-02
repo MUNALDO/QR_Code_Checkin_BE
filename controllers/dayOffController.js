@@ -30,8 +30,7 @@ export const createDayOff = async (req, res, next) => {
 
         const duration = calculateDuration(date_start, date_end);
         newDayOff.duration = duration;
-        await newDayOff.save();
-
+        
         const dateChecking = await DayOffSchema.findOne({
             date_start: newDayOff.date_start,
             date_end: newDayOff.date_end,
@@ -66,6 +65,7 @@ export const createDayOff = async (req, res, next) => {
                 status: employee.status
             });
 
+            await newDayOff.save();
             await employee.save();
         } else if (newDayOff.type === 'global') {
             // Get information of all employees and add to the allowed field

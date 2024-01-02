@@ -642,7 +642,7 @@ export const registerEmployeeByManager = async (req, res, next) => {
 
             if (department.members.some(member => member.name === newEmployee.name)) {
                 return next(createError(CONFLICT, `Employee already exists in department ${deptName}!`));
-            } 
+            }
             department.members.push({
                 id: newEmployee.id,
                 name: newEmployee.name,

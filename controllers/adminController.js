@@ -624,8 +624,8 @@ export const updateAttendance = async (req, res, next) => {
             editor_role: editor.role,
             edited_name: edited.name,
             edited_role: edited.role,
-            detail_update: req.body,
-            object_update: attendance
+            before_update: attendance,
+            after_update: updatedAttendance
         })
         await newLog.save();
 

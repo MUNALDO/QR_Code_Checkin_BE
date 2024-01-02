@@ -34,10 +34,10 @@ const logSchema = new mongoose.Schema(
             type: String,
             required: true
         },
-        detail_update: {
+        before_update: {
             type: Object
         },
-        object_update: {
+        after_update: {
             type: Object
         }
     },

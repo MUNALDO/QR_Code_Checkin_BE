@@ -653,7 +653,23 @@ export const updateAttendance = async (req, res, next) => {
                             });
                         }
                     } else {
-                        existingAttendance.results = req.body.bar - req.body.trinked_ec - req.body.trink_geld + (1 / 100) * req.body.gesamt;
+                        if (req.body.trink_geld && !req.body.auf_rechnung) {
+                            existingAttendance.trink_geld = req.body.trink_geld;
+                            existingAttendance.results = req.body.bar - req.body.trinked_ec - req.body.trink_geld + (1 / 100) * req.body.gesamt;
+                        } else if (req.body.auf_rechnung && !req.body.trink_geld) {
+                            existingAttendance.auf_rechnung = req.body.auf_rechnung;
+                            existingAttendance.results = req.body.bar - req.body.trinked_ec - req.body.auf_rechnung + (1 / 100) * req.body.gesamt;
+                        } else if (req.body.auf_rechnung && req.body.trink_geld) {
+                            existingAttendance.trink_geld = req.body.trink_geld;
+                            existingAttendance.auf_rechnung = req.body.auf_rechnung;
+                            existingAttendance.results = req.body.bar - req.body.trinked_ec - (req.body.auf_rechnung + req.body.trink_geld) + (1 / 100) * req.body.gesamt;
+                        } else if (!req.body.auf_rechnung && !req.body.trink_geld) {
+                            return res.status(BAD_REQUEST).json({
+                                success: false,
+                                status: BAD_REQUEST,
+                                message: "Missing auf_rechnung or trink_geld",
+                            });
+                        }
                     }
                     await existingAttendance.save();
                     return res.status(OK).json({

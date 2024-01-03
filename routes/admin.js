@@ -35,7 +35,7 @@ router.get('/manage-employee/get-all-schedules', verifyTokenAdmin, getAllEmploye
 router.get('/manage-employee/get-byId', verifyTokenAdmin, getEmployeeById);
 router.delete('/manage-employee/delete-byId', verifyTokenAdmin, deleteEmployeeById);
 router.put('/manage-employee/update-basic', verifyTokenAdmin, updateEmployee);
-router.put('/manage-employee/make-inactive', verifyTokenAdmin, madeEmployeeInactive);
+router.post('/manage-employee/make-inactive', verifyTokenAdmin, madeEmployeeInactive);
 
 // department
 router.post('/manage-department/create', verifyTokenAdmin, createDepartment);

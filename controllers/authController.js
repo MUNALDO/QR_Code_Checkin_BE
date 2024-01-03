@@ -80,7 +80,7 @@ export const registerInhaberByAdmin = async (req, res, next) => {
         const isIdExists = await EmployeeSchema.findOne({ id: newInhaber.id });
         const isNameExists = await EmployeeSchema.findOne({ name: newInhaber.name });
 
-        if (isIdExists || isNameExists) {
+        if (isIdExists && isNameExists) {
             return res.status(BAD_REQUEST).json({
                 success: false,
                 status: BAD_REQUEST,
@@ -200,7 +200,7 @@ export const registerManagerByAdmin = async (req, res, next) => {
         const isIdExists = await EmployeeSchema.findOne({ id: newManager.id });
         const isNameExists = await EmployeeSchema.findOne({ name: newManager.name });
 
-        if (isIdExists || isNameExists) {
+        if (isIdExists && isNameExists) {
             return res.status(BAD_REQUEST).json({
                 success: false,
                 status: BAD_REQUEST,
@@ -308,7 +308,7 @@ export const registerManagerByInhaber = async (req, res, next) => {
         const isIdExists = await EmployeeSchema.findOne({ id: newManager.id });
         const isNameExists = await EmployeeSchema.findOne({ name: newManager.name });
 
-        if (isIdExists || isNameExists) {
+        if (isIdExists && isNameExists) {
             return res.status(BAD_REQUEST).json({
                 success: false,
                 status: BAD_REQUEST,
@@ -421,7 +421,7 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
         const isIdExists = await EmployeeSchema.findOne({ id: newEmployee.id });
         const isNameExists = await EmployeeSchema.findOne({ name: newEmployee.name });
 
-        if (isIdExists || isNameExists) {
+        if (isIdExists && isNameExists) {
             return res.status(BAD_REQUEST).json({
                 success: false,
                 status: BAD_REQUEST,
@@ -527,7 +527,7 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
         const isIdExists = await EmployeeSchema.findOne({ id: newEmployee.id });
         const isNameExists = await EmployeeSchema.findOne({ name: newEmployee.name });
 
-        if (isIdExists || isNameExists) {
+        if (isIdExists && isNameExists) {
             return res.status(BAD_REQUEST).json({
                 success: false,
                 status: BAD_REQUEST,
@@ -626,7 +626,7 @@ export const registerEmployeeByManager = async (req, res, next) => {
         const isIdExists = await EmployeeSchema.findOne({ id: newEmployee.id });
         const isNameExists = await EmployeeSchema.findOne({ name: newEmployee.name });
 
-        if (isIdExists || isNameExists) {
+        if (isIdExists && isNameExists) {
             return res.status(BAD_REQUEST).json({
                 success: false,
                 status: BAD_REQUEST,

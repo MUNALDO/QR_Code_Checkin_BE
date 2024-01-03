@@ -109,18 +109,22 @@ export const madeEmployeeInactive = async (req, res, next) => {
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
         if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee already inactive!"));
 
-        const [month, day, year] = req.body.inactive_day.split('/').map(Number);
-        const inactiveDate = new Date(year, month - 1, day);
-        // console.log(inactiveDate);
-        const currentDate = new Date();
+        const [datePart, timePart] = req.body.inactive_day.split(' ');
+        const [month, day, year] = datePart.split('/').map(Number);
+        const [hour, minute] = timePart.split(':').map(Number);
+        const inactiveDate = new Date(year, month - 1, day, hour, minute);
 
-        // Check if the inactive date is in the future
+        // Check if the inactive date and time is in the future
+        const currentDate = new Date();
         if (inactiveDate <= currentDate) {
-            return next(createError(BAD_REQUEST, "Inactive day must be in the future."));
+            return next(createError(BAD_REQUEST, "Inactive day and time must be in the future."));
         }
 
+        // Schedule the status update to run at the specified date and time
+        const cronExpression = `${minute} ${hour} ${day} ${month} *`;
+
         // Schedule the status update to run at midnight (00:00) of the specified date
-        cron.schedule(`0 0 ${day} ${month} *`, async () => {
+        cron.schedule(cronExpression, async () => {
             employee.inactive_day = inactiveDate;
             employee.status = "inactive";
 

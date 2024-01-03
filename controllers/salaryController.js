@@ -41,51 +41,35 @@ export const salaryCalculate = async (req, res, next) => {
     let d = req.body.d_new ?? 0.25;
     let f = req.body.f_new;
 
-    if (!a) {
+    if (!req.body.a_new) {
         if (existSalary) {
             a = existSalary.a_parameter;
         } else {
-            return res.status(BAD_REQUEST).json({
-                success: false,
-                status: BAD_REQUEST,
-                message: "You need to provided a parameter",
-            });
+            a = 0;
         }
     }
 
-    if (!b) {
+    if (!req.body.b_new) {
         if (existSalary) {
             b = existSalary.b_parameter;
         } else {
-            return res.status(BAD_REQUEST).json({
-                success: false,
-                status: BAD_REQUEST,
-                message: "You need to provided b parameter",
-            });
+            b = 0;
         }
     }
 
-    if (!c) {
+    if (!req.body.c_new) {
         if (existSalary) {
             c = existSalary.c_parameter;
         } else {
-            return res.status(BAD_REQUEST).json({
-                success: false,
-                status: BAD_REQUEST,
-                message: "You need to provided c parameter",
-            });
+            c = 0;
         }
     }
 
-    if (!f) {
+    if (!req.body.f_new) {
         if (existSalary) {
             f = existSalary.f_parameter;
         } else {
-            return res.status(BAD_REQUEST).json({
-                success: false,
-                status: BAD_REQUEST,
-                message: "You need to provided f parameter",
-            });
+            f = 0;
         }
     }
 
@@ -153,9 +137,12 @@ export const salaryCalculate = async (req, res, next) => {
     const salary_day_off = [(b * 3) / 65] * days_off;
 
     if (salaryRecord.total_times > employee.total_time_per_month) {
-        salaryRecord.total_salary = (a / employee.total_time_per_month) * employee.total_time_per_month + (salaryRecord.total_times - employee.total_time_per_month) * f - b - c + salary_day_off - employee.house_rent_money + salaryRecord.total_km * d;
+        let calculatedSalary = (a / employee.total_time_per_month) * employee.total_time_per_month + (salaryRecord.total_times - employee.total_time_per_month) * f - b - c + salary_day_off - employee.house_rent_money + salaryRecord.total_km * d;
+        salaryRecord.total_salary = Number(calculatedSalary.toFixed(2));
+    } else {
+        let calculatedSalary = (a / employee.total_time_per_month) * salaryRecord.total_times - b - c + salary_day_off - employee.house_rent_money + salaryRecord.total_km * d;
+        salaryRecord.total_salary = Number(calculatedSalary.toFixed(2));
     }
-    salaryRecord.total_salary = (a / employee.total_time_per_month) * salaryRecord.total_times - b - c + salary_day_off - employee.house_rent_money + salaryRecord.total_km * d;
 
     await employee.save();
     // Save or update the salary record
@@ -185,7 +172,6 @@ export const salaryCalculate = async (req, res, next) => {
 export const getSalary = async (req, res, next) => {
     try {
         const { year, month, employeeID, department_name } = req.query;
-
         let query = {};
 
         // Include time query only if provided
@@ -196,44 +182,60 @@ export const getSalary = async (req, res, next) => {
         if (department_name) {
             const employeesInDepartment = await EmployeeSchema.find({ 'department.name': department_name }).select('id');
             employeeIds = employeesInDepartment.map(employee => employee.id);
-            query.employee_id = { $in: employeeIds };
         }
 
-        // Override employee_id in query if employeeID is provided
-        if (employeeID) {
-            if (department_name) {
-                // Check if employeeID is within the department
-                query.employee_id = employeeIds.includes(employeeID) ? employeeID : null;
-            } else {
-                // If department is not specified, search by employeeID directly
-                query.employee_id = employeeID;
-            }
-        }
+        // Get all employees or just the ones in the specified department
+        const allEmployees = employeeID ?
+            await EmployeeSchema.find({ id: employeeID }) :
+            await EmployeeSchema.find(department_name ? { id: { $in: employeeIds } } : {});
 
-        if (query.employee_id === null) {
-            return res.status(NOT_FOUND).json({
-                success: false,
-                status: NOT_FOUND,
-                message: "Employee not found in the provided department."
+        // Map each employee to their salary record or a default zeroed record
+        const employeeSalaries = await Promise.all(allEmployees.map(async (employee) => {
+            const salaryRecord = await SalarySchema.findOne({
+                employee_id: employee.id,
+                ...query
             });
-        }
 
-        const salaries = await SalarySchema.find(query);
-        if (salaries.length === 0) {
+            if (salaryRecord) {
+                return salaryRecord;
+            } else {
+                // Return default salary object for employees without a salary record
+                return {
+                    employee_id: employee.id,
+                    employee_name: employee.name,
+                    year: year || 0,
+                    month: month || 0,
+                    total_salary: 0,
+                    total_times: 0,
+                    day_off: 0,
+                    total_hour_work: 0,
+                    total_hour_overtime: 0,
+                    total_km: 0,
+                    a_parameter: 0,
+                    b_parameter: 0,
+                    c_parameter: 0,
+                    d_parameter: 0,
+                    f_parameter: 0
+                };
+            }
+        }));
+
+        if (employeeSalaries.length === 0) {
             return res.status(NOT_FOUND).json({
                 success: false,
                 status: NOT_FOUND,
-                message: "No salary records found for the provided criteria."
+                message: "No employees found."
             });
         }
 
         return res.status(OK).json({
             success: true,
             status: OK,
-            message: salaries
+            message: employeeSalaries
         });
     } catch (err) {
         next(err);
     }
 };
+
 

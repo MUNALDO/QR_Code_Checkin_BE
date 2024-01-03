@@ -241,7 +241,7 @@ export const searchSpecific = async (req, res, next) => {
         }
 
         if (department) {
-            if (managementQueryCriteria) managementQueryCriteria['department_name'] = department;
+            if (managementQueryCriteria) managementQueryCriteria['department.name'] = department;
             employeeQueryCriteria['department.name'] = department;
         }
 

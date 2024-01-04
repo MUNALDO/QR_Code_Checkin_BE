@@ -1,5 +1,3 @@
-import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { s3Client } from "../awsConfig.js";
 import { BAD_REQUEST, CONFLICT, CREATED, FORBIDDEN, NOT_FOUND, OK, SYSTEM_ERROR } from "../constant/HttpStatus.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import CarSchema from "../models/CarSchema.js";
@@ -545,23 +543,6 @@ export const checkAttendance = async (req, res, next) => {
     }
 }
 
-// async function uploadImageToS3(file) {
-//     const uploadParams = {
-//         Bucket: process.env.AWS_S3_BUCKET,
-//         Key: `${file.originalname}-${Date.now()}`,
-//         Body: file.buffer,
-//         ContentType: file.mimetype
-//     };
-
-//     try {
-//         const command = new PutObjectCommand(uploadParams);
-//         await s3Client.send(command);
-//         return `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
-//     } catch (error) {
-//         throw error;
-//     }
-// }
-
 export const updateAttendance = async (req, res, next) => {
     const attendanceID = req.query.attendanceID;
     try {
@@ -620,13 +601,6 @@ export const updateAttendance = async (req, res, next) => {
                 }
             } else if (existingAttendance.position === "Service") {
                 if (existingAttendance.shift_info.time_slot.check_in === true && existingAttendance.shift_info.time_slot.check_out === true) {
-                    // const file = req.file;
-                    // if (!file) {
-                    //     return res.status(BAD_REQUEST).send('No file uploaded for checkout.');
-                    // }
-
-                    // const imageUrl = await uploadImageToS3(file);
-                    // existingAttendance.check_out_image = imageUrl;
                     existingAttendance.bar = req.body.bar;
                     existingAttendance.gesamt = req.body.gesamt;
                     existingAttendance.trinked_ec = req.body.trinked_ec;

@@ -1,5 +1,5 @@
 import { createError } from "../utils/error.js";
-import { BAD_REQUEST, NOT_FOUND, OK } from "../constant/HttpStatus.js";
+import { BAD_REQUEST, CONFLICT, CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import AdminSchema from "../models/AdminSchema.js";
@@ -801,7 +801,123 @@ export const getForm = async (req, res, next) => {
     }
 };
 
+export const createAttendance = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
+    const shiftCode = req.query.shiftCode;
+    const date = new Date(req.query.date);
+    const checkInTime = new Date(req.body.check_in_time);
+    const checkOutTime = new Date(req.body.check_out_time);
 
+    if (!date || !shiftCode || !employeeID || !employeeName || !checkInTime || !checkOutTime) {
+        return res.status(BAD_REQUEST).json({
+            success: false,
+            status: BAD_REQUEST,
+            message: "Date, shift code, employee ID, employee name, check-in and check-out times are required",
+        });
+    }
+
+    try {
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found"));
+        if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
+
+        let shiftExists = false;
+        let departmentName = '';
+        let position = '';
+
+        for (const department of employee.department) {
+            for (const schedule of department.schedules) {
+                if (schedule.date.toDateString() === date.toDateString()) {
+                    const shift = schedule.shift_design.find(s => s.shift_code === shiftCode);
+                    if (shift) {
+                        shiftExists = true;
+                        departmentName = department.name;
+                        position = shift.position;
+                        break;
+                    }
+                }
+            }
+            if (shiftExists) break;
+        }
+
+        if (!shiftExists) {
+            return next(createError(NOT_FOUND, "Specified shift not found in employee's schedule for the given date"));
+        }
+
+        const existingAttendance = await AttendanceSchema.findOne({
+            employee_id: employeeID,
+            date: {
+                $gte: new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0),
+                $lt: new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999),
+            },
+            'shift_info.shift_code': shiftCode,
+        });
+
+        if (existingAttendance) {
+            return res.status(CONFLICT).json({
+                success: false,
+                status: CONFLICT,
+                message: "Attendance record already exists for this shift on the specified date. Please update instead of creating a new record.",
+            });
+        }
+
+        // Calculate total hours and minutes
+        const totalDuration = checkOutTime - checkInTime;
+        const totalHours = Math.floor(totalDuration / (1000 * 60 * 60));
+        const totalMinutes = Math.floor((totalDuration % (1000 * 60 * 60)) / (1000 * 60));
+
+        const newAttendance = new AttendanceSchema({
+            date,
+            employee_id: employeeID,
+            employee_name: employeeName,
+            role: employee.role,
+            department_name: currentDepartment,
+            position: position,
+            shift_info: {
+                shift_code: shiftCode,
+                time_slot: {
+                    check_in: true,
+                    check_in_time: checkInTime.toISOString(),
+                    check_in_status: req.body.check_in_status,
+                    check_out: true,
+                    check_out_time: checkOutTime.toISOString(),
+                    check_out_status: req.body.check_out_status,
+                },
+                total_hour: totalHours,
+                total_minutes: totalMinutes,
+            },
+        });
+
+        await newAttendance.save();
+
+        // Calculate total working time in hours
+        const totalWorkingTime = totalHours + (totalMinutes / 60);
+
+        // Update StatsSchema for the employee
+        let stats = await StatsSchema.findOne({
+            employee_id: employeeID,
+            year: date.getFullYear(),
+            month: date.getMonth() + 1
+        });
+
+        if (stats) {
+            stats.attendance_total_times += totalWorkingTime;
+            await stats.save();
+        } else {
+            console.log("Employee's stats not found");
+        }
+
+        res.status(CREATED).json({
+            success: true,
+            status: CREATED,
+            message: newAttendance
+        });
+
+    } catch (err) {
+        next(err);
+    }
+};
 
 
 

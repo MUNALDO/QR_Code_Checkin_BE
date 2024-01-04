@@ -872,7 +872,7 @@ export const createAttendance = async (req, res, next) => {
             employee_id: employeeID,
             employee_name: employeeName,
             role: employee.role,
-            department_name: currentDepartment,
+            department_name: departmentName,
             position: position,
             shift_info: {
                 shift_code: shiftCode,
@@ -888,8 +888,55 @@ export const createAttendance = async (req, res, next) => {
                 total_minutes: totalMinutes,
             },
         });
-
         await newAttendance.save();
+
+        const departmentIndex = employee.department.findIndex(dep => dep.name === departmentName);
+        const statsIndex = employee.department[departmentIndex].attendance_stats.findIndex(stat =>
+            stat.year === currentYear && stat.month === currentMonth
+        );
+
+        if (statsIndex > -1) {
+            if (newAttendance.shift_info.time_slot.check_in_status === "on time" && newAttendance.shift_info.time_slot.check_out_status === "on time") {
+                employee.department[departmentIndex].attendance_stats[statsIndex].date_on_time += 1;
+            } else if ((newAttendance.shift_info.time_slot.check_in_status === "on time" && newAttendance.shift_info.time_slot.check_out_status === "late")
+                || (newAttendance.shift_info.time_slot.check_in_status === "late" && newAttendance.shift_info.time_slot.check_out_status === "on time")) {
+                employee.department[departmentIndex].attendance_stats[statsIndex].date_on_time += 0.5;
+                employee.department[departmentIndex].attendance_stats[statsIndex].date_late += 0.5;
+            } else if (newAttendance.status === "missing") {
+                employee.department[departmentIndex].attendance_stats[statsIndex].date_missing += 1;
+            }
+        } else {
+            if (newAttendance.shift_info.time_slot.check_in_status === "on time" && newAttendance.shift_info.time_slot.check_out_status === "on time") {
+                const newStat = {
+                    year: currentYear,
+                    month: currentMonth,
+                    date_on_time: 1,
+                    date_late: 0,
+                    date_missing: 0,
+                };
+                employee.department[departmentIndex].attendance_stats.push(newStat);
+            } else if ((newAttendance.shift_info.time_slot.check_in_status === "on time" && newAttendance.shift_info.time_slot.check_out_status === "late")
+                || (newAttendance.shift_info.time_slot.check_in_status === "late" && newAttendance.shift_info.time_slot.check_out_status === "on time")) {
+                const newStat = {
+                    year: currentYear,
+                    month: currentMonth,
+                    date_on_time: 0.5,
+                    date_late: 0.5,
+                    date_missing: 0,
+                };
+                employee.department[departmentIndex].attendance_stats.push(newStat);
+            } else if (newAttendance.status === "missing") {
+                const newStat = {
+                    year: currentYear,
+                    month: currentMonth,
+                    date_on_time: 0,
+                    date_late: 0,
+                    date_missing: 1,
+                };
+                employee.department[departmentIndex].attendance_stats.push(newStat);
+            }
+        }
+        await employee.save();
 
         // Calculate total working time in hours
         const totalWorkingTime = totalHours + (totalMinutes / 60);

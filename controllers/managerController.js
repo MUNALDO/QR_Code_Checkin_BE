@@ -546,7 +546,7 @@ export const getAttendanceForManager = async (req, res, next) => {
 
 export const getStatsForManager = async (req, res, next) => {
     try {
-        const { year, month, employeeID, department_name } = req.query;
+        const { year, month, employeeID, employeeName, department_name } = req.query;
         const managerName = req.query.manager_name;
         let query = {};
 
@@ -560,24 +560,29 @@ export const getStatsForManager = async (req, res, next) => {
         if (year) query.year = parseInt(year);
         if (month) query.month = parseInt(month);
 
-        let employeeIds = [];
+        let employeeConditions = [];
         if (department_name) {
             if (!managerDepartments.includes(department_name)) {
                 return res.status(NOT_FOUND).json({ error: "Department not managed by manager" });
             }
-            const employees = await EmployeeSchema.find({ 'department.name': department_name });
-            employeeIds = employees.map(emp => emp.id);
+            employeeConditions.push({ 'department.name': department_name });
         } else {
-            // Get all employees from manager's departments
-            const employees = await EmployeeSchema.find({ 'department.name': { $in: managerDepartments } });
-            employeeIds = employees.map(emp => emp.id);
+            employeeConditions.push({ 'department.name': { $in: managerDepartments } });
         }
 
         if (employeeID) {
-            if (!employeeIds.includes(employeeID)) {
-                return res.status(NOT_FOUND).json({ error: "Employee not found in manager's departments" });
-            }
-            employeeIds = [employeeID];
+            employeeConditions.push({ id: employeeID });
+        }
+
+        if (employeeName) {
+            employeeConditions.push({ name: employeeName });
+        }
+
+        const employees = await EmployeeSchema.find({ $and: employeeConditions });
+        const employeeIds = employees.map(emp => emp.id);
+
+        if (employeeIds.length === 0) {
+            return res.status(NOT_FOUND).json({ error: "No matching employees found." });
         }
 
         if (employeeIds.length > 0) {
@@ -594,6 +599,7 @@ export const getStatsForManager = async (req, res, next) => {
         next(err);
     }
 };
+
 
 export const addMemberToDepartmentByManager = async (req, res, next) => {
     const departmentName = req.params.name;

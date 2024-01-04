@@ -480,30 +480,37 @@ export const handleRequest = async (req, res, next) => {
 
 export const getStats = async (req, res, next) => {
     try {
-        const { year, month, employeeID, department_name } = req.query;
+        const { year, month, employeeID, employeeName, department_name } = req.query;
         let query = {};
 
         if (year) query.year = parseInt(year);
         if (month) query.month = parseInt(month);
 
-        let employeeIds = [];
+        let employeeConditions = [];
         if (department_name) {
-            const employees = await EmployeeSchema.find({ 'department.name': department_name });
-            employeeIds = employees.map(emp => emp.id);
+            const departmentCondition = { 'department.name': department_name };
+            employeeConditions.push(departmentCondition);
         }
 
         if (employeeID) {
-            if (department_name) {
-                employeeIds = employeeIds.filter(id => id === employeeID);
-                if (employeeIds.length === 0) {
-                    return res.status(NOT_FOUND).json({
-                        success: false,
-                        status: NOT_FOUND,
-                        message: "No matching statistics found.",
-                    });
-                }
-            } else {
-                employeeIds = [employeeID];
+            employeeConditions.push({ id: employeeID });
+        }
+
+        if (employeeName) {
+            employeeConditions.push({ name: employeeName });
+        }
+
+        let employeeIds = [];
+        if (employeeConditions.length > 0) {
+            const employees = await EmployeeSchema.find({ $and: employeeConditions });
+            employeeIds = employees.map(emp => emp.id);
+
+            if (employeeIds.length === 0) {
+                return res.status(NOT_FOUND).json({
+                    success: false,
+                    status: NOT_FOUND,
+                    message: "No matching employees found.",
+                });
             }
         }
 

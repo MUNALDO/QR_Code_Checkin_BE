@@ -1046,7 +1046,7 @@ export const updateAttendanceForInhaber = async (req, res, next) => {
 
 export const getStatsForInhaber = async (req, res, next) => {
     try {
-        const { year, month, employeeID, department_name } = req.query;
+        const { year, month, employeeID, employeeName, department_name } = req.query;
         const inhaberName = req.query.inhaber_name;
         let query = {};
 
@@ -1060,24 +1060,29 @@ export const getStatsForInhaber = async (req, res, next) => {
         if (year) query.year = parseInt(year);
         if (month) query.month = parseInt(month);
 
-        let employeeIds = [];
+        let employeeConditions = [];
         if (department_name) {
             if (!inhaberDepartments.includes(department_name)) {
                 return res.status(NOT_FOUND).json({ error: "Department not managed by Inhaber" });
             }
-            const employees = await EmployeeSchema.find({ 'department.name': department_name });
-            employeeIds = employees.map(emp => emp.id);
+            employeeConditions.push({ 'department.name': department_name });
         } else {
-            // Get all employees from Inhaber's departments
-            const employees = await EmployeeSchema.find({ 'department.name': { $in: inhaberDepartments } });
-            employeeIds = employees.map(emp => emp.id);
+            employeeConditions.push({ 'department.name': { $in: inhaberDepartments } });
         }
 
         if (employeeID) {
-            if (!employeeIds.includes(employeeID)) {
-                return res.status(NOT_FOUND).json({ error: "Employee not found in Inhaber's departments" });
-            }
-            employeeIds = [employeeID];
+            employeeConditions.push({ id: employeeID });
+        }
+
+        if (employeeName) {
+            employeeConditions.push({ name: employeeName });
+        }
+
+        const employees = await EmployeeSchema.find({ $and: employeeConditions });
+        const employeeIds = employees.map(emp => emp.id);
+
+        if (employeeIds.length === 0) {
+            return res.status(NOT_FOUND).json({ error: "No matching employees found." });
         }
 
         if (employeeIds.length > 0) {

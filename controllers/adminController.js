@@ -826,9 +826,11 @@ export const createAttendance = async (req, res, next) => {
     const shiftCode = req.query.shiftCode;
     const date = new Date(req.query.date);
     const dateString = date.toISOString().split('T')[0];
+    const originalCheckInTime = req.body.check_in_time;
+    const originalCheckOutTime = req.body.check_out_time;
 
-    const checkInDateTimeString = `${dateString}T${convertTo24HourFormat(req.body.check_in_time)}`;
-    const checkOutDateTimeString = `${dateString}T${convertTo24HourFormat(req.body.check_out_time)}`;
+    const checkInDateTimeString = `${dateString}T${convertTo24HourFormat(originalCheckInTime)}`;
+    const checkOutDateTimeString = `${dateString}T${convertTo24HourFormat(originalCheckOutTime)}`;
 
     const checkInTime = new Date(checkInDateTimeString);
     const checkOutTime = new Date(checkOutDateTimeString);
@@ -888,7 +890,6 @@ export const createAttendance = async (req, res, next) => {
             });
         }
 
-        // Calculate total hours and minutes
         const totalDuration = checkOutTime - checkInTime;
         const totalHours = Math.floor(totalDuration / (1000 * 60 * 60));
         const totalMinutes = Math.floor((totalDuration % (1000 * 60 * 60)) / (1000 * 60));
@@ -904,10 +905,10 @@ export const createAttendance = async (req, res, next) => {
                 shift_code: shiftCode,
                 time_slot: {
                     check_in: true,
-                    check_in_time: checkInTime.toISOString(),
+                    check_in_time: originalCheckInTime,
                     check_in_status: req.body.check_in_status,
                     check_out: true,
-                    check_out_time: checkOutTime.toISOString(),
+                    check_out_time: originalCheckOutTime,
                     check_out_status: req.body.check_out_status,
                 },
                 total_hour: totalHours,

@@ -16,6 +16,8 @@ export const registerAdmin = async (req, res, next) => {
         const hash = bcrypt.hashSync(req.body.password, salt)
         const newAdmin = new AdminSchema({
             ...req.body,
+            id: req.body.id.trim(),
+            name: req.body.name.trim(),
             password: hash,
             role: "Admin"
         })
@@ -72,6 +74,8 @@ export const registerInhaberByAdmin = async (req, res, next) => {
 
         const newInhaber = new EmployeeSchema({
             ...req.body,
+            id: req.body.id.trim(),
+            name: req.body.name.trim(),
             password: hash,
             role: "Inhaber",
             active_day: new Date()
@@ -192,6 +196,8 @@ export const registerManagerByAdmin = async (req, res, next) => {
 
         const newManager = new EmployeeSchema({
             ...req.body,
+            id: req.body.id.trim(),
+            name: req.body.name.trim(),
             password: hash,
             role: "Manager",
             active_day: new Date()
@@ -299,6 +305,8 @@ export const registerManagerByInhaber = async (req, res, next) => {
 
         const newManager = new EmployeeSchema({
             ...req.body,
+            id: req.body.id.trim(),
+            name: req.body.name.trim(),
             password: hash,
             role: "Manager",
             active_day: new Date()
@@ -413,6 +421,8 @@ export const registerEmployeeByAdmin = async (req, res, next) => {
 
         const newEmployee = new EmployeeSchema({
             ...req.body,
+            id: req.body.id.trim(),
+            name: req.body.name.trim(),
             password: hash,
             role: "Employee",
             active_day: new Date()
@@ -518,6 +528,8 @@ export const registerEmployeeByInhaber = async (req, res, next) => {
 
         const newEmployee = new EmployeeSchema({
             ...req.body,
+            id: req.body.id.trim(),
+            name: req.body.name.trim(),
             password: hash,
             role: "Employee",
             active_day: new Date()
@@ -617,6 +629,8 @@ export const registerEmployeeByManager = async (req, res, next) => {
 
         const newEmployee = new EmployeeSchema({
             ...req.body,
+            id: req.body.id.trim(),
+            name: req.body.name.trim(),
             password: hash,
             role: "Employee",
             active_day: new Date()

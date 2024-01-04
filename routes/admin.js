@@ -1,5 +1,6 @@
 import express from 'express';
 import {
+    createAttendance,
     deleteEmployeeById, getAllEmployeesSchedules, getAllRequests, getAttendance,
     getEmployeeById, getForm, getLogs, getRequestById, getStats, handleRequest,
     madeEmployeeInactive, searchSpecific, updateAttendance, updateEmployee
@@ -74,6 +75,7 @@ router.get('/manage-request/get-byId/:_id', verifyTokenAdmin, getRequestById);
 router.put('/manage-request/handle/:_id', verifyTokenAdmin, handleRequest);
 
 // manage attendance
+router.post('/manage-attendance/create', verifyTokenAdmin, createAttendance);
 router.get('/manage-attendance/get-by-specific', verifyTokenAdmin, getAttendance);
 router.put('/manage-attendance/update/:_id', verifyTokenAdmin, updateAttendance);
 

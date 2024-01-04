@@ -111,8 +111,7 @@ export const updateShift = async (req, res, next) => {
             durationMinutes += 60;
         }
 
-        const duration = durationHours + durationMinutes / 60;
-        updateShift.time_slot.duration = duration;
+        updateShift.time_slot.duration = durationHours + durationMinutes / 60;
 
         await updateShift.save();
         res.status(OK).json({

@@ -8,7 +8,7 @@ import {
     getFormByInhaber, createCarByInhaber, getCarByInhaber, deleteCarByInhaber, updateCarByInhaber
 } from '../controllers/inhaberController.js';
 import {
-    createShift, getAllShifts, getShiftByCode,
+    createShift, deleteShiftByCode, getAllShifts, getShiftByCode,
     getShiftByName, updateShift
 } from '../controllers/shiftController.js';
 import { salaryCalculate } from '../controllers/salaryController.js';
@@ -39,6 +39,7 @@ router.get('/manage-shift/get-all', verifyTokenInhaber, getAllShifts);
 router.get('/manage-shift/get-by-code', verifyTokenInhaber, getShiftByCode);
 router.get('/manage-shift/get-by-name', verifyTokenInhaber, getShiftByName);
 router.put('/manage-shift/update', verifyTokenInhaber, updateShift);
+router.delete('/manage-shift/delete', verifyTokenInhaber, deleteShiftByCode);
 
 // manage attendance
 router.get('/manage-attendance/get-by-specific', verifyTokenInhaber, getAttendanceForInhaber);

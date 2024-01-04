@@ -17,9 +17,10 @@ wifi.init({
 
 export const verifyWifi = async (req, res, next) => {
     const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     const department_name = req.query.department_name;
     try {
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found"))
 
         const department = await DepartmentSchema.findOne({ name: department_name });
@@ -297,8 +298,9 @@ const updateExistingAttendance = async (employee, department, attendance, shiftT
 
 export const checkAttendance = async (req, res, next) => {
     const employeeID = req.body.employeeID;
+    const employeeName = req.body.employeeName;
     try {
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found"));
         if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
@@ -355,6 +357,7 @@ export const checkAttendance = async (req, res, next) => {
         // Check if attendance already exists for this shift on current day
         const existingAttendance = await AttendanceSchema.findOne({
             employee_id: employee.id,
+            employee_name: employee.name,
             date: {
                 $gte: new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), 0, 0, 0, 0),
                 $lt: new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), 23, 59, 59, 999),
@@ -739,13 +742,14 @@ export const updateAttendance = async (req, res, next) => {
 export const getEmployeeAttendanceCurrentMonth = async (req, res, next) => {
     try {
         const employeeID = req.query.employeeID;
+        const employeeName = req.query.employeeName;
         const departmentName = req.query.department_name;
 
-        if (!employeeID) {
+        if (!employeeID || !employeeName) {
             return res.status(BAD_REQUEST).json({
                 success: false,
                 status: BAD_REQUEST,
-                message: "Employee ID is required",
+                message: "Employee ID and Employee Name is required",
             });
         }
 
@@ -763,6 +767,7 @@ export const getEmployeeAttendanceCurrentMonth = async (req, res, next) => {
         // Construct the base query
         let query = {
             employee_id: employeeID,
+            employee_name: employeeName,
             date: dateRange,
         };
 
@@ -787,6 +792,7 @@ export const getEmployeeAttendanceCurrentMonth = async (req, res, next) => {
 
 export const getDateDesignCurrentByEmployee = async (req, res, next) => {
     const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     const targetDate = req.query.date ? new Date(req.query.date) : null;
     const departmentName = req.query.department_name;
 
@@ -800,7 +806,7 @@ export const getDateDesignCurrentByEmployee = async (req, res, next) => {
     const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : currentMonth;
 
     try {
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
         const shiftDesigns = [];
@@ -858,8 +864,9 @@ function calculateDuration(startDate, endDate) {
 
 export const createRequest = async (req, res, next) => {
     const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     try {
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
         if (employee.realistic_day_off > 0) {
@@ -973,8 +980,9 @@ export const createRequest = async (req, res, next) => {
 
 export const getAllRequestsForEmployee = async (req, res, next) => {
     const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     try {
-        const requests = await RequestSchema.find({ employee_id: employeeID });
+        const requests = await RequestSchema.find({ employee_id: employeeID, employee_name: employeeName });
         return res.status(OK).json({
             success: true,
             status: OK,

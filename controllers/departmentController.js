@@ -135,11 +135,12 @@ export const deleteDepartmentByName = async (req, res, next) => {
 export const addMemberDepartment = async (req, res, next) => {
     const department_name = req.params.name;
     const employeeID = req.body.employeeID;
+    const employeeName = req.body.employeeName;
     try {
         const department = await DepartmentSchema.findOne({ name: department_name });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"))
 
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
 
         if (department.members.includes(employee)) return next(createError(CONFLICT, "Employee already exists in the department!"));
@@ -176,15 +177,16 @@ export const addMemberDepartment = async (req, res, next) => {
 export const removeMemberDepartment = async (req, res, next) => {
     const department_name = req.params.name;
     const employeeID = req.body.employeeID;
+    const employeeName = req.body.employeeName;
     try {
         const department = await DepartmentSchema.findOne({ name: department_name });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"));
 
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
         // Check if the employee is in the department
-        if (!department.members.some(member => member.id === employeeID)) {
+        if (!department.members.some(member => member.id === employeeID && member.name === employeeName)) {
             return next(createError(NOT_FOUND, "Employee not a member of the department!"));
         }
 

@@ -16,6 +16,7 @@ import CarSchema from "../models/CarSchema.js";
 export const updateEmployeeByInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
     const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     try {
         const currentTime = new Date();
         const currentYear = currentTime.getFullYear();
@@ -25,7 +26,7 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
         // Check if the employee is in any of the Inhaber's departments
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
         if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
@@ -46,6 +47,7 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
         if (req.body.total_time_per_month !== undefined) {
             let stats = await StatsSchema.findOne({
                 employee_id: employee.id,
+                employee_name: employee.name,
                 year: currentYear,
                 month: currentMonth
             });
@@ -58,7 +60,7 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
         }
 
         const updatedEmployee = await EmployeeSchema.findOneAndUpdate(
-            { id: employeeID },
+            { id: employeeID, name: employeeName },
             { $set: req.body },
             { new: true }
         );
@@ -72,7 +74,7 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
         for (let departmentObject of updatedEmployee.department) {
             const department = await DepartmentSchema.findOne({ name: departmentObject.name });
             if (department) {
-                const memberIndex = department.members.findIndex(member => member.id === updatedEmployee.id);
+                const memberIndex = department.members.findIndex(member => member.id === updatedEmployee.id && member.name === updatedEmployee.name);
                 if (memberIndex !== -1) {
                     const originalPosition = department.members[memberIndex].position;
                     department.members[memberIndex] = {
@@ -90,7 +92,7 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
 
         // Update employee information in day off records
         await DayOffSchema.updateMany(
-            { 'members.id': updatedEmployee.id },
+            { 'members.id': updatedEmployee.id, 'members.name': updatedEmployee.name },
             {
                 $set: {
                     'members.$.id': updatedEmployee.id,
@@ -113,12 +115,13 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
 
 export const madeEmployeeInactiveByInhaber = async (req, res, next) => {
     const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     const inhaberName = req.query.inhaber_name;
     try {
         const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
         if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee already inactive!"));
 
@@ -136,26 +139,29 @@ export const madeEmployeeInactiveByInhaber = async (req, res, next) => {
             return next(createError(BAD_REQUEST, "Inactive day must be in the future."));
         }
 
-        cron.schedule(`0 0 ${day} ${month} *`, async () => {
+        // Schedule the status update to run at the specified date and time
+        const cronExpression = `${minute} ${hour} ${day} ${month} *`;
+
+        // Schedule the status update to run at midnight (00:00) of the specified date
+        cron.schedule(cronExpression, async () => {
             employee.inactive_day = inactiveDate;
             employee.status = "inactive";
 
-            // Update status in shared departments between employee and Inhaber
+            // Update status in departments
             for (let departmentObject of employee.department) {
-                if (inhaber.department.some(inhaberDept => inhaberDept.name === departmentObject.name)) {
-                    const department = await DepartmentSchema.findOne({ name: departmentObject.name });
-                    if (department) {
-                        const memberIndex = department.members.findIndex(member => member.id === employee.id);
-                        if (memberIndex !== -1) {
-                            department.members[memberIndex].status = "inactive";
-                            await department.save();
-                        }
+                const department = await DepartmentSchema.findOne({ name: departmentObject.name });
+                if (department) {
+                    const memberIndex = department.members.findIndex(member => member.id === employee.id && member.name === employee.name);
+                    if (memberIndex !== -1) {
+                        department.members[memberIndex].status = "inactive";
+                        await department.save();
                     }
                 }
             }
 
+            // Update status in day off records
             await DayOffSchema.updateMany(
-                { 'members.id': employeeID },
+                { 'members.id': employeeID, 'members.name': employeeName },
                 { $set: { 'members.$.status': "inactive" } }
             );
 
@@ -175,11 +181,12 @@ export const madeEmployeeInactiveByInhaber = async (req, res, next) => {
 export const getEmployeeByIdForInhaber = async (req, res, next) => {
     const inhaberName = req.query.inhaber_name;
     const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     try {
         const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
         const isEmployeeInDepartment = employee.department.some(department =>
@@ -213,11 +220,12 @@ export const getEmployeeByIdForInhaber = async (req, res, next) => {
 export const deleteEmployeeByIdByInhaber = async (req, res, next) => {
     const inhaberName = req.query.inhaber_name;
     const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     try {
         const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
 
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
         const isEmployeeInDepartment = employee.department.some(department =>
@@ -230,17 +238,17 @@ export const deleteEmployeeByIdByInhaber = async (req, res, next) => {
         for (let departmentObject of employee.department) {
             const department = await DepartmentSchema.findOne({ name: departmentObject.name });
             if (department) {
-                department.members = department.members.filter(member => member.id !== employee.id);
+                department.members = department.members.filter(member => member.id !== employee.id && member.name !== employee.name);
                 await department.save();
             }
         }
 
         await DayOffSchema.updateMany(
-            { 'members.id': employeeID },
-            { $pull: { members: { id: employeeID } } }
+            { 'members.id': employeeID, 'members.name': employeeName },
+            { $pull: { members: { id: employeeID, name: employeeName } } }
         );
 
-        await EmployeeSchema.findOneAndDelete({ id: employeeID });
+        await EmployeeSchema.findOneAndDelete({ id: employeeID, name: employeeName });
         res.status(OK).json({
             success: true,
             status: OK,
@@ -366,6 +374,7 @@ export const getEmployeesSchedulesByInhaber = async (req, res, next) => {
 export const createMultipleDateDesignsByInhaber = async (req, res, next) => {
     const shiftCode = req.body.shift_code;
     const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     const departmentName = req.query.department_name;
     const dates = req.body.dates;
     const inhaberName = req.query.inhaber_name;
@@ -382,7 +391,7 @@ export const createMultipleDateDesignsByInhaber = async (req, res, next) => {
         }
 
         // Fetch the employee and verify the department
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee || !employee.department.some(dep => dep.name === departmentName)) {
             return res.status(NOT_FOUND).json({ error: "Employee not found in the specified department" });
         }
@@ -411,6 +420,7 @@ export const createMultipleDateDesignsByInhaber = async (req, res, next) => {
 
             let stats = await StatsSchema.findOne({
                 employee_id: employee.id,
+                employee_name: employee.name,
                 year: year,
                 month: month
             });
@@ -529,6 +539,7 @@ export const createMultipleDateDesignsByInhaber = async (req, res, next) => {
 
                 let stats = await StatsSchema.findOne({
                     employee_id: employee.id,
+                    employee_name: employee.name,
                     year: currentYear,
                     month: currentMonth
                 });
@@ -568,6 +579,7 @@ export const getDateDesignForInhaber = async (req, res, next) => {
     const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null;
     const targetDate = req.query.date ? new Date(req.query.date) : null;
     const specificEmployeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     try {
         const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
         if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
@@ -577,7 +589,11 @@ export const getDateDesignForInhaber = async (req, res, next) => {
 
         let employeeQuery = { 'department.name': { $in: departmentNames } };
         if (specificEmployeeID) {
-            employeeQuery.id = specificEmployeeID; // Filter by specific employee ID if provided
+            employeeQuery.id = specificEmployeeID;
+        }
+
+        if (employeeName) {
+            employeeQuery.name = employeeName;
         }
 
         const employees = await EmployeeSchema.find(employeeQuery);
@@ -670,6 +686,7 @@ export const deleteDateSpecificByInhaber = async (req, res, next) => {
 export const getAttendanceForInhaber = async (req, res, next) => {
     const inhaber_name = req.query.inhaber_name;
     const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     const year = req.query.year;
     const month = req.query.month;
     const dateString = req.query.date;
@@ -720,6 +737,10 @@ export const getAttendanceForInhaber = async (req, res, next) => {
 
         if (employeeID) {
             query.employee_id = employeeID;
+        }
+
+        if (employeeName) {
+            query.employee_name = employeeName;
         }
 
         const attendances = await AttendanceSchema.find(query);
@@ -849,7 +870,7 @@ export const handleRequestForInhaber = async (req, res, next) => {
         );
         if (!updateRequest) return next(createError(NOT_FOUND, "Request not found!"));
 
-        const employee = await EmployeeSchema.findOne({ id: updateRequest.employee_id });
+        const employee = await EmployeeSchema.findOne({ id: updateRequest.employee_id, name: updateRequest.employee_name });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
         if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
@@ -917,7 +938,7 @@ export const updateAttendanceForInhaber = async (req, res, next) => {
         const currentTime = new Date();
         const currentYear = currentTime.getFullYear();
         const currentMonth = currentTime.getMonth() + 1;
-        const edited = await EmployeeSchema.findOne({ id: attendance.employee_id });
+        const edited = await EmployeeSchema.findOne({ id: attendance.employee_id, name: attendance.employee_name });
 
         const departmentIndex = edited.department.findIndex(dep => dep.name === attendance.department_name);
         const statsIndex = edited.department[departmentIndex].attendance_stats.findIndex(stat =>
@@ -990,6 +1011,7 @@ export const updateAttendanceForInhaber = async (req, res, next) => {
 
         let stats = await StatsSchema.findOne({
             employee_id: edited.id,
+            employee_name: edited.name,
             year: currentYear,
             month: currentMonth
         });
@@ -1076,6 +1098,7 @@ export const getStatsForInhaber = async (req, res, next) => {
 export const addMemberToDepartmentByInhaber = async (req, res, next) => {
     const departmentName = req.params.name;
     const employeeID = req.body.employeeID;
+    const employeeName = req.body.employeeName;
     const inhaberName = req.query.inhaber_name;
     try {
         const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
@@ -1089,7 +1112,7 @@ export const addMemberToDepartmentByInhaber = async (req, res, next) => {
         const department = await DepartmentSchema.findOne({ name: departmentName });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"));
 
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
         if (department.members.includes(employee)) return next(createError(CONFLICT, "Employee already exists in the department!"));
@@ -1125,6 +1148,7 @@ export const addMemberToDepartmentByInhaber = async (req, res, next) => {
 export const removeMemberFromDepartmentByInhaber = async (req, res, next) => {
     const departmentName = req.params.name;
     const employeeID = req.body.employeeID;
+    const employeeName = req.body.employeeName;
     const inhaberName = req.query.inhaber_name;
     try {
         const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
@@ -1138,14 +1162,14 @@ export const removeMemberFromDepartmentByInhaber = async (req, res, next) => {
         const department = await DepartmentSchema.findOne({ name: departmentName });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"));
 
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
-        if (!department.members.some(member => member.id === employeeID)) {
+        if (!department.members.some(member => member.id === employeeID && member.name === employeeName)) {
             return next(createError(NOT_FOUND, "Employee not a member of the department."));
         }
 
-        department.members = department.members.filter(member => member.id !== employeeID);
+        department.members = department.members.filter(member => member.id !== employeeID && member.name === employeeName);
         employee.department = employee.department.filter(dep => dep.name !== departmentName);
 
         await department.save();
@@ -1162,7 +1186,7 @@ export const removeMemberFromDepartmentByInhaber = async (req, res, next) => {
 };
 
 export const getFormByInhaber = async (req, res, next) => {
-    const { year, month, employeeID, department_name, position, inhaber_name } = req.query;
+    const { year, month, employeeID, employeeName, department_name, position, inhaber_name } = req.query;
     try {
         // Find the Inhaber and their departments
         const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: 'Inhaber' });
@@ -1187,8 +1211,8 @@ export const getFormByInhaber = async (req, res, next) => {
         }
 
         // Employee query
-        if (employeeID) {
-            const employee = await EmployeeSchema.findOne({ id: employeeID });
+        if (employeeID && employeeName) {
+            const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
             if (!employee || !employee.department.some(dep => inhaberDepartments.includes(dep.name))) {
                 return res.status(NOT_FOUND).json({
                     success: false,
@@ -1197,6 +1221,31 @@ export const getFormByInhaber = async (req, res, next) => {
                 });
             }
             query.employee_id = employeeID;
+            query.employee_name = employeeName;
+        }
+
+        if (employeeID && !employeeName) {
+            const employee = await EmployeeSchema.find({ id: employeeID });
+            if (!employee || !employee.department.some(dep => inhaberDepartments.includes(dep.name))) {
+                return res.status(NOT_FOUND).json({
+                    success: false,
+                    status: NOT_FOUND,
+                    message: "Employee not found or not in Inhaber's department."
+                });
+            }
+            query.employee_id = employeeID;
+        }
+
+        if (!employeeID && employeeName) {
+            const employee = await EmployeeSchema.find({ name: employeeName });
+            if (!employee || !employee.department.some(dep => inhaberDepartments.includes(dep.name))) {
+                return res.status(NOT_FOUND).json({
+                    success: false,
+                    status: NOT_FOUND,
+                    message: "Employee not found or not in Inhaber's department."
+                });
+            }
+            query.employee_name = employeeName;
         }
 
         // Department query

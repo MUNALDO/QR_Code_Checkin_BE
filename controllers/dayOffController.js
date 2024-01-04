@@ -19,6 +19,7 @@ export const createDayOff = async (req, res, next) => {
     const date_start = req.body.date_start;
     const date_end = req.body.date_end;
     const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     try {
         const newDayOff = new DayOffSchema({
             date_start: new Date(date_start),
@@ -39,7 +40,7 @@ export const createDayOff = async (req, res, next) => {
         if (dateChecking) return next(createError(CONFLICT, "Day Off is already exists!"));
 
         if (newDayOff.type === 'specific') {
-            const employee = await EmployeeSchema.findOne({ id: employeeID });
+            const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
             if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
             if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
@@ -175,8 +176,9 @@ export const deleteDayOffById = async (req, res, next) => {
 
 export const getEmployeeDayOffs = async (req, res, next) => {
     const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     try {
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return res.status(NOT_FOUND).json({
             success: false,
             status: NOT_FOUND,
@@ -195,8 +197,9 @@ export const getEmployeeDayOffs = async (req, res, next) => {
 
 export const deleteEmployeeDayOff = async (req, res, next) => {
     const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     try {
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return res.status(NOT_FOUND).json({
             success: false,
             status: NOT_FOUND,

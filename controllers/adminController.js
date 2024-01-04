@@ -12,14 +12,13 @@ import LogSchema from "../models/LogSchema.js";
 
 export const updateEmployee = async (req, res, next) => {
     const employeeID = req.query.employeeID;
-    // const editor_name = req.query.editor_name;
+    const employeeName = req.query.employeeName;
     try {
         const currentTime = new Date();
         const currentYear = currentTime.getFullYear();
         const currentMonth = currentTime.getMonth() + 1;
-        // const editor = await AdminSchema.findOne({ name: editor_name });
 
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) {
             return next(createError(NOT_FOUND, "Employee not found!"));
         }
@@ -40,6 +39,7 @@ export const updateEmployee = async (req, res, next) => {
         if (req.body.total_time_per_month !== undefined) {
             let stats = await StatsSchema.findOne({
                 employee_id: employee.id,
+                employee_name: employee.name,
                 year: currentYear,
                 month: currentMonth
             });
@@ -53,7 +53,7 @@ export const updateEmployee = async (req, res, next) => {
         }
 
         const updatedEmployee = await EmployeeSchema.findOneAndUpdate(
-            { id: employeeID },
+            { id: employeeID, name: employeeName },
             { $set: req.body },
             { new: true }
         );
@@ -80,7 +80,7 @@ export const updateEmployee = async (req, res, next) => {
 
         // Update employee information in day off records
         await DayOffSchema.updateMany(
-            { 'members.id': updatedEmployee.id },
+            { 'members.id': updatedEmployee.id, 'members.name': updatedEmployee.name },
             {
                 $set: {
                     'members.$.id': updatedEmployee.id,
@@ -104,8 +104,9 @@ export const updateEmployee = async (req, res, next) => {
 
 export const madeEmployeeInactive = async (req, res, next) => {
     const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     try {
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
         if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee already inactive!"));
 
@@ -132,7 +133,7 @@ export const madeEmployeeInactive = async (req, res, next) => {
             for (let departmentObject of employee.department) {
                 const department = await DepartmentSchema.findOne({ name: departmentObject.name });
                 if (department) {
-                    const memberIndex = department.members.findIndex(member => member.id === employee.id);
+                    const memberIndex = department.members.findIndex(member => member.id === employee.id && member.name === employee.name);
                     if (memberIndex !== -1) {
                         department.members[memberIndex].status = "inactive";
                         await department.save();
@@ -142,7 +143,7 @@ export const madeEmployeeInactive = async (req, res, next) => {
 
             // Update status in day off records
             await DayOffSchema.updateMany(
-                { 'members.id': employeeID },
+                { 'members.id': employeeID, 'members.name': employeeName },
                 { $set: { 'members.$.status': "inactive" } }
             );
 
@@ -161,8 +162,9 @@ export const madeEmployeeInactive = async (req, res, next) => {
 
 export const getEmployeeById = async (req, res, next) => {
     const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     try {
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
         res.status(OK).json({
@@ -177,27 +179,28 @@ export const getEmployeeById = async (req, res, next) => {
 
 export const deleteEmployeeById = async (req, res, next) => {
     const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     try {
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
         // Remove the employee from all departments
         for (let departmentObject of employee.department) {
             const department = await DepartmentSchema.findOne({ name: departmentObject.name });
             if (department) {
-                department.members = department.members.filter(member => member.id !== employee.id);
+                department.members = department.members.filter(member => member.id !== employee.id && member.name !== employee.name);
                 await department.save();
             }
         }
 
         // Remove the employee from all day off records
         await DayOffSchema.updateMany(
-            { 'members.id': employeeID },
-            { $pull: { members: { id: employeeID } } }
+            { 'members.id': employeeID, 'members.name': employeeName },
+            { $pull: { members: { id: employeeID, name: employeeName } } }
         );
 
         // Finally, delete the employee record
-        await EmployeeSchema.findOneAndDelete({ id: employeeID });
+        await EmployeeSchema.findOneAndDelete({ id: employeeID, name: employeeName });
         res.status(OK).json({
             success: true,
             status: OK,
@@ -335,6 +338,7 @@ export const getAllEmployeesSchedules = async (req, res, next) => {
 export const getAttendance = async (req, res, next) => {
     try {
         const employeeID = req.query.employeeID;
+        const employeeName = req.query.employeeName;
         const departmentName = req.query.department_name;
         const year = req.query.year;
         const month = req.query.month;
@@ -373,6 +377,10 @@ export const getAttendance = async (req, res, next) => {
 
         if (employeeID) {
             query.employee_id = employeeID;
+        }
+
+        if (employeeName) {
+            query.employee_name = employeeName;
         }
 
         if (departmentName) {
@@ -435,7 +443,7 @@ export const handleRequest = async (req, res, next) => {
         });
         if (!day_off) return next(createError(NOT_FOUND, "Day Off not found!"));
 
-        const employee = await EmployeeSchema.findOne({ id: updateRequest.employee_id });
+        const employee = await EmployeeSchema.findOne({ id: updateRequest.employee_id, name: updateRequest.employee_name });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
         if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
@@ -612,6 +620,7 @@ export const updateAttendance = async (req, res, next) => {
 
         let stats = await StatsSchema.findOne({
             employee_id: edited.id,
+            employee_name: edited.name,
             year: currentYear,
             month: currentMonth
         });
@@ -700,6 +709,7 @@ export const getForm = async (req, res, next) => {
     const year = req.query.year;
     const month = req.query.month;
     const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     const department_name = req.query.department_name;
     const position = req.query.position;
 
@@ -714,6 +724,7 @@ export const getForm = async (req, res, next) => {
 
     // Additional queries
     if (employeeID) query.employee_id = employeeID;
+    if (employeeName) query.employee_name = employeeName;
     if (department_name) query.department_name = department_name;
 
     if (position && ['Autofahrer', 'Service', 'Lito'].includes(position)) {

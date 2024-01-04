@@ -5,7 +5,7 @@ import {
     getAttendanceForManager, getDateDesignForManager, getEmployeeByIdForManager, searchSpecificForManager,
     getEmployeesSchedulesByManager, getStatsForManager, removeMemberFromDepartmentByManager
 } from '../controllers/managerController.js';
-import { createShift, getAllShifts, getShiftByCode, getShiftByName, updateShift } from '../controllers/shiftController.js';
+import { createShift, deleteShiftByCode, getAllShifts, getShiftByCode, getShiftByName, updateShift } from '../controllers/shiftController.js';
 
 const router = express.Router();
 
@@ -25,6 +25,7 @@ router.get('/manage-shift/get-all', verifyTokenManager, getAllShifts);
 router.get('/manage-shift/get-by-code', verifyTokenManager, getShiftByCode);
 router.get('/manage-shift/get-by-name', verifyTokenManager, getShiftByName);
 router.put('/manage-shift/update', verifyTokenManager, updateShift);
+router.delete('/manage-shift/delete', verifyTokenManager, deleteShiftByCode);
 
 // manage attendance
 router.get('/manage-attendance/get-by-specific', verifyTokenManager, getAttendanceForManager);

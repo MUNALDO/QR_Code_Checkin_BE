@@ -5,12 +5,17 @@ import SalarySchema from "../models/SalarySchema.js";
 import StatsSchema from "../models/StatsSchema.js";
 import { createError } from "../utils/error.js";
 
+const ensureNumber = (value) => {
+    return (value === undefined || isNaN(value)) ? 0 : value;
+};
+
 export const salaryCalculate = async (req, res, next) => {
     const employeeID = req.params.employeeID;
+    const employeeName = req.query.employeeName;
     const year = parseInt(req.query.year);
     const month = parseInt(req.query.month);
 
-    if (!year || !month || !employeeID) {
+    if (!year || !month || !employeeID || !employeeName) {
         return res.status(BAD_REQUEST).json({
             success: false,
             status: BAD_REQUEST,
@@ -18,60 +23,35 @@ export const salaryCalculate = async (req, res, next) => {
         });
     }
 
-    const employee = await EmployeeSchema.findOne({ id: employeeID });
+    const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
     if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
     if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
     let stats = await StatsSchema.findOne({
         employee_id: employeeID,
+        employee_name: employeeName,
         year: year,
         month: month
     });
 
     let existSalary = await SalarySchema.findOne({
         employee_id: employeeID,
+        employee_name: employeeName,
         year: year,
         month: month
     });
 
     // Initialize parameters for calculation
-    let a = req.body.a_new;
-    let b = req.body.b_new;
-    let c = req.body.c_new;
-    let d = req.body.d_new ?? 0.25;
-    let f = req.body.f_new;
+    let a = ensureNumber(req.body.a_new);
+    let b = ensureNumber(req.body.b_new);
+    let c = ensureNumber(req.body.c_new);
+    let d = ensureNumber(req.body.d_new) || 0.25;
+    let f = ensureNumber(req.body.f_new);
 
-    if (!req.body.a_new) {
-        if (existSalary) {
-            a = existSalary.a_parameter;
-        } else {
-            a = 0;
-        }
-    }
-
-    if (!req.body.b_new) {
-        if (existSalary) {
-            b = existSalary.b_parameter;
-        } else {
-            b = 0;
-        }
-    }
-
-    if (!req.body.c_new) {
-        if (existSalary) {
-            c = existSalary.c_parameter;
-        } else {
-            c = 0;
-        }
-    }
-
-    if (!req.body.f_new) {
-        if (existSalary) {
-            f = existSalary.f_parameter;
-        } else {
-            f = 0;
-        }
-    }
+    if (!req.body.a_new && existSalary) a = ensureNumber(existSalary.a_parameter);
+    if (!req.body.b_new && existSalary) b = ensureNumber(existSalary.b_parameter);
+    if (!req.body.c_new && existSalary) c = ensureNumber(existSalary.c_parameter);
+    if (!req.body.f_new && existSalary) f = ensureNumber(existSalary.f_parameter);
 
     // Define the date range for the whole month
     const dateRange = {
@@ -82,6 +62,7 @@ export const salaryCalculate = async (req, res, next) => {
     // Find employee attendance for the specified date range
     const employeeAttendance = await AttendanceSchema.find({
         employee_id: employeeID,
+        employee_name: employeeName,
         date: dateRange,
     });
 
@@ -93,11 +74,11 @@ export const salaryCalculate = async (req, res, next) => {
         month: month,
         date_calculate: new Date(),
         total_salary: 0,
-        total_times: stats.attendance_total_times + stats.attendance_overtime,
-        day_off: employee.default_day_off - employee.realistic_day_off,
+        total_times: ensureNumber(stats.attendance_total_times) + ensureNumber(stats.attendance_overtime),
+        day_off: ensureNumber(employee.default_day_off) - ensureNumber(employee.realistic_day_off),
         hour_normal: [],
-        total_hour_work: stats.attendance_total_times,
-        total_hour_overtime: stats.attendance_overtime,
+        total_hour_work: ensureNumber(stats.attendance_total_times),
+        total_hour_overtime: ensureNumber(stats.attendance_overtime),
         total_km: 0,
         a_parameter: a,
         b_parameter: b,
@@ -116,7 +97,7 @@ export const salaryCalculate = async (req, res, next) => {
         );
 
         if (isAutofahrer) {
-            salaryRecord.total_km += total_km;
+            salaryRecord.total_km += ensureNumber(total_km);
         }
 
         let departmentRecord = salaryRecord.hour_normal.find(dep => dep.department_name === department_name);
@@ -128,12 +109,12 @@ export const salaryCalculate = async (req, res, next) => {
             };
             salaryRecord.hour_normal.push(departmentRecord);
         }
-        departmentRecord.total_hour += total_hour;
-        departmentRecord.total_minutes += total_minutes;
+        departmentRecord.total_hour += ensureNumber(total_hour);
+        departmentRecord.total_minutes += ensureNumber(total_minutes);
     });
 
     // Calculate day-off salary
-    const days_off = employee.default_day_off - employee.realistic_day_off;
+    const days_off = ensureNumber(employee.default_day_off) - ensureNumber(employee.realistic_day_off);
     const salary_day_off = [(b * 3) / 65] * days_off;
 
     if (salaryRecord.total_times > employee.total_time_per_month) {
@@ -171,7 +152,7 @@ export const salaryCalculate = async (req, res, next) => {
 
 export const getSalary = async (req, res, next) => {
     try {
-        const { year, month, employeeID, department_name } = req.query;
+        const { year, month, employeeID, employeeName, department_name } = req.query;
         let query = {};
 
         // Include time query only if provided
@@ -186,13 +167,14 @@ export const getSalary = async (req, res, next) => {
 
         // Get all employees or just the ones in the specified department
         const allEmployees = employeeID ?
-            await EmployeeSchema.find({ id: employeeID }) :
+            await EmployeeSchema.find({ id: employeeID, name: employeeName }) :
             await EmployeeSchema.find(department_name ? { id: { $in: employeeIds } } : {});
 
         // Map each employee to their salary record or a default zeroed record
         const employeeSalaries = await Promise.all(allEmployees.map(async (employee) => {
             const salaryRecord = await SalarySchema.findOne({
                 employee_id: employee.id,
+                employee_name: employee.name,
                 ...query
             });
 

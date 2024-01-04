@@ -6,7 +6,7 @@ import StatsSchema from "../models/StatsSchema.js";
 import { createError } from "../utils/error.js";
 
 const ensureNumber = (value) => {
-    return (value === undefined || isNaN(value)) ? 0 : value;
+    return (value === undefined || isNaN(value)) || null ? 0 : value;
 };
 
 export const salaryCalculate = async (req, res, next) => {
@@ -117,11 +117,11 @@ export const salaryCalculate = async (req, res, next) => {
     const days_off = ensureNumber(employee.default_day_off) - ensureNumber(employee.realistic_day_off);
     const salary_day_off = [(b * 3) / 65] * days_off;
 
-    if (salaryRecord.total_times > employee.total_time_per_month) {
-        let calculatedSalary = (a / employee.total_time_per_month) * employee.total_time_per_month + (salaryRecord.total_times - employee.total_time_per_month) * f - b - c + salary_day_off - employee.house_rent_money + salaryRecord.total_km * d;
+    if (salaryRecord.total_times > ensureNumber(employee.total_time_per_month)) {
+        let calculatedSalary = (a / ensureNumber(employee.total_time_per_month)) * ensureNumber(employee.total_time_per_month) + (salaryRecord.total_times - ensureNumber(employee.total_time_per_month)) * f - b - c + salary_day_off - ensureNumber(employee.house_rent_money) + salaryRecord.total_km * d;
         salaryRecord.total_salary = Number(calculatedSalary.toFixed(2));
     } else {
-        let calculatedSalary = (a / employee.total_time_per_month) * salaryRecord.total_times - b - c + salary_day_off - employee.house_rent_money + salaryRecord.total_km * d;
+        let calculatedSalary = (a / ensureNumber(employee.total_time_per_month)) * salaryRecord.total_times - b - c + salary_day_off - ensureNumber(employee.house_rent_money) + salaryRecord.total_km * d;
         salaryRecord.total_salary = Number(calculatedSalary.toFixed(2));
     }
 

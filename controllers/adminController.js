@@ -215,52 +215,29 @@ export const searchSpecific = async (req, res, next) => {
     const { role, department, details, status } = req.query;
     try {
         const regex = new RegExp(details, 'i');
-        let managementQueryCriteria = {};
-        let employeeQueryCriteria = {};
+        let queryCriteria = {};
 
         if (role) {
-            if (role === 'Employee') {
-                managementQueryCriteria = null;
-                employeeQueryCriteria['role'] = 'Employee';
-            } else {
-                managementQueryCriteria['role'] = role;
-                employeeQueryCriteria['role'] = role;
-            }
+            queryCriteria['role'] = role;
         } else {
-            managementQueryCriteria['role'] = { $in: ['Inhaber', 'Manager'] };
-            employeeQueryCriteria['role'] = 'Employee';
+            queryCriteria['role'] = { $in: ['Inhaber', 'Manager', 'Employee'] };
         }
 
         if (status) {
-            if (managementQueryCriteria) managementQueryCriteria['status'] = status;
-            employeeQueryCriteria['status'] = status;
+            queryCriteria['status'] = status;
         }
 
         if (details) {
-            if (managementQueryCriteria) {
-                managementQueryCriteria['$or'] = [{ id: regex }, { name: regex }];
-            }
-            employeeQueryCriteria['$or'] = [{ id: regex }, { name: regex }, { 'department.position': regex }];
+            queryCriteria['$or'] = [{ id: regex }, { name: regex }, { 'department.position': regex }];
         }
 
         if (department) {
-            if (managementQueryCriteria) managementQueryCriteria['department.name'] = department;
-            employeeQueryCriteria['department.name'] = department;
+            queryCriteria['department.name'] = department;
         }
 
-        let managements = [];
-        let employees = [];
+        const results = await EmployeeSchema.find(queryCriteria);
 
-        if (managementQueryCriteria) {
-            managements = await EmployeeSchema.find(managementQueryCriteria);
-        }
-        if (Object.keys(employeeQueryCriteria).length > 0) {
-            employees = await EmployeeSchema.find(employeeQueryCriteria);
-        }
-
-        const result = [...managements, ...employees];
-
-        if (result.length === 0) {
+        if (results.length === 0) {
             return res.status(NOT_FOUND).json({
                 success: false,
                 status: NOT_FOUND,
@@ -271,7 +248,7 @@ export const searchSpecific = async (req, res, next) => {
         res.status(OK).json({
             success: true,
             status: OK,
-            message: result,
+            message: results,
         });
     } catch (err) {
         next(err);

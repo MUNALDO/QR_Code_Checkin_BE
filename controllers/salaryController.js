@@ -53,6 +53,12 @@ export const salaryCalculate = async (req, res, next) => {
     if (!req.body.c_new && existSalary) c = ensureNumber(existSalary.c_parameter);
     if (!req.body.f_new && existSalary) f = ensureNumber(existSalary.f_parameter);
 
+    if (!req.body.a_new && !existSalary) a = 0;
+    if (!req.body.b_new && !existSalary) b = 0;
+    if (!req.body.c_new && !existSalary) c = 0;
+    if (!req.body.d_new && !existSalary) d = 0;
+    if (!req.body.f_new && !existSalary) f = 0;
+
     // Define the date range for the whole month
     const dateRange = {
         $gte: new Date(year, month - 1, 1, 0, 0, 0, 0),

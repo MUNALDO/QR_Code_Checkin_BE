@@ -769,41 +769,48 @@ export const getSalaryForInhaber = async (req, res, next) => {
         if (year) query.year = parseInt(year);
         if (month) query.month = parseInt(month);
 
-        let isInhaberDepartment = department_name ? inhaber.department.some(dep => dep.name === department_name) : false;
+        let departmentFilter = department_name ? 
+            { 'department.name': department_name } : 
+            { 'department.name': { $in: inhaber.department.map(dep => dep.name) } };
 
-        let employeeIds = [];
-        if (department_name && isInhaberDepartment) {
-            const employeesInDepartment = await EmployeeSchema.find({ 'department.name': department_name }).select('id');
-            employeeIds = employeesInDepartment.map(employee => employee.id);
-        } else if (!department_name) {
-            const employeesInInhaberDepartment = await EmployeeSchema.find({ 'department.name': { $in: inhaber.department.map(dep => dep.name) } }).select('id');
-            employeeIds = employeesInInhaberDepartment.map(employee => employee.id);
+        const employees = await EmployeeSchema.find(departmentFilter).select('id name');
+        if (employees.length === 0) {
+            return res.status(NOT_FOUND).json({ error: "No employees found in selected departments" });
         }
 
-        if (employeeID) {
-            // Check if employeeID is in one of the Inhaber's departments
-            const isEmployeeInInhaberDepartment = employeeIds.includes(employeeID);
-            if (!isEmployeeInInhaberDepartment) {
-                return res.status(NOT_FOUND).json({ error: "Employee not found in Inhaber's departments" });
+        // Map each employee to their salary record or a default zeroed record
+        const employeeSalaries = await Promise.all(employees.map(async (employee) => {
+            let employeeQuery = { ...query, employee_id: employee.id };
+            const salaryRecord = await SalarySchema.findOne(employeeQuery);
+
+            if (salaryRecord) {
+                return salaryRecord;
+            } else {
+                // Return default salary object for employees without a salary record
+                return {
+                    employee_id: employee.id,
+                    employee_name: employee.name,
+                    year: year || 0,
+                    month: month || 0,
+                    total_salary: 0,
+                    total_times: 0,
+                    day_off: 0,
+                    total_hour_work: 0,
+                    total_hour_overtime: 0,
+                    total_km: 0,
+                    a_parameter: 0,
+                    b_parameter: 0,
+                    c_parameter: 0,
+                    d_parameter: 0,
+                    f_parameter: 0
+                };
             }
-            query.employee_id = employeeID;
-        } else {
-            query.employee_id = { $in: employeeIds };
-        }
-
-        const salaries = await SalarySchema.find(query);
-        if (salaries.length === 0) {
-            return res.status(NOT_FOUND).json({
-                success: false,
-                status: NOT_FOUND,
-                message: "No salary records found for the provided criteria."
-            });
-        }
+        }));
 
         return res.status(OK).json({
             success: true,
             status: OK,
-            message: salaries
+            message: employeeSalaries
         });
     } catch (err) {
         next(err);

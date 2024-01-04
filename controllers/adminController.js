@@ -11,8 +11,8 @@ import StatsSchema from "../models/StatsSchema.js";
 import LogSchema from "../models/LogSchema.js";
 
 export const updateEmployee = async (req, res, next) => {
-    const employeeID = req.query.employeeID.trim();
-    const employeeName = req.query.employeeName.trim();
+    const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     try {
         const currentTime = new Date();
         const currentYear = currentTime.getFullYear();
@@ -103,8 +103,8 @@ export const updateEmployee = async (req, res, next) => {
 };
 
 export const madeEmployeeInactive = async (req, res, next) => {
-    const employeeID = req.query.employeeID.trim();
-    const employeeName = req.query.employeeName.trim();
+    const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
@@ -161,8 +161,8 @@ export const madeEmployeeInactive = async (req, res, next) => {
 };
 
 export const getEmployeeById = async (req, res, next) => {
-    const employeeID = req.query.employeeID.trim();
-    const employeeName = req.query.employeeName.trim();
+    const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
@@ -178,8 +178,8 @@ export const getEmployeeById = async (req, res, next) => {
 };
 
 export const deleteEmployeeById = async (req, res, next) => {
-    const employeeID = req.query.employeeID.trim();
-    const employeeName = req.query.employeeName.trim();
+    const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     try {
         const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
@@ -337,8 +337,8 @@ export const getAllEmployeesSchedules = async (req, res, next) => {
 
 export const getAttendance = async (req, res, next) => {
     try {
-        const employeeID = req.query.employeeID.trim();
-        const employeeName = req.query.employeeName.trim();
+        const employeeID = req.query.employeeID;
+        const employeeName = req.query.employeeName;
         const departmentName = req.query.department_name;
         const year = req.query.year;
         const month = req.query.month;
@@ -708,8 +708,8 @@ export const getLogs = async (req, res, next) => {
 export const getForm = async (req, res, next) => {
     const year = req.query.year;
     const month = req.query.month;
-    const employeeID = req.query.employeeID.trim();
-    const employeeName = req.query.employeeName.trim();
+    const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
     const department_name = req.query.department_name;
     const position = req.query.position;
 

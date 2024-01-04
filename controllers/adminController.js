@@ -808,13 +808,32 @@ export const getForm = async (req, res, next) => {
     }
 };
 
+function convertTo24HourFormat(time12h) {
+    const [time, modifier] = time12h.split(' ');
+    let [hours, minutes, seconds] = time.split(':');
+    if (hours === '12') {
+        hours = '00';
+    }
+    if (modifier === 'PM') {
+        hours = parseInt(hours, 10) + 12;
+    }
+    return `${hours}:${minutes}:${seconds}`;
+}
+
 export const createAttendance = async (req, res, next) => {
     const employeeID = req.query.employeeID;
     const employeeName = req.query.employeeName;
     const shiftCode = req.query.shiftCode;
     const date = new Date(req.query.date);
-    const checkInTime = new Date(req.body.check_in_time);
-    const checkOutTime = new Date(req.body.check_out_time);
+    const dateString = date.toISOString().split('T')[0];
+
+    const checkInDateTimeString = `${dateString}T${convertTo24HourFormat(req.body.check_in_time)}`;
+    const checkOutDateTimeString = `${dateString}T${convertTo24HourFormat(req.body.check_out_time)}`;
+
+    const checkInTime = new Date(checkInDateTimeString);
+    const checkOutTime = new Date(checkOutDateTimeString);
+    const currentYear = date.getFullYear();
+    const currentMonth = date.getMonth() + 1;
 
     if (!date || !shiftCode || !employeeID || !employeeName || !checkInTime || !checkOutTime) {
         return res.status(BAD_REQUEST).json({

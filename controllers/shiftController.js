@@ -98,6 +98,22 @@ export const updateShift = async (req, res, next) => {
             { $new: true },
         )
 
+        const start_time = updateShift.time_slot.start_time;
+        const end_time = updateShift.time_slot.end_time;
+        const [startHours, startMinutes] = start_time.split(":").map(Number);
+        const [endHours, endMinutes] = end_time.split(":").map(Number);
+
+        let durationHours = endHours - startHours;
+        let durationMinutes = endMinutes - startMinutes;
+
+        if (durationMinutes < 0) {
+            durationHours -= 1;
+            durationMinutes += 60;
+        }
+
+        const duration = durationHours + durationMinutes / 60;
+        updateShift.time_slot.duration = duration;
+
         await updateShift.save();
         res.status(OK).json({
             success: true,

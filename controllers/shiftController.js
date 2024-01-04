@@ -90,16 +90,11 @@ export const updateShift = async (req, res, next) => {
     const shift_code = req.query.code;
     try {
         const shift = await ShiftSchema.findOne({ code: shift_code });
-        if (!shift) return next(createError(NOT_FOUND, "Shift not found!"))
+        if (!shift) return next(createError(NOT_FOUND, "Shift not found!"));
 
-        const updateShift = await ShiftSchema.findOneAndUpdate(
-            { code: shift_code },
-            { $set: req.body },
-            { $new: true },
-        )
+        const start_time = req.body.time_slot?.start_time || shift.time_slot.start_time;
+        const end_time = req.body.time_slot?.end_time || shift.time_slot.end_time;
 
-        const start_time = updateShift.time_slot.start_time;
-        const end_time = updateShift.time_slot.end_time;
         const [startHours, startMinutes] = start_time.split(":").map(Number);
         const [endHours, endMinutes] = end_time.split(":").map(Number);
 
@@ -111,13 +106,28 @@ export const updateShift = async (req, res, next) => {
             durationMinutes += 60;
         }
 
-        updateShift.time_slot.duration = durationHours + durationMinutes / 60;
+        const duration = durationHours + durationMinutes / 60;
 
-        await updateShift.save();
+        const updatedShift = {
+            ...req.body,
+            time_slot: {
+                ...req.body.time_slot,
+                start_time: start_time,
+                end_time: end_time,
+                duration: duration
+            }
+        };
+
+        const updateShiftResult = await ShiftSchema.findOneAndUpdate(
+            { code: shift_code },
+            { $set: updatedShift },
+            { new: true }
+        );
+
         res.status(OK).json({
             success: true,
             status: OK,
-            message: updateShift,
+            message: updateShiftResult,
         });
     } catch (err) {
         next(err);

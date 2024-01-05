@@ -33,6 +33,7 @@ export const salaryCalculate = async (req, res, next) => {
         year: year,
         month: month
     });
+    if (!stats) return next(createError(NOT_FOUND, "Stats not found!"));
 
     let existSalary = await SalarySchema.findOne({
         employee_id: employeeID,

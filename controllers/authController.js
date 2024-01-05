@@ -708,7 +708,7 @@ export const registerEmployeeByManager = async (req, res, next) => {
 
 export const loginEmployee = async (req, res, next) => {
     try {
-        const employee = await EmployeeSchema.findOne({ id: req.body.id, name: req.body.name })
+        const employee = await EmployeeSchema.findOne({ name: req.body.name })
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
         const isPasswordCorrect = await bcrypt.compare(
             req.body.password,

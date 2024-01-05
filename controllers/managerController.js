@@ -56,7 +56,7 @@ export const searchSpecificForManager = async (req, res, next) => {
         const regex = new RegExp(details, 'i');
         const employeeQueryCriteria = {
             'department.name': { $in: manager.department.map(dep => dep.name) },
-            'role': role || { $in: ['manager', 'Manager', 'Employee'] },
+            'role': role || { $in: ['Inhaber', 'Manager', 'Employee'] },
             ...(status && { 'status': status }),
             ...(details && { '$or': [{ 'id': regex }, { 'name': regex }] })
         };

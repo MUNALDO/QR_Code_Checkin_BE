@@ -674,7 +674,6 @@ export const registerEmployeeByManager = async (req, res, next) => {
         }
         await newEmployee.save();
 
-        // Handle global day offs
         const globalDayOffs = await DayOffSchema.find({ type: 'global' });
         globalDayOffs.forEach(globalDayOff => {
             newEmployee.dayOff_schedule.push({

@@ -69,7 +69,6 @@ export const salaryCalculate = async (req, res, next) => {
         date: dateRange,
     });
 
-    // Initialize the salary record
     let salaryRecord = {
         employee_id: employee.id,
         employee_name: employee.name,

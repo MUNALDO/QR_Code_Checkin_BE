@@ -715,18 +715,14 @@ export const loginEmployee = async (req, res, next) => {
             employee.password
         )
         if (!isPasswordCorrect) return next(createError(BAD_REQUEST, "Wrong password!"))
-        const token_employee = jwt.sign(
-            { id: employee.id },
-            process.env.JWT_EMPLOYEE,
-            { expiresIn: "24h" },
-        )
+        // const token_employee = jwt.sign(
+        //     { id: employee.id },
+        //     process.env.JWT_EMPLOYEE,
+        //     { expiresIn: "24h" },
+        // )
         // console.log(token_employee);
         const { password, ...otherDetails } = employee._doc;
-        res.cookie("access_token_employee", token_employee, {
-            httpOnly: true,
-            sameSite: "none",
-            secure: false,
-        }).status(OK).json({ details: { ...otherDetails } })
+        res.status(OK).json({ details: { ...otherDetails } })
     } catch (err) {
         next(err)
     }

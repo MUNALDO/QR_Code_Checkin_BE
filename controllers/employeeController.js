@@ -75,6 +75,20 @@ export const collectIP = async (req, res, next) => {
     }
 }
 
+export const cleanUpOldSchedules = async () => {
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    try {
+        await EmployeeSchema.updateMany(
+            {},
+            { $pull: { 'department.$[].schedules': { date: { $lt: oneYearAgo } } } }
+        );
+        console.log('Old schedules cleaned up successfully');
+    } catch (err) {
+        console.error('Error cleaning up old schedules:', err);
+    }
+};
+
 export const autoCheck = async (req, res, next) => {
     try {
         const employees = await EmployeeSchema.find({ status: 'active' });

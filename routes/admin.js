@@ -16,7 +16,7 @@ import {
 import { verifyTokenAdmin } from '../utils/verifyToken.js';
 import { getSalary, salaryCalculate } from '../controllers/salaryController.js';
 import {
-    exportAttendanceToExcel, exportEmployeeDataToExcel, exportEmployeeSalaryDataToExcel
+    exportAttendanceToExcel, exportEmployeeAttendanceStatsToExcel, exportEmployeeAttendanceToExcel, exportEmployeeDataToExcel, exportEmployeeSalaryDataToExcel
 } from '../controllers/xlsxController.js';
 import {
     createMultipleDateDesigns, deleteDateSpecific, getDateDesign
@@ -87,6 +87,8 @@ router.get('/manage-salary/get', verifyTokenAdmin, getSalary);
 router.get('/manage-xlsx/employee-data', verifyTokenAdmin, exportEmployeeDataToExcel);
 router.get('/manage-xlsx/salary-data', verifyTokenAdmin, exportEmployeeSalaryDataToExcel);
 router.get('/manage-xlsx/attendance-data', verifyTokenAdmin, exportAttendanceToExcel);
+router.get('/manage-xlsx/attendance-stats', verifyTokenAdmin, exportEmployeeAttendanceStatsToExcel);
+router.get('/manage-xlsx/employee-attendance', verifyTokenAdmin, exportEmployeeAttendanceToExcel);
 
 // manage cars
 router.post('/manage-car/create', verifyTokenAdmin, createCar);

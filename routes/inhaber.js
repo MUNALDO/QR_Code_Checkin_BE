@@ -14,9 +14,10 @@ import {
 import { salaryCalculate } from '../controllers/salaryController.js';
 import { verifyTokenInhaber } from '../utils/verifyToken.js';
 import {
-    exportAttendanceForInhaberToExcel, exportEmployeeDataForInhaberToExcel,
+    exportAttendanceForInhaberToExcel, exportEmployeeAttendanceStatsToExcel, exportEmployeeAttendanceToExcel, exportEmployeeDataForInhaberToExcel,
     exportEmployeeSalaryDataForInhaberToExcel
 } from '../controllers/xlsxController.js';
+import { createAttendance } from '../controllers/adminController.js';
 
 const router = express.Router();
 
@@ -42,6 +43,7 @@ router.put('/manage-shift/update', verifyTokenInhaber, updateShift);
 router.delete('/manage-shift/delete', verifyTokenInhaber, deleteShiftByCode);
 
 // manage attendance
+router.post('/manage-attendance/create', verifyTokenInhaber, createAttendance);
 router.get('/manage-attendance/get-by-specific', verifyTokenInhaber, getAttendanceForInhaber);
 router.put('/manage-attendance/update/:_id', verifyTokenInhaber, updateAttendanceForInhaber);
 
@@ -58,6 +60,8 @@ router.put('/manage-request/handle/:_id', verifyTokenInhaber, handleRequestForIn
 router.get('/manage-xlsx/employee-data', verifyTokenInhaber, exportEmployeeDataForInhaberToExcel);
 router.get('/manage-xlsx/salary-data', verifyTokenInhaber, exportEmployeeSalaryDataForInhaberToExcel);
 router.get('/manage-xlsx/attendance-data', verifyTokenInhaber, exportAttendanceForInhaberToExcel);
+router.get('/manage-xlsx/attendance-stats', verifyTokenInhaber, exportEmployeeAttendanceStatsToExcel);
+router.get('/manage-xlsx/employee-attendance', verifyTokenInhaber, exportEmployeeAttendanceToExcel);
 
 // manage stats
 router.get('/manage-stats/get', verifyTokenInhaber, getStatsForInhaber);

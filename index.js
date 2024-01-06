@@ -11,7 +11,7 @@ import employeeRoute from "./routes/employee.js";
 import authRoute from "./routes/auth.js";
 import inhaberRoute from "./routes/inhaber.js";
 import managerRoute from "./routes/manager.js"
-import { autoCheck } from './controllers/employeeController.js';
+import { autoCheck, cleanUpOldSchedules } from './controllers/employeeController.js';
 import cron from 'node-cron';
 
 const app = express();
@@ -66,6 +66,11 @@ cron.schedule('*/15 * * * *', () => {
     console.log('Running autoCheck every 15 minutes');
     autoCheck();
 });
+
+// cron.schedule('0 0 * * *', () => {
+//     console.log('Running scheduled cleanup of old schedules');
+//     cleanUpOldSchedules();
+// });
 
 const PORT = process.env.PORT || 8800;
 async function startApp() {

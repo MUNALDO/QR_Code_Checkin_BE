@@ -128,6 +128,121 @@ export const exportAttendanceToExcel = async (req, res, next) => {
     }
 };
 
+export const exportEmployeeAttendanceToExcel = async (req, res, next) => {
+    const { year, month, employeeID, employeeName } = req.query;
+    try {
+        const query = {
+            date: {
+                $gte: new Date(year, month ? month - 1 : 0, 1),
+                $lt: new Date(year, month ? month : 12, 1),
+            },
+            employee_id: employeeID,
+            employee_name: employeeName
+        };
+
+        const attendanceList = await AttendanceSchema.find(query);
+
+        if (!attendanceList || attendanceList.length === 0) {
+            return res.status(NOT_FOUND).json({ error: "No attendance data found for the specified employee" });
+        }
+
+        const fileName = `Attendance_${employeeName}_${year}_${month}.xlsx`;
+        const filePath = `../${fileName}`;
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Employee Attendance Data');
+
+        const columns = [
+            { header: 'Month', key: 'month', width: 15 },
+            { header: 'Date', key: 'date', width: 20 },
+            { header: 'Employee ID', key: 'employee_id', width: 15 },
+            { header: 'Employee Name', key: 'employee_name', width: 20 },
+            { header: 'Department', key: 'department_name', width: 20 },
+            { header: 'Position', key: 'position', width: 15 },
+            { header: 'Shift Code', key: 'shift_code', width: 15 },
+            { header: 'Shift Type', key: 'shift_type', width: 15 },
+            { header: 'Check In Time', key: 'check_in_time', width: 15 },
+            { header: 'Check Out Time', key: 'check_out_time', width: 15 },
+            { header: 'Total Hours', key: 'total_hour', width: 10 },
+            { header: 'Total Minutes', key: 'total_minutes', width: 10 },
+            { header: 'Check In Km', key: 'check_in_km', width: 10 },
+            { header: 'Check Out Km', key: 'check_out_km', width: 10 },
+            { header: 'Total Km', key: 'total_km', width: 10 },
+            { header: 'Bar', key: 'bar', width: 10 },
+            { header: 'Gesamt', key: 'gesamt', width: 10 },
+            { header: 'Trinked EC', key: 'trinked_ec', width: 10 },
+            { header: 'Trinked Geld', key: 'trink_geld', width: 10 },
+            { header: 'Auf Rechnung', key: 'auf_rechnung', width: 10 },
+            { header: 'Kredit Karte', key: 'kredit_karte', width: 10 },
+            { header: 'Kassen Schniff', key: 'kassen_schniff', width: 10 },
+            { header: 'Gesamt Ligerbude', key: 'gesamt_ligerbude', width: 10 },
+            { header: 'Gesamt Liegerando', key: 'gesamt_liegerando', width: 10 },
+            { header: 'Results (Lito/Service)', key: 'results', width: 10 },
+        ];
+
+        worksheet.columns = columns;
+
+        // Group by month and then by date
+        const groupedByDate = groupByDate(attendanceList);
+        const groupedByMonth = year ? groupByMonth(groupedByDate) : groupedByDate;
+
+        groupedByMonth.forEach((monthData) => {
+            monthData.dates?.forEach((dateData) => {
+                try {
+                    dateData.attendanceList?.forEach((attendance, index) => {
+                        const date = new Date(attendance.date);
+                        const rowData = {
+                            month: index === 0 ? date.getMonth() + 1 : null,
+                            date: index === 0 ? date.toLocaleDateString().split('T')[0] : null,
+                            employee_id: attendance.employee_id,
+                            employee_name: attendance.employee_name,
+                            department_name: attendance.department_name,
+                            position: attendance.position,
+                            shift_code: attendance.shift_info.shift_code,
+                            shift_type: attendance.shift_info.shift_type,
+                            check_in_time: attendance.shift_info.time_slot.check_in_time,
+                            check_out_time: attendance.shift_info.time_slot.check_out_time,
+                            total_hour: attendance.shift_info.total_hour,
+                            total_minutes: attendance.shift_info.total_minutes,
+                            check_in_km: attendance.check_in_km ? attendance.check_in_km : '',
+                            check_out_km: attendance.check_out_km ? attendance.check_out_km : '',
+                            total_km: attendance.total_km ? attendance.total_km : '',
+                            bar: attendance.bar ? attendance.bar : '',
+                            gesamt: attendance.gesamt ? attendance.gesamt : '',
+                            trinked_ec: attendance.trinked_ec ? attendance.trinked_ec : '',
+                            trink_geld: attendance.trink_geld ? attendance.trink_geld : '',
+                            auf_rechnung: attendance.auf_rechnung ? attendance.auf_rechnung : '',
+                            kredit_karte: attendance.kredit_karte ? attendance.kredit_karte : '',
+                            kassen_schniff: attendance.kassen_schniff ? attendance.kassen_schniff : '',
+                            gesamt_ligerbude: attendance.gesamt_ligerbude ? attendance.gesamt_ligerbude : '',
+                            gesamt_liegerando: attendance.gesamt_liegerando ? attendance.gesamt_liegerando : '',
+                            results: attendance.results ? attendance.results : '',
+                        };
+                        worksheet.addRow(rowData);
+                    })
+                } catch (error) {
+                    next(error);
+                }
+            });
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+        res.send(buffer);
+
+        try {
+            fs.writeFileSync(filePath, buffer);
+            console.log(`Excel file saved to ${filePath}`);
+        } catch (error) {
+            next(error);
+        }
+    } catch (error) {
+        console.error('Error exporting attendance data to Excel:', error);
+        return res.status(SYSTEM_ERROR).json({ error: 'Internal server error' });
+    }
+};
+
 function groupByDate(attendanceList) {
     const groupedData = new Map();
 
@@ -257,6 +372,72 @@ export const exportEmployeeDataToExcel = async (req, res, next) => {
         }
     } catch (error) {
         console.error('Error exporting employee data to Excel:', error);
+        return res.status(SYSTEM_ERROR).json({ error: 'Internal server error' });
+    }
+};
+
+export const exportEmployeeAttendanceStatsToExcel = async (req, res, next) => {
+    const { employeeID, employeeName, department_name } = req.query;
+    try {
+        // Find the specific employee
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
+        if (!employee) {
+            return res.status(NOT_FOUND).json({ error: "Employee not found" });
+        }
+
+        // Filter the departments based on the provided department name
+        const departmentStats = employee.department
+            .filter(dept => dept.name === department_name)
+            .map(dept => dept.attendance_stats)
+            .flat();
+
+        if (departmentStats.length === 0) {
+            return res.status(NOT_FOUND).json({ error: "No attendance stats found for the specified department" });
+        }
+
+        const fileName = `Attendance_Stats_${employeeName}_${department_name}.xlsx`;
+        const filePath = `../${fileName}`;
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Attendance Stats');
+
+        // Define columns for the Excel sheet
+        const columns = [
+            { header: 'Year', key: 'year', width: 10 },
+            { header: 'Month', key: 'month', width: 10 },
+            { header: 'Dates On Time', key: 'date_on_time', width: 15 },
+            { header: 'Dates Late', key: 'date_late', width: 15 },
+            { header: 'Dates Missing', key: 'date_missing', width: 15 },
+        ];
+
+        worksheet.columns = columns;
+
+        // Add rows to the worksheet
+        departmentStats.forEach(stat => {
+            worksheet.addRow({
+                year: stat.year,
+                month: stat.month,
+                date_on_time: stat.date_on_time,
+                date_late: stat.date_late,
+                date_missing: stat.date_missing
+            });
+        });
+
+        // Write buffer
+        const buffer = await workbook.xlsx.writeBuffer();
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.send(buffer);
+
+        // Save the buffer to the file path
+        try {
+            fs.writeFileSync(filePath, buffer);
+            console.log(`Excel file saved to ${filePath}`);
+        } catch (error) {
+            next(error);
+        }
+    } catch (error) {
+        console.error('Error exporting attendance stats to Excel:', error);
         return res.status(SYSTEM_ERROR).json({ error: 'Internal server error' });
     }
 };

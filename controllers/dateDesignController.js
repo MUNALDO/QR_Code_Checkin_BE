@@ -1,4 +1,4 @@
-import { BAD_REQUEST, CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
+import { CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import DepartmentSchema from "../models/DepartmentSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";

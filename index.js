@@ -17,7 +17,7 @@ import cron from 'node-cron';
 const app = express();
 dotenv.config();
 mongoose.set('strictQuery', false);
-process.env.TZ = 'Asia/Ho_Chi_Minh';
+process.env.TZ = 'Europe/Berlin';
 
 const connect = async () => {
     try {

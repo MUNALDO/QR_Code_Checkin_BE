@@ -83,6 +83,8 @@ export const salaryCalculate = async (req, res, next) => {
         total_hour_work: ensureNumber(stats.attendance_total_times),
         total_hour_overtime: ensureNumber(stats.attendance_overtime),
         total_km: 0,
+        total_km_company: 0,
+        total_km_private: 0,
         a_parameter: a,
         b_parameter: b,
         c_parameter: c,
@@ -100,7 +102,12 @@ export const salaryCalculate = async (req, res, next) => {
         );
 
         if (isAutofahrer) {
-            salaryRecord.total_km += ensureNumber(total_km);
+            if (car_info && car_info.car_type === 'company') {
+                salaryRecord.total_km_company += ensureNumber(total_km);
+            } else if (car_info && car_info.car_type === 'private') {
+                salaryRecord.total_km_private += ensureNumber(total_km);
+            }
+            salaryRecord.total_km = ensureNumber(salaryRecord.total_km_company + salaryRecord.total_km_private);
         }
 
         let departmentRecord = salaryRecord.hour_normal.find(dep => dep.department_name === department_name);

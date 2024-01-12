@@ -915,7 +915,7 @@ export const createRequest = async (req, res, next) => {
                 const newDayOff = new DayOffSchema({
                     date_start: new Date(newRequest.request_dayOff_start),
                     date_end: new Date(newRequest.request_dayOff_end),
-                    name: "leave",
+                    name: newRequest.request_content,
                     type: "specific",
                 });
                 const duration = calculateDuration(newDayOff.date_start, newDayOff.date_end);

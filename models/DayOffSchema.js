@@ -16,6 +16,7 @@ const dayOffSchema = new mongoose.Schema(
         },
         name: {
             type: String,
+            enum: ['Holiday', 'Sick day']
         },
         type: {
             type: String,

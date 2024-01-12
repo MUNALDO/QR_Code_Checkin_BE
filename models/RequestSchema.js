@@ -23,6 +23,7 @@ const requestSchema = new mongoose.Schema(
         },
         request_content: {
             type: String,
+            enum: ['Holiday', 'Sick day'],
             required: true
         },
         answer_status: {

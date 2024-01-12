@@ -212,6 +212,9 @@ export const getDateDesign = async (req, res, next) => {
 
         const shiftDesigns = [];
 
+        // Retrieve all employees once instead of in each iteration
+        const allEmployees = await EmployeeSchema.find({ 'department.name': departmentName });
+
         employee.department.forEach(department => {
             if (departmentName && department.name !== departmentName) {
                 return;
@@ -224,6 +227,16 @@ export const getDateDesign = async (req, res, next) => {
                     (!targetDate || scheduleDate.getTime() === targetDate.getTime())) {
 
                     schedule.shift_design.forEach(shift => {
+                        const employeesWithDesign = allEmployees.filter(e => {
+                            return e.department.some(d => {
+                                return d.name === department.name && d.schedules.some(s => {
+                                    const sDate = new Date(s.date);
+                                    return sDate.getTime() === scheduleDate.getTime() &&
+                                        s.shift_design.some(sd => sd.shift_code === shift.shift_code);
+                                });
+                            });
+                        }).map(e => ({ id: e.id, name: e.name })); // Map to desired format
+
                         shiftDesigns.push({
                             date: scheduleDate,
                             department_name: department.name,
@@ -231,6 +244,7 @@ export const getDateDesign = async (req, res, next) => {
                             shift_code: shift.shift_code,
                             time_slot: shift.time_slot,
                             shift_type: shift.shift_type,
+                            employees: employeesWithDesign // Add the employees array to the shift design
                         });
                     });
                 }

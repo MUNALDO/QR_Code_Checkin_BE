@@ -799,6 +799,11 @@ export const getDateDesignCurrentByEmployee = async (req, res, next) => {
 
         const shiftDesigns = [];
 
+        // Query to get all employees in the department
+        const employeesInDepartment = await EmployeeSchema.find({
+            'department.name': departmentName
+        });
+
         employee.department.forEach(department => {
             if (departmentName && department.name !== departmentName) {
                 return;
@@ -811,6 +816,18 @@ export const getDateDesignCurrentByEmployee = async (req, res, next) => {
                     (!targetDate || scheduleDate.getTime() === targetDate.getTime())) {
 
                     schedule.shift_design.forEach(shift => {
+                        // Find employees who have the same shift design on the target date
+                        const employeesWithShift = employeesInDepartment.filter(e => 
+                            e.department.some(dep => 
+                                dep.name === department.name &&
+                                dep.schedules.some(s => {
+                                    const sDate = new Date(s.date);
+                                    return sDate.getTime() === scheduleDate.getTime() &&
+                                           s.shift_design.some(sd => sd.shift_code === shift.shift_code);
+                                })
+                            )
+                        ).map(e => ({ id: e.id, name: e.name }));
+
                         shiftDesigns.push({
                             date: scheduleDate,
                             department_name: department.name,
@@ -818,6 +835,7 @@ export const getDateDesignCurrentByEmployee = async (req, res, next) => {
                             shift_code: shift.shift_code,
                             time_slot: shift.time_slot,
                             shift_type: shift.shift_type,
+                            employees: employeesWithShift // Add the employees array to the shift design
                         });
                     });
                 }

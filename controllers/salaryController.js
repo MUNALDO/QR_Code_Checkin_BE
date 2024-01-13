@@ -93,7 +93,7 @@ export const salaryCalculate = async (req, res, next) => {
     };
 
     employeeAttendance.forEach(attendance => {
-        const { department_name, shift_info, total_km } = attendance;
+        const { department_name, shift_info, car_info, total_km } = attendance;
         const { total_hour, total_minutes } = shift_info;
 
         // Check if the employee has the position in the department for Autofahrer

@@ -59,6 +59,14 @@ const salarySchema = new mongoose.Schema(
             type: Number,
             default: 0
         },
+        total_km_company: {
+            type: Number,
+            default: 0
+        },
+        total_km_private: {
+            type: Number,
+            default: 0
+        },
         a_parameter: {
             type: Number,
             default: 0

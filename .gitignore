@@ -3,5 +3,5 @@
 /logs
 /.vscode
 /winstonLog
-/*.env
+/.env
 /.idea

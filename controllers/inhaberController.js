@@ -627,7 +627,7 @@ export const getDateDesignForInhaber = async (req, res, next) => {
                                     shift_code: shift.shift_code,
                                     time_slot: shift.time_slot,
                                     shift_type: shift.shift_type,
-                                    employees: employeesWithDesign 
+                                    employees: employeesWithDesign
                                 });
                             });
                         }
@@ -650,44 +650,64 @@ export const getDateDesignForInhaber = async (req, res, next) => {
     }
 };
 
-export const deleteDateSpecificByInhaber = async (req, res, next) => {
+export const deleteMultipleDateDesignsByInhaber = async (req, res, next) => {
+    const shiftCode = req.body.shift_code;
     const employeeID = req.query.employeeID;
-    const dateToDelete = new Date(req.body.date);
-    const inhaber_name = req.query.inhaber_name;
+    const employeeName = req.query.employeeName;
+    const departmentName = req.query.department_name;
+    const dates = req.body.dates;
+    const inhaberName = req.query.inhaber_name;
+
     try {
-        const inhaber = await AdminSchema.findOne({ name: inhaber_name });
-        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
-
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
-
-        if (!employee.department_name.includes(inhaber.department_name)) {
-            return next(createError(FORBIDDEN, "Permission denied. Inhaber can only modify schedules of an employee in their department."));
+        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
+        if (!inhaber || !inhaber.department.some(dep => dep.name === departmentName)) {
+            return res.status(NOT_FOUND).json({ error: "Department not found or not managed by Inhaber" });
         }
 
-        const specificDateSchedule = employee.schedules.find(schedule =>
-            schedule.date.getTime() === dateToDelete.getTime()
-        );
-
-        if (!specificDateSchedule) {
-            return next(createError(NOT_FOUND, "Date design not found!"));
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
+        if (!employee || !employee.department.some(dep => dep.name === departmentName)) {
+            return res.status(NOT_FOUND).json({ error: "Employee not found in the specified department" });
         }
+        const employeeDepartment = employee.department.find(dep => dep.name === departmentName);
+        if (!employeeDepartment) return next(createError(NOT_FOUND, "Employee does not belong to the specified department!"));
 
-        specificDateSchedule.shift_design = specificDateSchedule.shift_design.filter(design =>
-            design.department_name !== inhaber.department_name
-        );
+        const errorDates = [];
 
-        if (specificDateSchedule.shift_design.length === 0) {
-            const index = employee.schedules.indexOf(specificDateSchedule);
-            employee.schedules.splice(index, 1);
+        for (const dateString of dates) {
+            const [month, day, year] = dateString.split('/');
+            const dateObj = new Date(year, month - 1, day);
+
+            let scheduleIndex = employeeDepartment.schedules.findIndex(s =>
+                s.date.toISOString().split('T')[0] === dateObj.toISOString().split('T')[0]);
+
+            if (scheduleIndex > -1) {
+                // Find and remove the shift design with the specified shift code
+                let shiftDesignIndex = employeeDepartment.schedules[scheduleIndex].shift_design.findIndex(sd => sd.shift_code === shiftCode);
+                if (shiftDesignIndex > -1) {
+                    employeeDepartment.schedules[scheduleIndex].shift_design.splice(shiftDesignIndex, 1);
+                } else {
+                    errorDates.push({ date: dateString, message: "Shift code not found in schedule." });
+                }
+            } else {
+                errorDates.push({ date: dateString, message: "Schedule not found for this date." });
+            }
         }
 
         await employee.save();
 
+        const scheduleForDepartment = employee.department.find(dep => dep.name === departmentName).schedules;
+        const responseMessage = {
+            employee_id: employee.id,
+            employee_name: employee.name,
+            email: employee.email,
+            schedule: scheduleForDepartment,
+            error_dates: errorDates
+        };
+
         res.status(OK).json({
             success: true,
             status: OK,
-            message: "Shift design deleted successfully",
+            message: responseMessage
         });
     } catch (err) {
         next(err);

@@ -1,6 +1,6 @@
 import express from 'express';
 import {
-    addMemberToDepartmentByInhaber, createMultipleDateDesignsByInhaber, deleteDateSpecificByInhaber,
+    addMemberToDepartmentByInhaber, createMultipleDateDesignsByInhaber, deleteMultipleDateDesignsByInhaber,
     getAllRequestsForInhaber, getAttendanceForInhaber, getDateDesignForInhaber, getEmployeeByIdForInhaber,
     getRequestByIdForInhaber, getSalaryForInhaber, getStatsForInhaber, handleRequestForInhaber,
     madeEmployeeInactiveByInhaber, removeMemberFromDepartmentByInhaber, searchSpecificForInhaber,
@@ -32,7 +32,7 @@ router.get("/manage-employee/get-all-schedules", verifyTokenInhaber, getEmployee
 // manage date design
 router.post("/manage-date-design/create-days", verifyTokenInhaber, createMultipleDateDesignsByInhaber);
 router.get('/manage-date-design/get-by-specific', verifyTokenInhaber, getDateDesignForInhaber);
-router.delete('/manage-date-design/delete', verifyTokenInhaber, deleteDateSpecificByInhaber);
+router.delete('/manage-date-design/delete', verifyTokenInhaber, deleteMultipleDateDesignsByInhaber);
 
 // manage shift
 router.post('/manage-shift/create', verifyTokenInhaber, createShift);

@@ -1,9 +1,7 @@
 import express from 'express';
 import {
-    createAttendance,
-    deleteEmployeeById, getAllEmployeesSchedules, getAllRequests, getAttendance,
-    getAttendanceStats,
-    getEmployeeById, getForm, getLogs, getRequestById, getStats, handleRequest,
+    createAttendance, deleteEmployeeById, getAllEmployeesSchedules, getAllRequests, getAttendance,
+    getAttendanceStats, getEmployeeById, getForm, getLogs, getRequestById, getStats, handleRequest,
     madeEmployeeInactive, searchSpecific, updateAttendance, updateEmployee
 } from '../controllers/adminController.js';
 import {
@@ -17,10 +15,11 @@ import {
 import { verifyTokenAdmin } from '../utils/verifyToken.js';
 import { getSalary, salaryCalculate } from '../controllers/salaryController.js';
 import {
-    exportAttendanceToExcel, exportEmployeeAttendanceStatsToExcel, exportEmployeeAttendanceToExcel, exportEmployeeDataToExcel, exportEmployeeSalaryDataToExcel
+    exportAttendanceToExcel, exportEmployeeAttendanceStatsToExcel, exportEmployeeAttendanceToExcel,
+    exportEmployeeDataToExcel, exportEmployeeSalaryDataToExcel
 } from '../controllers/xlsxController.js';
 import {
-    createMultipleDateDesigns, deleteDateSpecific, getDateDesign
+    createMultipleDateDesigns, deleteMultipleDateDesigns, getDateDesign
 } from '../controllers/dateDesignController.js';
 import {
     createDayOff, deleteDayOffById, deleteEmployeeDayOff,
@@ -60,7 +59,7 @@ router.delete('/manage-shift/delete', verifyTokenAdmin, deleteShiftByCode);
 // date design
 router.post('/manage-date-design/create-days', verifyTokenAdmin, createMultipleDateDesigns);
 router.get('/manage-date-design/get-by-specific', verifyTokenAdmin, getDateDesign);
-router.delete('/manage-date-design/delete', verifyTokenAdmin, deleteDateSpecific);
+router.delete('/manage-date-design/delete', verifyTokenAdmin, deleteMultipleDateDesigns);
 
 // day off
 router.post('/manage-day-off/create', verifyTokenAdmin, createDayOff);

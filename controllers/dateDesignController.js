@@ -244,7 +244,7 @@ export const getDateDesign = async (req, res, next) => {
                             shift_code: shift.shift_code,
                             time_slot: shift.time_slot,
                             shift_type: shift.shift_type,
-                            employees: employeesWithDesign // Add the employees array to the shift design
+                            employees: employeesWithDesign
                         });
                     });
                 }
@@ -265,34 +265,63 @@ export const getDateDesign = async (req, res, next) => {
     }
 };
 
-export const deleteDateSpecific = async (req, res, next) => {
+export const deleteMultipleDateDesigns = async (req, res, next) => {
+    const shiftCode = req.body.shift_code;
     const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
+    const departmentName = req.query.department_name;
+    const dates = req.body.dates;
+
     try {
-        const employee = await EmployeeSchema.findOne({ id: employeeID });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
+        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
+        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
         if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
-        const existingDateIndex = employee.schedules.findIndex(schedule => {
-            return schedule.date.getTime() === new Date(req.body.date).getTime();
-        });
+        const employeeDepartment = employee.department.find(dep => dep.name === departmentName);
+        if (!employeeDepartment) return next(createError(NOT_FOUND, "Employee does not belong to the specified department!"));
 
-        if (existingDateIndex === -1) {
-            return next(createError(NOT_FOUND, "Date design not found!"));
+        const errorDates = [];
+
+        for (const dateString of dates) {
+            const [month, day, year] = dateString.split('/');
+            const dateObj = new Date(year, month - 1, day);
+
+            // Find the schedule for the specific date
+            let scheduleIndex = employeeDepartment.schedules.findIndex(s =>
+                s.date.toISOString().split('T')[0] === dateObj.toISOString().split('T')[0]);
+
+            if (scheduleIndex > -1) {
+                // Find and remove the shift design with the specified shift code
+                let shiftDesignIndex = employeeDepartment.schedules[scheduleIndex].shift_design.findIndex(sd => sd.shift_code === shiftCode);
+                if (shiftDesignIndex > -1) {
+                    employeeDepartment.schedules[scheduleIndex].shift_design.splice(shiftDesignIndex, 1);
+                } else {
+                    errorDates.push({ date: dateString, message: "Shift code not found in schedule." });
+                }
+            } else {
+                errorDates.push({ date: dateString, message: "Schedule not found for this date." });
+            }
         }
 
-        // Remove the date design
-        employee.schedules.splice(existingDateIndex, 1);
-
         await employee.save();
+
+        const responseMessage = {
+            employee_id: employee.id,
+            employee_name: employee.name,
+            email: employee.email,
+            schedule: employee.department.map(dep => dep.schedules),
+            error_dates: errorDates
+        };
 
         res.status(OK).json({
             success: true,
             status: OK,
-            message: "Date design deleted successfully",
+            message: responseMessage
         });
     } catch (err) {
         next(err);
     }
 };
+
 
 

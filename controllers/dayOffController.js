@@ -31,7 +31,7 @@ export const createDayOff = async (req, res, next) => {
 
         const duration = calculateDuration(date_start, date_end);
         newDayOff.duration = duration;
-        
+
         const dateChecking = await DayOffSchema.findOne({
             date_start: newDayOff.date_start,
             date_end: newDayOff.date_end,

@@ -89,11 +89,9 @@ export const updateDepartment = async (req, res, next) => {
         Object.assign(department, req.body);
         await department.save();
 
-        // Find employees who are members of this department
         const employees = await EmployeeSchema.find({ "department.name": department_name });
 
         for (const employee of employees) {
-            // Update each employee's department data
             const departmentIndex = employee.department.findIndex(d => d.name === department_name);
             if (departmentIndex !== -1) {
                 employee.department[departmentIndex] = {
@@ -149,7 +147,6 @@ export const addMemberDepartment = async (req, res, next) => {
             position: req.body.position
         }
 
-        // Add the employee ID to the members array
         department.members.push({
             id: employee.id,
             name: employee.name,
@@ -160,7 +157,6 @@ export const addMemberDepartment = async (req, res, next) => {
         });
         employee.department.push(departmentObject);
 
-        // Save the updated department
         const updateDepartment = await department.save();
         const updateEmployee = await employee.save();
 
@@ -185,15 +181,12 @@ export const removeMemberDepartment = async (req, res, next) => {
         const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
-        // Check if the employee is in the department
         if (!department.members.some(member => member.id === employeeID && member.name === employeeName)) {
             return next(createError(NOT_FOUND, "Employee not a member of the department!"));
         }
 
-        // Remove the employee from the department's members array
         department.members = department.members.filter(member => member.id !== employeeID);
 
-        // Remove the department from the employee's department array
         employee.department = employee.department.filter(dep => dep.name !== department_name);
 
         // Save the updated department and employee
@@ -264,7 +257,6 @@ export const getCar = async (req, res, next) => {
                 return next(createError(NOT_FOUND, "Department not found!"));
             }
 
-            // Filter cars within the department
             const cars = department.cars.filter(car => {
                 const matchesCarName = car_name ? (car.name && car.name.match(new RegExp(car_name, 'i'))) : true;
                 const matchesCarNumber = car_number ? (car.number && car.number.match(new RegExp(car_number, 'i'))) : true;
@@ -309,11 +301,9 @@ export const updateCar = async (req, res, next) => {
             return next(createError(NOT_FOUND, "Car not found!"));
         }
 
-        // Updating car details
         Object.assign(car, req.body);
         await car.save();
 
-        // Reflect changes in departments
         const departments = await DepartmentSchema.find({
             'cars.number': car_number
         });
@@ -349,7 +339,6 @@ export const deleteCar = async (req, res, next) => {
             return next(createError(NOT_FOUND, "Car not found!"));
         }
 
-        // Remove car from departments
         const departments = await DepartmentSchema.find({
             'cars.number': car_number
         });

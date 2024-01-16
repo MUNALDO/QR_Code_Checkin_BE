@@ -24,7 +24,7 @@ export const createShift = async (req, res, next) => {
             ...req.body,
             time_slot: {
                 ...req.body.time_slot,
-                duration: duration
+                duration: Number(duration.toFixed(2))
             }
         });
 
@@ -114,7 +114,7 @@ export const updateShift = async (req, res, next) => {
                 ...req.body.time_slot,
                 start_time: start_time,
                 end_time: end_time,
-                duration: duration
+                duration: Number(duration.toFixed(2))
             }
         };
 

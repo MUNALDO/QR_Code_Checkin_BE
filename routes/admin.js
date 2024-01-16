@@ -94,8 +94,8 @@ router.get('/manage-xlsx/employee-attendance', verifyTokenAdmin, exportEmployeeA
 // manage cars
 router.post('/manage-car/create', verifyTokenAdmin, createCar);
 router.get('/manage-car/get', verifyTokenAdmin, getCar);
-router.put('/manage-car/update', verifyTokenAdmin, updateCar);
-router.delete('/manage-car/delete', verifyTokenAdmin, deleteCar);
+router.put('/manage-car/update/:car_number', verifyTokenAdmin, updateCar);
+router.delete('/manage-car/delete/:car_number', verifyTokenAdmin, deleteCar);
 
 // manage stats
 router.get('/manage-stats/get', verifyTokenAdmin, getStats);

@@ -4,7 +4,6 @@ import fs from 'fs';
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import SalarySchema from "../models/SalarySchema.js";
-// import AdminSchema from "../models/AdminSchema.js";
 
 export const exportAttendanceToExcel = async (req, res, next) => {
     const { year, month, employeeID, department_name } = req.query;

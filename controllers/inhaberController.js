@@ -2,7 +2,6 @@ import { createError } from "../utils/error.js";
 import { BAD_REQUEST, CREATED, FORBIDDEN, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
-import AdminSchema from "../models/AdminSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";
 import cron from 'node-cron';
 import DepartmentSchema from "../models/DepartmentSchema.js";

@@ -1,4 +1,4 @@
-import { BAD_REQUEST, CONFLICT, CREATED, FORBIDDEN, NOT_FOUND, OK, SYSTEM_ERROR } from "../constant/HttpStatus.js";
+import { BAD_REQUEST, CREATED, FORBIDDEN, NOT_FOUND, OK } from "../constant/HttpStatus.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import CarSchema from "../models/CarSchema.js";
 import DayOffSchema from "../models/DayOffSchema.js";
@@ -64,7 +64,6 @@ export const verifyWifi = async (req, res, next) => {
 export const collectIP = async (req, res, next) => {
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     try {
-        // console.log('User IP Address:', ip);
         return res.status(OK).json({
             success: true,
             status: OK,
@@ -817,13 +816,13 @@ export const getDateDesignCurrentByEmployee = async (req, res, next) => {
 
                     schedule.shift_design.forEach(shift => {
                         // Find employees who have the same shift design on the target date
-                        const employeesWithShift = employeesInDepartment.filter(e => 
-                            e.department.some(dep => 
+                        const employeesWithShift = employeesInDepartment.filter(e =>
+                            e.department.some(dep =>
                                 dep.name === department.name &&
                                 dep.schedules.some(s => {
                                     const sDate = new Date(s.date);
                                     return sDate.getTime() === scheduleDate.getTime() &&
-                                           s.shift_design.some(sd => sd.shift_code === shift.shift_code);
+                                        s.shift_design.some(sd => sd.shift_code === shift.shift_code);
                                 })
                             )
                         ).map(e => ({ id: e.id, name: e.name }));

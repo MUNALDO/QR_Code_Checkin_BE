@@ -382,8 +382,9 @@ export const getDateDesignForManager = async (req, res, next) => {
             employeeQuery.name = employeeName;
         }
 
-        const employees = await EmployeeSchema.find(employeeQuery);
-        employees.forEach(employee => {
+        // Retrieve all employees once instead of in each iteration
+        const allEmployees = await EmployeeSchema.find(employeeQuery);
+        allEmployees.forEach(employee => {
             employee.department.forEach(department => {
                 if (departmentNames.includes(department.name)) {
                     department.schedules.forEach(schedule => {
@@ -392,8 +393,17 @@ export const getDateDesignForManager = async (req, res, next) => {
                         if ((!targetYear || scheduleDate.getFullYear() === targetYear) &&
                             (!targetMonth || scheduleDate.getMonth() === targetMonth) &&
                             (!targetDate || scheduleDate.toISOString().split('T')[0] === targetDate.toISOString().split('T')[0])) {
-
+                                
                             schedule.shift_design.forEach(shift => {
+                                const employeesWithDesign = allEmployees.filter(e => {
+                                    return e.department.some(d => {
+                                        return d.name === department.name && d.schedules.some(s => {
+                                            const sDate = new Date(s.date);
+                                            return sDate.getTime() === scheduleDate.getTime() &&
+                                                s.shift_design.some(sd => sd.shift_code === shift.shift_code);
+                                        });
+                                    });
+                                }).map(e => ({ id: e.id, name: e.name }));
                                 shiftDesigns.push({
                                     employee_id: employee.id,
                                     employee_name: employee.name,
@@ -403,6 +413,7 @@ export const getDateDesignForManager = async (req, res, next) => {
                                     shift_code: shift.shift_code,
                                     time_slot: shift.time_slot,
                                     shift_type: shift.shift_type,
+                                    employees: employeesWithDesign
                                 });
                             });
                         }

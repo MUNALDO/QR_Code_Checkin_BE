@@ -606,17 +606,17 @@ export const getDateDesignForInhaber = async (req, res, next) => {
                         if ((!targetYear || scheduleDate.getFullYear() === targetYear) &&
                             (!targetMonth || scheduleDate.getMonth() === targetMonth) &&
                             (!targetDate || scheduleDate.toISOString().split('T')[0] === targetDate.toISOString().split('T')[0])) {
-
-                            const employeesWithDesign = allEmployees.filter(e => {
-                                return e.department.some(d => {
-                                    return d.name === department.name && d.schedules.some(s => {
-                                        const sDate = new Date(s.date);
-                                        return sDate.getTime() === scheduleDate.getTime() &&
-                                            s.shift_design.some(sd => sd.shift_code === shift.shift_code);
-                                    });
-                                });
-                            }).map(e => ({ id: e.id, name: e.name }));
+                                
                             schedule.shift_design.forEach(shift => {
+                                const employeesWithDesign = allEmployees.filter(e => {
+                                    return e.department.some(d => {
+                                        return d.name === department.name && d.schedules.some(s => {
+                                            const sDate = new Date(s.date);
+                                            return sDate.getTime() === scheduleDate.getTime() &&
+                                                s.shift_design.some(sd => sd.shift_code === shift.shift_code);
+                                        });
+                                    });
+                                }).map(e => ({ id: e.id, name: e.name }));
                                 shiftDesigns.push({
                                     employee_id: employee.id,
                                     employee_name: employee.name,

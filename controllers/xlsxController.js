@@ -378,29 +378,42 @@ export const exportEmployeeDataToExcel = async (req, res, next) => {
 export const exportEmployeeAttendanceStatsToExcel = async (req, res, next) => {
     const { employeeID, employeeName, department_name } = req.query;
     try {
-        // Find the specific employee
         const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) {
             return res.status(NOT_FOUND).json({ error: "Employee not found" });
         }
 
-        let departmentStats;
-        let fileName;
-
+        let departmentStats = [];
+        let fileName = `Attendance_Stats_${employeeName}`;
         if (department_name) {
-            // Filter for a specific department's attendance stats
+            fileName += `_${department_name}`;
+            // If a specific department is specified, filter out the other departments.
             departmentStats = employee.department
                 .filter(dept => dept.name === department_name)
-                .map(dept => dept.attendance_stats)
-                .flat();
-            fileName = `Attendance_Stats_${employeeName}_${department_name}.xlsx`;
+                .flatMap(dept => dept.attendance_stats.map(stat => ({
+                    department: dept.name,
+                    year: stat.year,
+                    month: stat.month,
+                    date_on_time: stat.date_on_time,
+                    date_late: stat.date_late,
+                    date_missing: stat.date_missing
+                })));
         } else {
-            // Gather all departments' attendance stats
-            departmentStats = employee.department
-                .map(dept => dept.attendance_stats)
-                .flat();
-            fileName = `Attendance_Stats_${employeeName}.xlsx`;
+            // If no specific department is specified, include all departments.
+            employee.department.forEach(dept => {
+                dept.attendance_stats.forEach(stat => {
+                    departmentStats.push({
+                        department: dept.name,
+                        year: stat.year,
+                        month: stat.month,
+                        date_on_time: stat.date_on_time,
+                        date_late: stat.date_late,
+                        date_missing: stat.date_missing
+                    });
+                });
+            });
         }
+        fileName += `.xlsx`;
 
         if (departmentStats.length === 0) {
             return res.status(NOT_FOUND).json({ error: "No attendance stats found" });
@@ -408,12 +421,11 @@ export const exportEmployeeAttendanceStatsToExcel = async (req, res, next) => {
 
         const filePath = `../${fileName}`;
 
-        // Initialize Excel workbook and worksheet
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Attendance Stats');
 
-        // Define columns for the Excel sheet
-        const columns = [
+        worksheet.columns = [
+            { header: 'Department', key: 'department', width: 20 },
             { header: 'Year', key: 'year', width: 10 },
             { header: 'Month', key: 'month', width: 10 },
             { header: 'Dates On Time', key: 'date_on_time', width: 15 },
@@ -421,17 +433,8 @@ export const exportEmployeeAttendanceStatsToExcel = async (req, res, next) => {
             { header: 'Dates Missing', key: 'date_missing', width: 15 },
         ];
 
-        worksheet.columns = columns;
-
-        // Add rows to the worksheet
         departmentStats.forEach(stat => {
-            worksheet.addRow({
-                year: stat.year,
-                month: stat.month,
-                date_on_time: stat.date_on_time,
-                date_late: stat.date_late,
-                date_missing: stat.date_missing
-            });
+            worksheet.addRow(stat);
         });
 
         // Write buffer

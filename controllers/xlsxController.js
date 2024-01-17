@@ -384,19 +384,31 @@ export const exportEmployeeAttendanceStatsToExcel = async (req, res, next) => {
             return res.status(NOT_FOUND).json({ error: "Employee not found" });
         }
 
-        // Filter the departments based on the provided department name
-        const departmentStats = employee.department
-            .filter(dept => dept.name === department_name)
-            .map(dept => dept.attendance_stats)
-            .flat();
+        let departmentStats;
+        let fileName;
 
-        if (departmentStats.length === 0) {
-            return res.status(NOT_FOUND).json({ error: "No attendance stats found for the specified department" });
+        if (department_name) {
+            // Filter for a specific department's attendance stats
+            departmentStats = employee.department
+                .filter(dept => dept.name === department_name)
+                .map(dept => dept.attendance_stats)
+                .flat();
+            fileName = `Attendance_Stats_${employeeName}_${department_name}.xlsx`;
+        } else {
+            // Gather all departments' attendance stats
+            departmentStats = employee.department
+                .map(dept => dept.attendance_stats)
+                .flat();
+            fileName = `Attendance_Stats_${employeeName}.xlsx`;
         }
 
-        const fileName = `Attendance_Stats_${employeeName}_${department_name}.xlsx`;
+        if (departmentStats.length === 0) {
+            return res.status(NOT_FOUND).json({ error: "No attendance stats found" });
+        }
+
         const filePath = `../${fileName}`;
 
+        // Initialize Excel workbook and worksheet
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Attendance Stats');
 

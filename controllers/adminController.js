@@ -975,23 +975,9 @@ export const getAttendanceStats = async (req, res, next) => {
     try {
         let employeeQuery = {};
 
-        // Handle employee query
         if (employeeID && employeeName) {
             employeeQuery['id'] = employeeID;
             employeeQuery['name'] = employeeName;
-        }
-
-        let attendanceStatsQuery = {};
-
-        // Handle time query
-        if (year && month) {
-            attendanceStatsQuery['department.attendance_stats.year'] = parseInt(year);
-            attendanceStatsQuery['department.attendance_stats.month'] = parseInt(month);
-        }
-
-        // Handle department query
-        if (department_name) {
-            attendanceStatsQuery['department.name'] = department_name;
         }
 
         const employees = await EmployeeSchema.find(employeeQuery).select('id name department');
@@ -1005,10 +991,13 @@ export const getAttendanceStats = async (req, res, next) => {
             employee_name: emp.name,
             attendance_stats: emp.department
                 .filter(dept => !department_name || dept.name === department_name)
-                .map(dept => dept.attendance_stats.filter(stat => {
-                    return (!year || stat.year === parseInt(year)) && (!month || stat.month === parseInt(month));
-                }))
-                .flat()
+                .flatMap(dept => dept.attendance_stats
+                    .filter(stat => (!year || stat.year === parseInt(year)) && (!month || stat.month === parseInt(month)))
+                    .map(stat => ({
+                        ...stat.toObject(),
+                        department_name: dept.name
+                    }))
+                )
         }));
 
         return res.status(OK).json({
@@ -1020,6 +1009,7 @@ export const getAttendanceStats = async (req, res, next) => {
         next(error);
     }
 };
+
 
 
 

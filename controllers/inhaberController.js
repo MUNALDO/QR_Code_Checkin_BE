@@ -606,7 +606,7 @@ export const getDateDesignForInhaber = async (req, res, next) => {
                         if ((!targetYear || scheduleDate.getFullYear() === targetYear) &&
                             (!targetMonth || scheduleDate.getMonth() === targetMonth) &&
                             (!targetDate || scheduleDate.toISOString().split('T')[0] === targetDate.toISOString().split('T')[0])) {
-                                
+
                             schedule.shift_design.forEach(shift => {
                                 const employeesWithDesign = allEmployees.filter(e => {
                                     return e.department.some(d => {
@@ -1065,8 +1065,8 @@ export const updateAttendanceForInhaber = async (req, res, next) => {
             editor_role: inhaber.role,
             edited_name: edited.name,
             edited_role: edited.role,
-            detail_update: req.body,
-            object_update: attendance
+            before_update: attendance,
+            after_update: updatedAttendance
         })
         await newLog.save();
 

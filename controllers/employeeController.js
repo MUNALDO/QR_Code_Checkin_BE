@@ -834,7 +834,7 @@ export const getDateDesignCurrentByEmployee = async (req, res, next) => {
                             shift_code: shift.shift_code,
                             time_slot: shift.time_slot,
                             shift_type: shift.shift_type,
-                            employees: employeesWithShift // Add the employees array to the shift design
+                            employees: employeesWithShift
                         });
                     });
                 }
@@ -849,6 +849,67 @@ export const getDateDesignCurrentByEmployee = async (req, res, next) => {
             success: true,
             status: OK,
             message: shiftDesigns
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getColleaguesWorkingTodayByEmployee = async (req, res, next) => {
+    const employeeID = req.query.employeeID;
+    const employeeName = req.query.employeeName;
+    const targetDate = req.query.date ? new Date(req.query.date) : new Date();
+    try {
+        const targetEmployee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
+        if (!targetEmployee) {
+            return next(createError(NOT_FOUND, "Employee not found!"));
+        }
+
+        const colleaguesByShiftAndDepartment = {};
+
+        for (const department of targetEmployee.department) {
+            for (const schedule of department.schedules) {
+                const scheduleDate = new Date(schedule.date);
+
+                if (scheduleDate.setHours(0, 0, 0, 0) === targetDate.setHours(0, 0, 0, 0)) {
+                    for (const shiftDesign of schedule.shift_design) {
+                        // Define a key for the department and shift
+                        const shiftKey = `${department.name}-${shiftDesign.shift_code}`;
+
+                        // Initialize the array if it doesn't exist
+                        if (!colleaguesByShiftAndDepartment[shiftKey]) {
+                            colleaguesByShiftAndDepartment[shiftKey] = [];
+                        }
+
+                        // Find all employees who share the same department, date, and shift code
+                        const colleagues = await EmployeeSchema.find({
+                            'department.name': department.name,
+                            'department.schedules': {
+                                $elemMatch: {
+                                    'date': scheduleDate,
+                                    'shift_design': {
+                                        $elemMatch: { 'shift_code': shiftDesign.shift_code }
+                                    }
+                                }
+                            }
+                        }).select('id name');
+
+                        colleagues.forEach(colleague => {
+                            if (colleague.id !== targetEmployee.id) {
+                                colleaguesByShiftAndDepartment[shiftKey].push({
+                                    id: colleague.id,
+                                    name: colleague.name
+                                });
+                            }
+                        });
+                    }
+                }
+            }
+        }
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: colleaguesByShiftAndDepartment
         });
     } catch (err) {
         next(err);

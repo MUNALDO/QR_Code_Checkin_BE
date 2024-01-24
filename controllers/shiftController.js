@@ -1,4 +1,6 @@
 import { CREATED, NOT_FOUND, OK } from "../constant/HttpStatus.js";
+import AttendanceSchema from "../models/AttendanceSchema.js";
+import EmployeeSchema from "../models/EmployeeSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";
 import { createError } from "../utils/error.js";
 
@@ -89,6 +91,7 @@ export const getShiftByName = async (req, res, next) => {
 export const updateShift = async (req, res, next) => {
     const shift_code = req.query.code;
     try {
+        // Step 1: Find and update the shift
         const shift = await ShiftSchema.findOne({ code: shift_code });
         if (!shift) return next(createError(NOT_FOUND, "Shift not found!"));
 
@@ -117,11 +120,24 @@ export const updateShift = async (req, res, next) => {
                 duration: Number(duration.toFixed(2))
             }
         };
-
         const updateShiftResult = await ShiftSchema.findOneAndUpdate(
             { code: shift_code },
             { $set: updatedShift },
             { new: true }
+        );
+
+        // Step 2: Update future employee schedules
+        const today = new Date();
+        await EmployeeSchema.updateMany(
+            { "department.schedules.date": { $gte: today }, "department.schedules.shift_design.shift_code": shift_code },
+            { "$set": { "department.$[].schedules.$[sched].shift_design.$[design].time_slot": updatedShift.time_slot } },
+            { arrayFilters: [{ "sched.date": { $gte: today } }, { "design.shift_code": shift_code }] }
+        );
+
+        // Step 3: Update future attendance records
+        await AttendanceSchema.updateMany(
+            { date: { $gte: today }, "shift_info.shift_code": shift_code },
+            { "$set": { "shift_info.time_slot": updatedShift.time_slot } }
         );
 
         res.status(OK).json({
@@ -139,6 +155,19 @@ export const deleteShiftByCode = async (req, res, next) => {
     try {
         const shift = await ShiftSchema.findOne({ code: shift_code });
         if (!shift) return next(createError(NOT_FOUND, "Shift not found!"))
+
+        const today = new Date();
+
+        // Step 2: Delete future employee schedules related to the shift
+        await EmployeeSchema.updateMany(
+            { "department.schedules.date": { $gte: today } },
+            { "$pull": { "department.$[].schedules.$[].shift_design": { "shift_code": shift_code } } }
+        );
+
+        // Step 3: Delete future attendance records related to the shift
+        await AttendanceSchema.deleteMany(
+            { date: { $gte: today }, "shift_info.shift_code": shift_code }
+        );
 
         await ShiftSchema.findOneAndDelete({ code: shift_code });
         res.status(OK).json({

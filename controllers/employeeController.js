@@ -573,11 +573,13 @@ export const updateAttendance = async (req, res, next) => {
                     if (existingAttendance.car_info.car_type === "company") {
                         existingAttendance.car_info.car_name === req.body.car_name;
                         const carCompany = await CarSchema.findOne({ car_name: req.body.car_name });
-                        // console.log(carCompany);
                         existingAttendance.car_info.car_number = carCompany.car_number;
                         existingAttendance.car_info.register_date = carCompany.register_date;
-                    } else {
-                        existingAttendance.car_info.car_number === req.body.car_number;
+                    } else if (existingAttendance.car_info.car_type === "private") {
+                        const carCompany = await CarSchema.findOne({ car_name: "Private" });
+                        existingAttendance.car_info.car_name === carCompany.car_name;
+                        existingAttendance.car_info.car_number = carCompany.car_number;
+                        existingAttendance.car_info.register_date = carCompany.register_date;
                     }
                     if (!req.body.check_in_km) {
                         return res.status(BAD_REQUEST).json({

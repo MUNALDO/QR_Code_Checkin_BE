@@ -29,6 +29,10 @@ export const createDayOff = async (req, res, next) => {
             allowed: req.body.allowed,
         });
 
+        if (newDayOff.name == "Sick day") {
+            newDayOff.allowed = false;
+        }
+
         const duration = calculateDuration(date_start, date_end);
         newDayOff.duration = duration;
 

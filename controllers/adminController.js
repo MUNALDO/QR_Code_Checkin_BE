@@ -425,18 +425,30 @@ export const handleRequest = async (req, res, next) => {
         if (employee.status === "inactive") return next(createError(NOT_FOUND, "Employee not active!"));
 
         if (updateRequest.answer_status === "approved") {
-            day_off.allowed = true;
-            await day_off.save();
-            const employeeDayOff = employee.dayOff_schedule.find(dayOffSchedule =>
-                dayOffSchedule.date_start.getTime() === day_off.date_start.getTime() &&
-                dayOffSchedule.date_end.getTime() === day_off.date_end.getTime()
-            );
+            if (updateRequest.request_content == "Sick day") {
+                day_off.allowed = false;
+                await day_off.save();
+                const employeeDayOff = employee.dayOff_schedule.find(dayOffSchedule =>
+                    dayOffSchedule.date_start.getTime() === day_off.date_start.getTime() &&
+                    dayOffSchedule.date_end.getTime() === day_off.date_end.getTime()
+                );
 
-            employeeDayOff.allowed = true;
-            employee.realistic_day_off = employee.realistic_day_off - day_off.duration;
+                employeeDayOff.allowed = false;
+                employee.markModified('dayOff_schedule');
+                await employee.save();
+            } else {
+                day_off.allowed = true;
+                await day_off.save();
+                const employeeDayOff = employee.dayOff_schedule.find(dayOffSchedule =>
+                    dayOffSchedule.date_start.getTime() === day_off.date_start.getTime() &&
+                    dayOffSchedule.date_end.getTime() === day_off.date_end.getTime()
+                );
 
-            employee.markModified('dayOff_schedule');
-            await employee.save();
+                employeeDayOff.allowed = true;
+                employee.realistic_day_off = employee.realistic_day_off - day_off.duration;
+                employee.markModified('dayOff_schedule');
+                await employee.save();
+            }
         } else if (updateRequest.answer_status === "denied") {
             employee.dayOff_schedule = employee.dayOff_schedule.filter(dayOffSchedule =>
                 dayOffSchedule.date_start.getTime() !== day_off.date_start.getTime() ||

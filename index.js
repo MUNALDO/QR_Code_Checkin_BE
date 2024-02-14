@@ -1,17 +1,18 @@
-const express = require('express');
-const dotenv = require('dotenv');
-const mongoose = require('mongoose');
-const cookieParser = require('cookie-parser');
-const { SYSTEM_ERROR } = require('./constant/HttpStatus.js');
-const cors = require('cors');
-const adminRoute = require("./routes/admin.js");
-const qrRoute = require("./routes/qrCode.js");
-const employeeRoute = require("./routes/employee.js");
-const authRoute = require("./routes/auth.js");
-const inhaberRoute = require("./routes/inhaber.js");
-const managerRoute = require("./routes/manager.js");
-const { autoCheck, cleanUpOldSchedules } = require('./controllers/employeeController.js');
-const cron = require('node-cron');
+import express from 'express';
+import dotenv from 'dotenv';
+import mongoose from 'mongoose';
+import cookieParser from 'cookie-parser';
+import { SYSTEM_ERROR } from './constant/HttpStatus.js';
+// import myLogger from './winstonLog/winston.js';
+import cors from 'cors';
+import adminRoute from "./routes/admin.js";
+import qrRoute from "./routes/qrCode.js";
+import employeeRoute from "./routes/employee.js";
+import authRoute from "./routes/auth.js";
+import inhaberRoute from "./routes/inhaber.js";
+import managerRoute from "./routes/manager.js"
+import { autoCheck, cleanUpOldSchedules } from './controllers/employeeController.js';
+import cron from 'node-cron';
 
 const app = express();
 dotenv.config();

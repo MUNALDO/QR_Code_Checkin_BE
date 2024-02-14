@@ -11,7 +11,8 @@
   },
   "keywords": [
     "backend",
-    "qrapp"
+    "qrapp",
+    "heroku"
   ],
   "author": "ThaiNX",
   "license": "ISC",
@@ -39,6 +40,6 @@
     "wifi-name": "^3.1.1"
   },
   "engines": {
-    "node": "18.10.0"
+    "node": "20.x"
   }
 }

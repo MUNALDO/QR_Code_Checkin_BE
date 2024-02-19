@@ -1,1 +1,1 @@
-web: npm run my-custom-start
+web: npm run start

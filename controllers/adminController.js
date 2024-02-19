@@ -547,7 +547,7 @@ export const updateAttendance = async (req, res, next) => {
 
         const departmentIndex = edited.department.findIndex(dep => dep.name === attendance.department_name);
         const statsIndex = edited.department[departmentIndex].attendance_stats.findIndex(stat =>
-            stat.year === currentYear && stat.month === currentMonth
+            stat.year === attendance.date.getFullYear() && stat.month === attendance.date.getMonth() + 1
         );
 
         const attendanceTotalHours = attendance.shift_info.total_hour;

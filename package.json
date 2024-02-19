@@ -1,7 +1,7 @@
 {
   "name": "be-qr",
   "version": "1.0.0",
-  "description": "backend qrapp",
+  "description": "backend qr-app",
   "main": "index.js",
   "type": "module",
   "scripts": {

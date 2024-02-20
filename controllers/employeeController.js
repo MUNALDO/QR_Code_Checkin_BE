@@ -572,11 +572,16 @@ export const updateAttendance = async (req, res, next) => {
                     existingAttendance.car_info.car_type = req.body.car_type;
                     if (existingAttendance.car_info.car_type === "company") {
                         existingAttendance.car_info.car_name === req.body.car_name;
+
                         const carCompany = await CarSchema.findOne({ car_name: req.body.car_name });
+                        if (!carCompany) return next(createError(NOT_FOUND, "Car Company not found!"));
+
                         existingAttendance.car_info.car_number = carCompany.car_number;
                         existingAttendance.car_info.register_date = carCompany.register_date;
                     } else if (existingAttendance.car_info.car_type === "private") {
                         const carCompany = await CarSchema.findOne({ car_name: "Private" });
+                        if (!carCompany) return next(createError(NOT_FOUND, "Car Company not found!"));
+
                         existingAttendance.car_info.car_name === carCompany.car_name;
                         existingAttendance.car_info.car_number = carCompany.car_number;
                         existingAttendance.car_info.register_date = carCompany.register_date;

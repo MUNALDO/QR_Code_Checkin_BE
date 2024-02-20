@@ -118,7 +118,13 @@ const employeeSchema = new mongoose.Schema(
         },
         inactive_day: {
             type: Date
-        }
+        },
+        resetPasswordToken: {
+            type: String,
+        },
+        resetPasswordExpires: {
+            type: Date,
+        },
     },
     { timestamps: true }
 );

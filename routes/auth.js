@@ -1,9 +1,9 @@
 import express from 'express';
 import {
-    loginAdmin, loginEmployee, loginInhaber, loginManager,
+    loginAdmin, loginEmployee, loginInhaber, loginManager, forgetPasswordEmployee, forgetPasswordAdmin,
     logoutAdmin, logoutEmployee, logoutInhaber, logoutManager, registerAdmin,
     registerEmployeeByAdmin, registerEmployeeByInhaber, registerEmployeeByManager,
-    registerInhaberByAdmin, registerManagerByAdmin, registerManagerByInhaber
+    registerInhaberByAdmin, registerManagerByAdmin, registerManagerByInhaber,
 } from '../controllers/authController.js';
 import {
     verifyTokenAdmin, verifyTokenEmployee, verifyTokenInhaber, verifyTokenManager,
@@ -33,5 +33,9 @@ router.post('/manage-inhaber/register-employee', verifyTokenInhaber, registerEmp
 router.post('/manage-manager/register-employee', verifyTokenManager, registerEmployeeByManager);
 router.post('/manage-employee/login-employee', loginEmployee);
 router.post('/manage-employee/logout-employee', verifyTokenEmployee, logoutEmployee);
+
+// forget password
+router.post('manage-password/reset-admin', forgetPasswordAdmin);
+router.post('manage-password/reset-employee', forgetPasswordEmployee);
 
 export default router;

@@ -31,6 +31,12 @@ const adminSchema = new mongoose.Schema(
             type: String,
             default: 'Admin',
         },
+        resetPasswordToken: {
+            type: String,
+        },
+        resetPasswordExpires: {
+            type: Date,
+        },
         status: {
             type: String,
             enum: ['active', 'inactive'],

@@ -7,8 +7,108 @@ import AdminSchema from "../models/AdminSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import DepartmentSchema from "../models/DepartmentSchema.js";
 import DayOffSchema from "../models/DayOffSchema.js";
+import nodemailer from 'nodemailer';
+import crypto from 'crypto';
 
 dotenv.config();
+
+// Function to generate a unique token
+const generateUniqueToken = () => {
+    return crypto.randomBytes(20).toString('hex');
+};
+
+// Function to send reset password email
+const sendResetPasswordEmail = async (email, token) => {
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.MAIL_ADDRESS,
+            pass: process.env.MAIL_PASSWORD,
+        },
+    });
+
+    const emailSubject = 'Reset Your Password';
+
+    const emailContent = `
+        <div>
+            <p>Hello,</p>
+            <p>You have requested to reset your password. Please click the link below to reset your password:</p>
+            <p><a href="http://yourwebsite.com/reset-password?token=${token}">Reset Password</a></p>
+            <p>If you did not request this, please ignore this email.</p>
+            <p>Thank you!</p>
+        </div>
+    `;
+
+    const mailOptions = {
+        from: '"No Reply" <no-reply@gmail.com>',
+        to: email,
+        subject: emailSubject,
+        html: emailContent,
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log('Reset password email sent successfully');
+    } catch (error) {
+        console.error('Error sending reset password email:', error);
+        throw new Error('Failed to send reset password email');
+    }
+};
+
+// Function to handle forget password request
+export const forgetPasswordAdmin = async (req, res, next) => {
+    const { email } = req.body;
+    try {
+        // Check if the email exists in your database
+        const user = await AdminSchema.findOne({ email });
+
+        if (!user) {
+            return next(createError(NOT_FOUND, 'User not found'));
+        }
+
+        // Generate a unique token
+        const token = generateUniqueToken();
+
+        // Save the token and its expiration time in the database
+        user.resetPasswordToken = token;
+        user.resetPasswordExpires = Date.now() + 3600000; // Token expires in 1 hour
+        await user.save();
+
+        // Send reset password email
+        await sendResetPasswordEmail(email, token);
+
+        res.status(OK).json({ message: 'Reset password email sent successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const forgetPasswordEmployee = async (req, res, next) => {
+    const { email } = req.body;
+    try {
+        // Check if the email exists in your database
+        const user = await EmployeeSchema.findOne({ email });
+
+        if (!user) {
+            return next(createError(NOT_FOUND, 'User not found'));
+        }
+
+        // Generate a unique token
+        const token = generateUniqueToken();
+
+        // Save the token and its expiration time in the database
+        user.resetPasswordToken = token;
+        user.resetPasswordExpires = Date.now() + 3600000; // Token expires in 1 hour
+        await user.save();
+
+        // Send reset password email
+        await sendResetPasswordEmail(email, token);
+
+        res.status(OK).json({ message: 'Reset password email sent successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
 
 export const registerAdmin = async (req, res, next) => {
     try {

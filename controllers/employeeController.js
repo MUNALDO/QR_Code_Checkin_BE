@@ -5,6 +5,7 @@ import DayOffSchema from "../models/DayOffSchema.js";
 import DepartmentSchema from "../models/DepartmentSchema.js";
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import RequestSchema from "../models/RequestSchema.js";
+import ShiftSchema from "../models/ShiftSchema.js";
 import StatsSchema from "../models/StatsSchema.js";
 import { createError } from "../utils/error.js";
 import wifi from 'node-wifi';
@@ -872,7 +873,7 @@ export const getColleaguesWorkingTodayByEmployee = async (req, res, next) => {
             return next(createError(NOT_FOUND, "Employee not found!"));
         }
 
-        const colleaguesByShiftAndDepartment = {};
+        let colleaguesByShiftAndDepartment = [];
 
         for (const department of targetEmployee.department) {
             for (const schedule of department.schedules) {
@@ -880,17 +881,24 @@ export const getColleaguesWorkingTodayByEmployee = async (req, res, next) => {
 
                 if (scheduleDate.setHours(0, 0, 0, 0) === targetDate.setHours(0, 0, 0, 0)) {
                     for (const shiftDesign of schedule.shift_design) {
-                        // Define a key for the department and shift
-                        const shiftKey = `${department.name}-${shiftDesign.shift_code}`;
+                        const shiftKey = `${shiftDesign.shift_code}`;
+                        const shift_info = await ShiftSchema.findOne({ code: shiftKey });
 
-                        // Initialize the array if it doesn't exist
-                        if (!colleaguesByShiftAndDepartment[shiftKey]) {
-                            colleaguesByShiftAndDepartment[shiftKey] = [];
+                        // Find the index of shiftKey in colleaguesByShiftAndDepartment
+                        let shiftIndex = colleaguesByShiftAndDepartment.findIndex(item => item && item.shiftKey === shiftKey);
+
+                        // If shiftKey not found, create a new entry
+                        if (shiftIndex === -1) {
+                            colleaguesByShiftAndDepartment.push({
+                                shiftKey: shiftKey,
+                                time: `${shift_info.time_slot.start_time}-${shift_info.time_slot.end_time}`,
+                                info: []
+                            });
+                            shiftIndex = colleaguesByShiftAndDepartment.length - 1;
                         }
 
                         // Find all employees who share the same department, date, and shift code
                         const colleagues = await EmployeeSchema.find({
-                            'department.name': department.name,
                             'department.schedules': {
                                 $elemMatch: {
                                     'date': scheduleDate,
@@ -899,20 +907,38 @@ export const getColleaguesWorkingTodayByEmployee = async (req, res, next) => {
                                     }
                                 }
                             }
-                        }).select('id name');
+                        }).select('');
 
                         colleagues.forEach(colleague => {
                             if (colleague.id !== targetEmployee.id) {
-                                colleaguesByShiftAndDepartment[shiftKey].push({
-                                    id: colleague.id,
-                                    name: colleague.name
-                                });
+                                // Find the department of the colleague
+                                const colleagueDepartment = colleague.department.find(dep => dep.schedules.some(sch => sch.date.getTime() === scheduleDate.getTime()));
+
+                                // Find or create the array for the department
+                                const departmentArray = colleaguesByShiftAndDepartment[shiftIndex].info.find(depArr => depArr.department === colleagueDepartment.name);
+                                if (departmentArray) {
+                                    // Add to existing department array
+                                    departmentArray.co_workers.push({
+                                        id: colleague.id,
+                                        name: colleague.name
+                                    });
+                                } else {
+                                    // Create a new department array
+                                    colleaguesByShiftAndDepartment[shiftIndex].info.push({
+                                        department: colleagueDepartment.name,
+                                        co_workers: [{
+                                            id: colleague.id,
+                                            name: colleague.name
+                                        }]
+                                    });
+                                }
                             }
                         });
                     }
                 }
             }
         }
+
         res.status(OK).json({
             success: true,
             status: OK,
@@ -953,23 +979,25 @@ export const createRequest = async (req, res, next) => {
                 request_content: req.body.request_content
             })
 
-            const oneMonthBeforeStart = new Date(newRequest.request_dayOff_start);
-            oneMonthBeforeStart.setMonth(oneMonthBeforeStart.getMonth() - 1);
-            const currentTime = new Date();
-            if (
-                (oneMonthBeforeStart.getFullYear() === currentTime.getFullYear() &&
-                    oneMonthBeforeStart.getMonth() < currentTime.getMonth()) ||
-                (oneMonthBeforeStart.getFullYear() === currentTime.getFullYear() &&
-                    oneMonthBeforeStart.getMonth() === currentTime.getMonth() &&
-                    oneMonthBeforeStart.getDate() < currentTime.getDate()) ||
-                (oneMonthBeforeStart.getFullYear() !== currentTime.getFullYear() &&
-                    oneMonthBeforeStart.getMonth() === 0 &&
-                    oneMonthBeforeStart.getDate() < currentTime.getDate())) {
-                return res.status(BAD_REQUEST).json({
-                    success: false,
-                    status: BAD_REQUEST,
-                    message: "Your request is not valid. It should be created within the last month.",
-                });
+            if (newRequest.request_content != "Sick day") {
+                const oneMonthBeforeStart = new Date(newRequest.request_dayOff_start);
+                oneMonthBeforeStart.setMonth(oneMonthBeforeStart.getMonth() - 1);
+                const currentTime = new Date();
+                if (
+                    (oneMonthBeforeStart.getFullYear() === currentTime.getFullYear() &&
+                        oneMonthBeforeStart.getMonth() < currentTime.getMonth()) ||
+                    (oneMonthBeforeStart.getFullYear() === currentTime.getFullYear() &&
+                        oneMonthBeforeStart.getMonth() === currentTime.getMonth() &&
+                        oneMonthBeforeStart.getDate() < currentTime.getDate()) ||
+                    (oneMonthBeforeStart.getFullYear() !== currentTime.getFullYear() &&
+                        oneMonthBeforeStart.getMonth() === 0 &&
+                        oneMonthBeforeStart.getDate() < currentTime.getDate())) {
+                    return res.status(BAD_REQUEST).json({
+                        success: false,
+                        status: BAD_REQUEST,
+                        message: "Your request is not valid. It should be created within the last month.",
+                    });
+                }
             }
 
             const dateChecking = await DayOffSchema.findOne({

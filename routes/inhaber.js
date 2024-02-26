@@ -3,8 +3,8 @@ import {
     addMemberToDepartmentByInhaber, createMultipleDateDesignsByInhaber, deleteMultipleDateDesignsByInhaber,
     getAllRequestsForInhaber, getAttendanceForInhaber, getDateDesignForInhaber, getEmployeeByIdForInhaber,
     getRequestByIdForInhaber, getSalaryForInhaber, getStatsForInhaber, handleRequestForInhaber,
-    madeEmployeeInactiveByInhaber, removeMemberFromDepartmentByInhaber, searchSpecificForInhaber,
-    updateAttendanceForInhaber, updateEmployeeByInhaber, getEmployeesSchedulesByInhaber, deleteEmployeeByIdByInhaber,
+    removeMemberFromDepartmentByInhaber, searchSpecificForInhaber, deleteEmployeeByIdByInhaber,
+    updateAttendanceForInhaber, updateEmployeeByInhaber, getEmployeesSchedulesByInhaber,
     getFormByInhaber, createCarByInhaber, getCarByInhaber, deleteCarByInhaber, updateCarByInhaber
 } from '../controllers/inhaberController.js';
 import {
@@ -14,16 +14,17 @@ import {
 import { salaryCalculate } from '../controllers/salaryController.js';
 import { verifyTokenInhaber } from '../utils/verifyToken.js';
 import {
-    exportAttendanceForInhaberToExcel, exportEmployeeAttendanceStatsToExcel, exportEmployeeAttendanceToExcel, exportEmployeeDataForInhaberToExcel,
+    exportAttendanceForInhaberToExcel, exportEmployeeAttendanceStatsToExcel,
+    exportEmployeeAttendanceToExcel, exportEmployeeDataForInhaberToExcel,
     exportEmployeeSalaryDataForInhaberToExcel
 } from '../controllers/xlsxController.js';
-import { createAttendance } from '../controllers/adminController.js';
+import { createAttendance, madeEmployeeInactive } from '../controllers/adminController.js';
 
 const router = express.Router();
 
 // manage employee
 router.put("/manage-employee/update", verifyTokenInhaber, updateEmployeeByInhaber);
-router.put('/manage-employee/make-inactive', verifyTokenInhaber, madeEmployeeInactiveByInhaber);
+router.post('/manage-employee/make-inactive', verifyTokenInhaber, madeEmployeeInactive);
 router.get("/manage-employee/get-byId", verifyTokenInhaber, getEmployeeByIdForInhaber);
 router.delete("/manage-employee/delete-byId", verifyTokenInhaber, deleteEmployeeByIdByInhaber);
 router.get("/manage-employee/search-specific", verifyTokenInhaber, searchSpecificForInhaber);

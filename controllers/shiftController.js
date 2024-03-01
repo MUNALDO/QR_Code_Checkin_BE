@@ -154,22 +154,45 @@ export const deleteShiftByCode = async (req, res, next) => {
     const shift_code = req.query.code;
     try {
         const shift = await ShiftSchema.findOne({ code: shift_code });
-        if (!shift) return next(createError(NOT_FOUND, "Shift not found!"))
+        if (!shift) return next(createError(NOT_FOUND, "Shift not found!"));
 
         const today = new Date();
 
-        // Step 2: Delete future employee schedules related to the shift
-        await EmployeeSchema.updateMany(
-            { "department.schedules.date": { $gte: today } },
-            { "$pull": { "department.$[].schedules.$[].shift_design": { "shift_code": shift_code } } }
-        );
+        // Fetch employees with future schedules including the shift to be deleted
+        const employees = await EmployeeSchema.find({
+            "department.schedules": {
+                $elemMatch: {
+                    "date": { $gte: today },
+                    "shift_design.shift_code": shift_code
+                }
+            }
+        });
 
-        // Step 3: Delete future attendance records related to the shift
-        await AttendanceSchema.deleteMany(
-            { date: { $gte: today }, "shift_info.shift_code": shift_code }
-        );
+        // Iterate over each employee and their schedules to remove the shift
+        for (let employee of employees) {
+            employee.department.forEach(department => {
+                department.schedules = department.schedules.map(schedule => {
+                    if (schedule.date >= today) {
+                        // Filter out the shift to be deleted
+                        schedule.shift_design = schedule.shift_design.filter(shift => shift.shift_code !== shift_code);
+                    }
+                    return schedule;
+                });
+            });
 
+            // Save the modified employee document
+            await employee.save();
+        }
+
+        // Delete future attendance records related to the shift
+        await AttendanceSchema.deleteMany({
+            date: { $gte: today },
+            "shift_info.shift_code": shift_code
+        });
+
+        // Delete the shift
         await ShiftSchema.findOneAndDelete({ code: shift_code });
+
         res.status(OK).json({
             success: true,
             status: OK,

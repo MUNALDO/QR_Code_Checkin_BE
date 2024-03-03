@@ -9,7 +9,22 @@ const departmentSchema = new mongoose.Schema(
             required: true
         },
         members: [],
-        cars: [],
+        cars: [
+            {
+                _id: {
+                    type: mongoose.Types.ObjectId
+                },
+                name: {
+                    type: String,
+                },
+                number: {
+                    type: String
+                },
+                register_date: {
+                    type: Date
+                }
+            }
+        ],
         wifi_ip: {
             type: String
         }

@@ -722,7 +722,7 @@ export const getAttendanceForInhaber = async (req, res, next) => {
 
 export const getSalaryForInhaber = async (req, res, next) => {
     try {
-        const { year, month, employeeID, department_name } = req.query;
+        const { year, month, employeeID, employeeName, department_name } = req.query;
         const inhaberName = req.query.inhaber_name;
 
         const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
@@ -734,19 +734,29 @@ export const getSalaryForInhaber = async (req, res, next) => {
         if (year) query.year = parseInt(year);
         if (month) query.month = parseInt(month);
 
-        let departmentFilter = department_name ?
-            { 'department.name': department_name } :
-            { 'department.name': { $in: inhaber.department.map(dep => dep.name) } };
+        let employeeIds = [];
+        if (department_name) {
+            const employeesInDepartment = await EmployeeSchema.find({ 'department.name': { $in: inhaber.department.map(dep => dep.name) } }).select('id');
+            employeeIds = employeesInDepartment.map(employee => employee.id);
+        }
 
-        const employees = await EmployeeSchema.find(departmentFilter).select('id name');
-        if (employees.length === 0) {
+        // let departmentFilter = department_name ?
+        //     { 'department.name': department_name } :
+        //     { 'department.name': { $in: inhaber.department.map(dep => dep.name) } };
+
+        const employees = employeeID ?
+        await EmployeeSchema.find({ id: employeeID, name: employeeName }) :
+        await EmployeeSchema.find(department_name ? { id: { $in: employeeIds } } : {});        if (employees.length === 0) {
             return res.status(NOT_FOUND).json({ error: "No employees found in selected departments" });
         }
 
         // Map each employee to their salary record or a default zeroed record
         const employeeSalaries = await Promise.all(employees.map(async (employee) => {
-            let employeeQuery = { ...query, employee_id: employee.id };
-            const salaryRecord = await SalarySchema.findOne(employeeQuery);
+            const salaryRecord = await SalarySchema.findOne({
+                employee_id: employee.id,
+                employee_name: employee.name,
+                ...query
+            });
 
             if (salaryRecord) {
                 return salaryRecord;
@@ -1451,6 +1461,59 @@ export const updateCarByInhaber = async (req, res, next) => {
     }
 };
 
+export const updateCarByIdInhaber = async (req, res, next) => {
+    const carID = req.params.carID;
+    const inhaberName = req.query.inhaber_name;
+    try {
+        // Validate Inhaber and get their departments
+        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: "Inhaber" });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        const inhaberDepartments = inhaber.department.map(dep => dep.name);
+
+        // Find the car and validate if it belongs to Inhaber's departments
+        const car = await CarSchema.findById(carID);
+        if (!car) return next(createError(NOT_FOUND, "Car not found!"));
+
+        if (!inhaberDepartments.includes(car.department_name)) {
+            return next(createError(FORBIDDEN, "Access denied to modify car in this department."));
+        }
+
+        // Updating car details
+        Object.assign(car, req.body);
+        await car.save();
+
+        const departments = await DepartmentSchema.find({
+            cars: {
+                $elemMatch: { _id: car._id }
+            }
+        });
+
+        for (const department of departments) {
+            const carIndex = department.cars.findIndex(c => c._id ? c._id.toString() === carID : false);
+            if (carIndex !== -1) {
+                department.cars[carIndex].name = car.car_name;
+                department.cars[carIndex].number = car.car_number;
+                department.cars[carIndex].department_name = department.name;
+                department.cars[carIndex].register_date = car.register_date;
+
+                department.markModified('cars');
+                await department.save();
+            } else {
+                console.log("Err!");
+            }
+        }
+
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: car,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const deleteCarByInhaber = async (req, res, next) => {
     const { car_number } = req.params;
     const inhaberName = req.query.inhaber_name;
@@ -1483,6 +1546,43 @@ export const deleteCarByInhaber = async (req, res, next) => {
             success: true,
             status: OK,
             message: `Car ${car_number} deleted successfully`,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const deleteCarByIdInhaber = async (req, res, next) => {
+    const carID = req.params.carID;
+    const inhaberName = req.query.inhaber_name;
+    try {
+        const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: "Inhaber" });
+        if (!inhaber) return next(createError(NOT_FOUND, "Inhaber not found!"));
+
+        const inhaberDepartments = inhaber.department.map(dep => dep.name);
+
+        const car = await CarSchema.findById(carID);
+        if (!car) return next(createError(NOT_FOUND, "Car not found!"));
+
+        if (!inhaberDepartments.includes(car.department_name)) {
+            return next(createError(FORBIDDEN, "Access denied to delete car in this department."));
+        }
+
+        const departments = await DepartmentSchema.find({
+            'cars.number': car.car_number,
+            'name': { $in: inhaberDepartments }
+        });
+
+        for (const department of departments) {
+            department.cars = department.cars.filter(c => c.number !== car.car_number);
+            await department.save();
+        }
+
+        await CarSchema.findByIdAndDelete(carID);
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: `Car ${car.car_number} deleted successfully`,
         });
     } catch (err) {
         next(err);

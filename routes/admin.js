@@ -5,9 +5,10 @@ import {
     madeEmployeeInactive, searchSpecific, updateAttendance, updateEmployee
 } from '../controllers/adminController.js';
 import {
-    addCarToDepartment,
-    addMemberDepartment, createCar, createDepartment, deleteCar, deleteDepartmentByName, getAllDepartments,
-    getCar, getCarById, getDepartmentByName, getDepartmentSpecific, removeCarFromDepartment, removeMemberDepartment, updateCarByCarNumber, updateCarById, updateDepartment
+    addCarToDepartment, addMemberDepartment, createCar, createDepartment, deleteCar,
+    deleteCarById, deleteDepartmentByName, getAllDepartments, getCar, getCarById,
+    getDepartmentByName, getDepartmentSpecific, removeCarFromDepartment, removeMemberDepartment,
+    updateCarById, updateDepartment
 } from '../controllers/departmentController.js';
 import {
     createShift, deleteShiftByCode, getAllShifts,
@@ -96,11 +97,12 @@ router.get('/manage-xlsx/employee-attendance', verifyTokenAdmin, exportEmployeeA
 router.post('/manage-car/create', verifyTokenAdmin, createCar);
 router.get('/manage-car/get', verifyTokenAdmin, getCar);
 router.get('/manage-car/get-by-id/:carID', verifyTokenAdmin, getCarById);
-router.put('/manage-car/update/:car_number', verifyTokenAdmin, updateCarByCarNumber);
+// router.put('/manage-car/update/:car_number', verifyTokenAdmin, updateCarByCarNumber);
 router.put('/manage-car/update-by-id/:carID', verifyTokenAdmin, updateCarById);
 router.post('/manage-car/add-car/:departmentName/:carID', verifyTokenAdmin, addCarToDepartment);
 router.post('/manage-car/remove-car/:departmentName/:carID', verifyTokenAdmin, removeCarFromDepartment);
 router.delete('/manage-car/delete/:car_number', verifyTokenAdmin, deleteCar);
+router.delete('/manage-car/delete-by-id/:carID', verifyTokenAdmin, deleteCarById);
 
 // manage stats
 router.get('/manage-stats/get', verifyTokenAdmin, getStats);

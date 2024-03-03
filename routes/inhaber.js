@@ -5,7 +5,8 @@ import {
     getRequestByIdForInhaber, getSalaryForInhaber, getStatsForInhaber, handleRequestForInhaber,
     removeMemberFromDepartmentByInhaber, searchSpecificForInhaber, deleteEmployeeByIdByInhaber,
     updateAttendanceForInhaber, updateEmployeeByInhaber, getEmployeesSchedulesByInhaber,
-    getFormByInhaber, createCarByInhaber, getCarByInhaber, deleteCarByInhaber, updateCarByInhaber
+    getFormByInhaber, createCarByInhaber, getCarByInhaber, deleteCarByInhaber, updateCarByInhaber,
+    updateCarByIdInhaber, deleteCarByIdInhaber
 } from '../controllers/inhaberController.js';
 import {
     createShift, deleteShiftByCode, getAllShifts, getShiftByCode,
@@ -19,6 +20,7 @@ import {
     exportEmployeeSalaryDataForInhaberToExcel
 } from '../controllers/xlsxController.js';
 import { createAttendance, madeEmployeeInactive } from '../controllers/adminController.js';
+import { getCarById } from '../controllers/departmentController.js';
 
 const router = express.Router();
 
@@ -77,7 +79,10 @@ router.get('/manage-form/get', verifyTokenInhaber, getFormByInhaber);
 // manage cars
 router.post('/manage-car/create', verifyTokenInhaber, createCarByInhaber);
 router.get('/manage-car/get', verifyTokenInhaber, getCarByInhaber);
+router.get('/manage-car/get-by-id/:carID', verifyTokenInhaber, getCarById);
+router.put('/manage-car/update-by-id/:carID', verifyTokenInhaber, updateCarByIdInhaber);
 router.put('/manage-car/update', verifyTokenInhaber, updateCarByInhaber);
 router.delete('/manage-car/delete', verifyTokenInhaber, deleteCarByInhaber);
+router.delete('/manage-car/delete-by-id', verifyTokenInhaber, deleteCarByIdInhaber);
 
 export default router;

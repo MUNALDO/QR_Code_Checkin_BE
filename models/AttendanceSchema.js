@@ -133,7 +133,8 @@ const attendanceSchema = new mongoose.Schema(
         },
         results: {
             // both service & lito
-            type: Number
+            type: Number,
+            default: 0
         },
         status: {
             type: String,

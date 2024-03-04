@@ -3,7 +3,6 @@ import { BAD_REQUEST, CREATED, FORBIDDEN, NOT_FOUND, OK } from "../constant/Http
 import EmployeeSchema from "../models/EmployeeSchema.js";
 import AttendanceSchema from "../models/AttendanceSchema.js";
 import ShiftSchema from "../models/ShiftSchema.js";
-import cron from 'node-cron';
 import DepartmentSchema from "../models/DepartmentSchema.js";
 import RequestSchema from "../models/RequestSchema.js";
 import LogSchema from "../models/LogSchema.js";
@@ -73,7 +72,7 @@ export const updateEmployeeByInhaber = async (req, res, next) => {
         for (let departmentObject of updatedEmployee.department) {
             const department = await DepartmentSchema.findOne({ name: departmentObject.name });
             if (department) {
-                const memberIndex = department.members.findIndex(member => member.id === updatedEmployee.id && member.name === updatedEmployee.name);
+                const memberIndex = department.members.findIndex(member => member.id === updatedEmployee.id);
                 if (memberIndex !== -1) {
                     const originalPosition = department.members[memberIndex].position;
                     department.members[memberIndex] = {
@@ -172,7 +171,7 @@ export const deleteEmployeeByIdByInhaber = async (req, res, next) => {
         for (let departmentObject of employee.department) {
             const department = await DepartmentSchema.findOne({ name: departmentObject.name });
             if (department) {
-                department.members = department.members.filter(member => member.id !== employee.id && member.name !== employee.name);
+                department.members = department.members.filter(member => member.id !== employee.id);
                 await department.save();
             }
         }

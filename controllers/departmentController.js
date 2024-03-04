@@ -141,7 +141,7 @@ export const addMemberDepartment = async (req, res, next) => {
         const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"))
 
-        if (department.members.includes(employee)) return next(createError(CONFLICT, "Employee already exists in the department!"));
+        // if (department.members.includes(employee)) return next(createError(CONFLICT, "Employee already exists in the department!"));
         const departmentObject = {
             name: department_name,
             position: req.body.position

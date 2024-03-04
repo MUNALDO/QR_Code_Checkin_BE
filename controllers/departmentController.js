@@ -155,7 +155,7 @@ export const addMemberDepartment = async (req, res, next) => {
             position: departmentObject.position,
             status: employee.status
         });
-        employee.department.push(departmentObject);
+        // employee.department.push(departmentObject);
 
         const updateDepartment = await department.save();
         const updateEmployee = await employee.save();

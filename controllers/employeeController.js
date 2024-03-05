@@ -867,7 +867,6 @@ export const getColleaguesWorkingTodayByEmployee = async (req, res, next) => {
     const employeeID = req.query.employeeID;
     const employeeName = req.query.employeeName;
     const targetDate = req.query.date ? new Date(req.query.date) : new Date();
-
     try {
         const targetEmployee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!targetEmployee) {
@@ -949,6 +948,74 @@ export const getColleaguesWorkingTodayByEmployee = async (req, res, next) => {
             success: true,
             status: OK,
             message: colleaguesByShiftAndDepartment
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getColleaguesWorkingTodayByEmployees = async (req, res, next) => {
+    const targetDate = req.query.date ? new Date(req.query.date) : new Date();
+    // Normalize the target date to ensure consistency in comparisons
+    targetDate.setHours(0, 0, 0, 0);
+
+    try {
+        // Fetch all employees who have a schedule matching the target date, across any department or shift.
+        const employeesWorkingToday = await EmployeeSchema.find({
+            "department.schedules.date": {
+                $gte: targetDate,
+                $lt: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000), // Plus one day in milliseconds
+            }
+        }).lean(); // Using lean() for performance, since we only read data.
+
+        let shiftsByDepartment = {};
+
+        // Iterate through each employee and their schedules to populate the shiftsByDepartment object
+        employeesWorkingToday.forEach(employee => {
+            employee.department.forEach(department => {
+                department.schedules.forEach(schedule => {
+                    const scheduleDate = new Date(schedule.date);
+                    scheduleDate.setHours(0, 0, 0, 0);
+
+                    if (scheduleDate.getTime() === targetDate.getTime()) {
+                        schedule.shift_design.forEach(shift => {
+                            // Ensure the department exists in the shiftsByDepartment object
+                            if (!shiftsByDepartment[department.name]) {
+                                shiftsByDepartment[department.name] = {};
+                            }
+
+                            // Ensure the shift exists under this department
+                            if (!shiftsByDepartment[department.name][shift.shift_code]) {
+                                shiftsByDepartment[department.name][shift.shift_code] = [];
+                            }
+
+                            // Add the employee to the shift under their department
+                            shiftsByDepartment[department.name][shift.shift_code].push({
+                                id: employee.id,
+                                name: employee.name,
+                            });
+                        });
+                    }
+                });
+            });
+        });
+
+        // Convert the shiftsByDepartment object into a structured array for a cleaner API response
+        let result = [];
+        Object.keys(shiftsByDepartment).forEach(departmentName => {
+            Object.keys(shiftsByDepartment[departmentName]).forEach(shiftCode => {
+                result.push({
+                    department: departmentName,
+                    shift_code: shiftCode,
+                    employees: shiftsByDepartment[departmentName][shiftCode],
+                });
+            });
+        });
+
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            data: result,
         });
     } catch (err) {
         next(err);

@@ -1,7 +1,7 @@
 import express from 'express';
 import {
     checkAttendance, collectIP, createRequest, getAllCarsCompany,
-    getAllRequestsForEmployee, getColleaguesWorkingTodayByEmployee, getDateDesignCurrentByEmployee,
+    getAllRequestsForEmployee, getColleaguesWorkingTodayByEmployee, getColleaguesWorkingTodayByEmployees, getDateDesignCurrentByEmployee,
     getEmployeeAttendanceCurrentMonth, updateAttendance, verifyWifi
 } from '../controllers/employeeController.js';
 // import { verifyTokenEmployee } from '../utils/verifyToken.js';
@@ -27,6 +27,7 @@ router.get('/get-all-request', getAllRequestsForEmployee);
 // schedule
 router.get('/get-schedules', getDateDesignCurrentByEmployee);
 router.get('/get-co-worker', getColleaguesWorkingTodayByEmployee);
+router.get('/get-co-worker/get-by-date', getColleaguesWorkingTodayByEmployees);
 
 // car
 router.get('/get-car', getAllCarsCompany);

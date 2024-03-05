@@ -867,6 +867,7 @@ export const getColleaguesWorkingTodayByEmployee = async (req, res, next) => {
     const employeeID = req.query.employeeID;
     const employeeName = req.query.employeeName;
     const targetDate = req.query.date ? new Date(req.query.date) : new Date();
+
     try {
         const targetEmployee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!targetEmployee) {
@@ -907,31 +908,36 @@ export const getColleaguesWorkingTodayByEmployee = async (req, res, next) => {
                                     }
                                 }
                             }
-                        }).select('');
+                        });
 
                         colleagues.forEach(colleague => {
                             if (colleague.id !== targetEmployee.id) {
-                                // Find the department of the colleague
-                                const colleagueDepartment = colleague.department.find(dep => dep.schedules.some(sch => sch.date.getTime() === scheduleDate.getTime()));
+                                // Iterate through each department of the colleague
+                                colleague.department.forEach(colDep => {
+                                    colDep.schedules.forEach(sch => {
+                                        const match = sch.shift_design.some(sd => sd.shift_code === shiftDesign.shift_code && new Date(sch.date).setHours(0, 0, 0, 0) === scheduleDate.setHours(0, 0, 0, 0));
+                                        if (match) {
+                                            // We have found a colleague in the same department, on the same shift and date
+                                            const departmentName = colDep.name;
 
-                                // Find or create the array for the department
-                                const departmentArray = colleaguesByShiftAndDepartment[shiftIndex].info.find(depArr => depArr.department === colleagueDepartment.name);
-                                if (departmentArray) {
-                                    // Add to existing department array
-                                    departmentArray.co_workers.push({
-                                        id: colleague.id,
-                                        name: colleague.name
+                                            // Find or create the array for the department
+                                            let departmentArray = colleaguesByShiftAndDepartment[shiftIndex].info.find(depArr => depArr.department === departmentName);
+                                            
+                                            if (!departmentArray) {
+                                                departmentArray = {
+                                                    department: departmentName,
+                                                    co_workers: []
+                                                };
+                                                colleaguesByShiftAndDepartment[shiftIndex].info.push(departmentArray);
+                                            }
+                                            
+                                            departmentArray.co_workers.push({
+                                                id: colleague.id,
+                                                name: colleague.name
+                                            });
+                                        }
                                     });
-                                } else {
-                                    // Create a new department array
-                                    colleaguesByShiftAndDepartment[shiftIndex].info.push({
-                                        department: colleagueDepartment.name,
-                                        co_workers: [{
-                                            id: colleague.id,
-                                            name: colleague.name
-                                        }]
-                                    });
-                                }
+                                });
                             }
                         });
                     }

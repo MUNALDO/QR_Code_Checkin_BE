@@ -739,6 +739,16 @@ export const getEmployeeAttendanceCurrentMonth = async (req, res, next) => {
         const employeeID = req.query.employeeID;
         const employeeName = req.query.employeeName;
         const departmentName = req.query.department_name;
+        const targetDate = req.query.date ? new Date(req.query.date) : null;
+
+        // Get current year and month if not provided
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const currentMonth = currentDate.getMonth();
+
+        // Use query year and month if provided, otherwise use current year and month
+        const targetYear = req.query.year ? parseInt(req.query.year) : currentYear;
+        const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : currentMonth;
 
         if (!employeeID || !employeeName) {
             return res.status(BAD_REQUEST).json({
@@ -748,16 +758,21 @@ export const getEmployeeAttendanceCurrentMonth = async (req, res, next) => {
             });
         }
 
-        // Use current year and month
-        const currentDate = new Date();
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-
-        // Define date range for the entire current month
-        const dateRange = {
-            $gte: new Date(year, month, 1),
-            $lt: new Date(year, month + 1, 1),
-        };
+        // Define date range for the entire current month or a specific day
+        let dateRange;
+        if (targetDate) {
+            const beginOfDay = new Date(targetDate.setHours(0,0,0,0));
+            const endOfDay = new Date(targetDate.setHours(23,59,59,999));
+            dateRange = {
+                $gte: beginOfDay,
+                $lt: endOfDay,
+            };
+        } else {
+            dateRange = {
+                $gte: new Date(targetYear, targetMonth, 1),
+                $lt: new Date(targetYear, targetMonth + 1, 1),
+            };
+        }
 
         // Construct the base query
         let query = {

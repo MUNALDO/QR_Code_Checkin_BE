@@ -85,9 +85,9 @@ export const createMultipleDateDesigns = async (req, res, next) => {
                     const newStartTime = convertToMinutes(newShiftStartTime);
                     const newEndTime = convertToMinutes(newShiftEndTime);
 
-                    const startsDuringExisting = newStartTime >= existingStartTime && newStartTime < existingEndTime;
-                    const endsDuringExisting = newEndTime > existingStartTime && newEndTime <= existingEndTime;
-                    const overlapsExistingEnd = newStartTime <= existingEndTime + 30;
+                    const startsDuringExisting = (newStartTime >= existingStartTime) && (newStartTime < existingEndTime);
+                    const endsDuringExisting = (newEndTime > existingStartTime) && (newEndTime <= existingEndTime);
+                    const overlapsExistingEnd = (newStartTime <= (existingEndTime + 30));
 
                     return startsDuringExisting || endsDuringExisting || overlapsExistingEnd;
                 });

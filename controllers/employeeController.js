@@ -956,9 +956,7 @@ export const getColleaguesWorkingTodayByEmployee = async (req, res, next) => {
 
 export const getColleaguesWorkingTodayByEmployees = async (req, res, next) => {
     const targetDate = req.query.date ? new Date(req.query.date) : new Date();
-    // Normalize the target date to ensure consistency in comparisons
     targetDate.setHours(0, 0, 0, 0);
-
     try {
         // Fetch all employees who have a schedule matching the target date, across any department or shift.
         const employeesWorkingToday = await EmployeeSchema.find({

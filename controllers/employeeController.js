@@ -761,8 +761,8 @@ export const getEmployeeAttendanceCurrentMonth = async (req, res, next) => {
         // Define date range for the entire current month or a specific day
         let dateRange;
         if (targetDate) {
-            const beginOfDay = new Date(targetDate.setHours(0,0,0,0));
-            const endOfDay = new Date(targetDate.setHours(23,59,59,999));
+            const beginOfDay = new Date(targetDate.setHours(0, 0, 0, 0));
+            const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
             dateRange = {
                 $gte: beginOfDay,
                 $lt: endOfDay,
@@ -936,7 +936,7 @@ export const getColleaguesWorkingTodayByEmployee = async (req, res, next) => {
 
                                             // Find or create the array for the department
                                             let departmentArray = colleaguesByShiftAndDepartment[shiftIndex].info.find(depArr => depArr.department === departmentName);
-                                            
+
                                             if (!departmentArray) {
                                                 departmentArray = {
                                                     department: departmentName,
@@ -944,7 +944,7 @@ export const getColleaguesWorkingTodayByEmployee = async (req, res, next) => {
                                                 };
                                                 colleaguesByShiftAndDepartment[shiftIndex].info.push(departmentArray);
                                             }
-                                            
+
                                             departmentArray.co_workers.push({
                                                 id: colleague.id,
                                                 name: colleague.name
@@ -973,7 +973,6 @@ export const getColleaguesWorkingTodayByEmployees = async (req, res, next) => {
     const targetDate = req.query.date ? new Date(req.query.date) : new Date();
     targetDate.setHours(0, 0, 0, 0);
     try {
-        // Fetch all employees who have a schedule matching the target date, across any department or shift.
         const employeesWorkingToday = await EmployeeSchema.find({
             "department.schedules.date": {
                 $gte: targetDate,
@@ -984,14 +983,14 @@ export const getColleaguesWorkingTodayByEmployees = async (req, res, next) => {
         let shiftsByDepartment = {};
 
         // Iterate through each employee and their schedules to populate the shiftsByDepartment object
-        employeesWorkingToday.forEach(employee => {
-            employee.department.forEach(department => {
-                department.schedules.forEach(schedule => {
+        for (const employee of employeesWorkingToday) {
+            for (const department of employee.department) {
+                for (const schedule of department.schedules) {
                     const scheduleDate = new Date(schedule.date);
                     scheduleDate.setHours(0, 0, 0, 0);
 
                     if (scheduleDate.getTime() === targetDate.getTime()) {
-                        schedule.shift_design.forEach(shift => {
+                        for (const shift of schedule.shift_design) {
                             // Ensure the department exists in the shiftsByDepartment object
                             if (!shiftsByDepartment[department.name]) {
                                 shiftsByDepartment[department.name] = {};
@@ -1007,23 +1006,27 @@ export const getColleaguesWorkingTodayByEmployees = async (req, res, next) => {
                                 id: employee.id,
                                 name: employee.name,
                             });
-                        });
+                        }
                     }
-                });
-            });
-        });
+                }
+            }
+        }
 
         // Convert the shiftsByDepartment object into a structured array for a cleaner API response
         let result = [];
-        Object.keys(shiftsByDepartment).forEach(departmentName => {
-            Object.keys(shiftsByDepartment[departmentName]).forEach(shiftCode => {
-                result.push({
-                    department: departmentName,
-                    shift_code: shiftCode,
-                    employees: shiftsByDepartment[departmentName][shiftCode],
-                });
-            });
-        });
+        for (const departmentName of Object.keys(shiftsByDepartment)) {
+            for (const shiftCode of Object.keys(shiftsByDepartment[departmentName])) {
+                const shift_info = await ShiftSchema.findOne({ code: shiftCode });
+                if (shift_info) {
+                    result.push({
+                        department: departmentName,
+                        shift_code: shiftCode,
+                        time: `${shift_info.time_slot.start_time} - ${shift_info.time_slot.end_time}`,
+                        employees: shiftsByDepartment[departmentName][shiftCode],
+                    });
+                }
+            }
+        }
 
         res.status(OK).json({
             success: true,

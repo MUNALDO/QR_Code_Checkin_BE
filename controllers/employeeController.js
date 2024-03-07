@@ -236,6 +236,7 @@ const updateExistingAttendance = async (employee, department, attendance, shiftT
         attendance.shift_info.time_slot.check_out_time = `${shiftTimes.endHours}: ${shiftTimes.endMinutes}`;
         attendance.shift_info.time_slot.check_out_status = 'late';
         attendance.status = 'checked';
+        attendance.isAuto = true;
         const checkOutTimeString = attendance.shift_info.time_slot.check_out_time;
         const checkOutTime = new Date(`${currentTime.toDateString()} ${checkOutTimeString}`);
 

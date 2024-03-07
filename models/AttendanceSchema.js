@@ -139,6 +139,10 @@ const attendanceSchema = new mongoose.Schema(
         status: {
             type: String,
             enum: ['checked', 'missing']
+        },
+        isAuto: {
+            type: Boolean,
+            default: false
         }
     },
     { timestamps: true }

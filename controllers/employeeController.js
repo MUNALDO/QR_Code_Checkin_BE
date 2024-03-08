@@ -596,6 +596,7 @@ export const updateAttendance = async (req, res, next) => {
                         });
                     }
                     existingAttendance.check_in_km = req.body.check_in_km;
+                    existingAttendance.isAuto = false;
                     await existingAttendance.save();
 
                     return res.status(OK).json({
@@ -613,6 +614,7 @@ export const updateAttendance = async (req, res, next) => {
                     }
                     existingAttendance.check_out_km = req.body.check_out_km;
                     existingAttendance.total_km = existingAttendance.check_out_km - existingAttendance.check_in_km;
+                    existingAttendance.isAuto = false;
                     await existingAttendance.save();
 
                     return res.status(OK).json({
@@ -670,6 +672,7 @@ export const updateAttendance = async (req, res, next) => {
                             });
                         }
                     }
+                    existingAttendance.isAuto = false;
                     await existingAttendance.save();
                     return res.status(OK).json({
                         success: true,
@@ -709,6 +712,7 @@ export const updateAttendance = async (req, res, next) => {
                     } else {
                         existingAttendance.results = req.body.bar + req.body.kassen_schniff - req.body.kredit_karte - (0.5 / 100) * (req.body.gesamt_ligerbude + req.body.gesamt_liegerando);
                     }
+                    existingAttendance.isAuto = false;
                     await existingAttendance.save();
                     return res.status(OK).json({
                         success: true,

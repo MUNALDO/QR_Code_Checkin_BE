@@ -142,7 +142,7 @@ const getShiftTimes = (currentDateTime, timeSlot) => {
 
 const isShiftTimeElapsed = (shiftTimes, currentDateTime) => {
     const endTimePlus30 = new Date(shiftTimes.shiftEndTime);
-    endTimePlus30.setMinutes(endTimePlus30.getMinutes() + 30);
+    endTimePlus30.setMinutes(endTimePlus30.getMinutes() + 5);
     return currentDateTime > endTimePlus30;
 };
 

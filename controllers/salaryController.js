@@ -195,11 +195,12 @@ export const getSalary = async (req, res, next) => {
                 return salaryRecord;
             } else {
                 // Return default salary object for employees without a salary record
-                return {
+                // This may need to be adjusted if you don't want to return a default object when there are no salary records
+                return [{
                     employee_id: employee.id,
                     employee_name: employee.name,
-                    year: year || 0,
-                    month: month || 0,
+                    year: year || 'N/A', // Changed 0 to 'N/A' for clarity, adjust as necessary
+                    month: month || 'N/A', // Changed 0 to 'N/A' for clarity, adjust as necessary
                     total_salary: 0,
                     total_times: 0,
                     day_off: 0,
@@ -211,10 +212,9 @@ export const getSalary = async (req, res, next) => {
                     c_parameter: 0,
                     d_parameter: 0,
                     f_parameter: 0
-                };
+                }];
             }
-        }));
-
+        })).then(employeeRecords => employeeRecords.flat());
         if (employeeSalaries.length === 0) {
             return res.status(NOT_FOUND).json({
                 success: false,

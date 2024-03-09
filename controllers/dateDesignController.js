@@ -97,7 +97,7 @@ export const createMultipleDateDesigns = async (req, res, next) => {
                     sch.shift_design.some(design => design.shift_code === shiftCode)
                 );
 
-                if (hasConflict || shiftExistsInDepartment) {
+                if (shiftExistsInDepartment) {
                     errorDates.push({ date: dateString, message: "Shift conflict or duplicate shift code detected in one of the departments." });
                     conflictFound = true;
                     break;

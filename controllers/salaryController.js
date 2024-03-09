@@ -172,35 +172,36 @@ export const getSalary = async (req, res, next) => {
         if (year) query.year = parseInt(year);
         if (month) query.month = parseInt(month);
 
-        let employeeIds = [];
+        let employees;
         if (department_name) {
-            const employeesInDepartment = await EmployeeSchema.find({ 'department.name': department_name }).select('id');
-            employeeIds = employeesInDepartment.map(employee => employee.id);
+            // Get all employees in the department
+            employees = await EmployeeSchema.find({ 'department.name': department_name });
+        } else {
+            // Get all employees if no department name is provided
+            employees = await EmployeeSchema.find({});
         }
 
-        // Get all employees or just the ones in the specified department
-        const allEmployees = employeeID ?
-            await EmployeeSchema.find({ id: employeeID, name: employeeName }) :
-            await EmployeeSchema.find(department_name ? { id: { $in: employeeIds } } : {});
+        // Get salary records for all employees or for the specified employee
+        const employeeSalaries = await Promise.all(employees.map(async (employee) => {
+            // If employeeID and employeeName are specified, filter by them
+            if (employeeID && employeeName && (employee.id !== employeeID || employee.name !== employeeName)) {
+                // Skip this employee as they do not match the query
+                return [];
+            }
 
-        // Map each employee to their salary record or a default zeroed record
-        const employeeSalaries = await Promise.all(allEmployees.map(async (employee) => {
-            const salaryRecord = await SalarySchema.find({
+            let salaryRecords = await SalarySchema.find({
                 employee_id: employee.id,
                 employee_name: employee.name,
                 ...query
             });
 
-            if (salaryRecord) {
-                return salaryRecord;
-            } else {
-                // Return default salary object for employees without a salary record
-                // This may need to be adjusted if you don't want to return a default object when there are no salary records
-                return [{
+            // If no salary records found, create a default record
+            if (!salaryRecords.length) {
+                salaryRecords = [{
                     employee_id: employee.id,
                     employee_name: employee.name,
-                    year: year || 'N/A', // Changed 0 to 'N/A' for clarity, adjust as necessary
-                    month: month || 'N/A', // Changed 0 to 'N/A' for clarity, adjust as necessary
+                    year: year || 'N/A', // Changed 0 to 'N/A' for clarity
+                    month: month || 'N/A', // Changed 0 to 'N/A' for clarity
                     total_salary: 0,
                     total_times: 0,
                     day_off: 0,
@@ -214,23 +215,29 @@ export const getSalary = async (req, res, next) => {
                     f_parameter: 0
                 }];
             }
-        })).then(employeeRecords => employeeRecords.flat());
-        if (employeeSalaries.length === 0) {
+
+            return salaryRecords;
+        }));
+
+        const flattenedSalaries = employeeSalaries.flat();
+
+        if (flattenedSalaries.length === 0) {
             return res.status(NOT_FOUND).json({
                 success: false,
                 status: NOT_FOUND,
-                message: "No employees found."
+                message: "No salary records found."
             });
         }
 
         return res.status(OK).json({
             success: true,
             status: OK,
-            message: employeeSalaries
+            data: flattenedSalaries
         });
     } catch (err) {
         next(err);
     }
 };
+
 
 

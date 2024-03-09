@@ -185,7 +185,7 @@ export const getSalary = async (req, res, next) => {
 
         // Map each employee to their salary record or a default zeroed record
         const employeeSalaries = await Promise.all(allEmployees.map(async (employee) => {
-            const salaryRecord = await SalarySchema.findOne({
+            const salaryRecord = await SalarySchema.find({
                 employee_id: employee.id,
                 employee_name: employee.name,
                 ...query

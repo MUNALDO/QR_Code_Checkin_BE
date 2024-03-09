@@ -232,7 +232,7 @@ export const getSalary = async (req, res, next) => {
         return res.status(OK).json({
             success: true,
             status: OK,
-            data: flattenedSalaries
+            message: flattenedSalaries
         });
     } catch (err) {
         next(err);

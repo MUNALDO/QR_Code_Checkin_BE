@@ -1587,3 +1587,63 @@ export const deleteCarByIdInhaber = async (req, res, next) => {
         next(err);
     }
 };
+
+export const getAttendanceStatsForInhaber = async (req, res, next) => {
+    const { year, month, employeeID, employeeName, department_name, inhaber_name } = req.query;
+    try {
+        let employeeQuery = {};
+        let inhaberDepartments = [];
+
+        if (employeeID && employeeName) {
+            employeeQuery['id'] = employeeID;
+            employeeQuery['name'] = employeeName;
+        }
+
+        if (inhaber_name) {
+            // Find the Inhaber by name to get the departments they are associated with
+            const inhaber = await EmployeeSchema.findOne({ name: inhaber_name, role: "Inhaber" }).select('department');
+            if (inhaber && inhaber.department) {
+                // If the Inhaber has departments, store their names in an array
+                inhaberDepartments = inhaber.department.map(dept => dept.name);
+            } else {
+                return res.status(NOT_FOUND).json({ message: `Inhaber named ${inhaber_name} not found or has no departments` });
+            }
+        }
+
+        // Fetch employees based on the constructed query
+        const employees = await EmployeeSchema.find(employeeQuery).select('id name department');
+
+        if (employees.length === 0) {
+            return res.status(NOT_FOUND).json({ message: "No matching employees found" });
+        }
+
+        const stats = employees.map(emp => ({
+            employee_id: emp.id,
+            employee_name: emp.name,
+            attendance_stats: emp.department
+                // Filter for mutual departments between Inhaber and Employee, or for a specific department if provided
+                .filter(dept => (inhaberDepartments.length === 0 || inhaberDepartments.includes(dept.name)) &&
+                                (!department_name || dept.name === department_name))
+                .flatMap(dept => dept.attendance_stats
+                    .filter(stat => (!year || stat.year === parseInt(year)) && (!month || stat.month === parseInt(month)))
+                    .map(stat => ({
+                        ...stat.toObject(),
+                        department_name: dept.name
+                    }))
+                )
+        }));
+
+        // If no mutual departments are found for any employee, it's an error
+        if (stats.every(stat => stat.attendance_stats.length === 0)) {
+            return res.status(NOT_FOUND).json({ message: "No mutual departments found between Inhaber and employees" });
+        }
+
+        return res.status(OK).json({
+            success: true,
+            status: OK,
+            message: stats
+        });
+    } catch (error) {
+        next(error);
+    }
+};

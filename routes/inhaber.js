@@ -6,7 +6,8 @@ import {
     removeMemberFromDepartmentByInhaber, searchSpecificForInhaber, deleteEmployeeByIdByInhaber,
     updateAttendanceForInhaber, updateEmployeeByInhaber, getEmployeesSchedulesByInhaber,
     getFormByInhaber, createCarByInhaber, getCarByInhaber, deleteCarByInhaber, updateCarByInhaber,
-    updateCarByIdInhaber, deleteCarByIdInhaber
+    updateCarByIdInhaber, deleteCarByIdInhaber,
+    getAttendanceStatsForInhaber
 } from '../controllers/inhaberController.js';
 import {
     createShift, deleteShiftByCode, getAllShifts, getShiftByCode,
@@ -49,6 +50,7 @@ router.delete('/manage-shift/delete', verifyTokenInhaber, deleteShiftByCode);
 router.post('/manage-attendance/create', verifyTokenInhaber, createAttendance);
 router.get('/manage-attendance/get-by-specific', verifyTokenInhaber, getAttendanceForInhaber);
 router.put('/manage-attendance/update/:_id', verifyTokenInhaber, updateAttendanceForInhaber);
+router.get('/manage-attendance/get-stats', verifyTokenInhaber, getAttendanceStatsForInhaber);
 
 // manage salary
 router.post('/manage-salary/calculate/:employeeID', verifyTokenInhaber, salaryCalculate);

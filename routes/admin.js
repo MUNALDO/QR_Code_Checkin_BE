@@ -99,7 +99,7 @@ router.get('/manage-car/get', verifyTokenAdmin, getCar);
 router.get('/manage-car/get-by-id/:carID', verifyTokenAdmin, getCarById);
 // router.put('/manage-car/update/:car_number', verifyTokenAdmin, updateCarByCarNumber);
 router.put('/manage-car/update-by-id/:carID', verifyTokenAdmin, updateCarById);
-router.post('/manage-car/add-car/:departmentName/:carID', verifyTokenAdmin, addCarToDepartment);
+router.post('/manage-car/add-car/:carID', verifyTokenAdmin, addCarToDepartment);
 router.post('/manage-car/remove-car/:departmentName/:carID', verifyTokenAdmin, removeCarFromDepartment);
 router.delete('/manage-car/delete/:car_number', verifyTokenAdmin, deleteCar);
 router.delete('/manage-car/delete-by-id/:carID', verifyTokenAdmin, deleteCarById);

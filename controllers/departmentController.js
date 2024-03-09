@@ -351,8 +351,8 @@ export const updateCarById = async (req, res, next) => {
 };
 
 export const addCarToDepartment = async (req, res, next) => {
-    const { departmentName, carID } = req.params;
-
+    const { carID } = req.params;
+    const departmentName = req.body.departmentName;
     try {
         const department = await DepartmentSchema.findOne({ name: departmentName });
         if (!department) return next(createError(NOT_FOUND, "Department not found!"));

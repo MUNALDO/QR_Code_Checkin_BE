@@ -42,8 +42,5 @@
     "useragent": "^2.3.0",
     "wifi-control": "^2.0.1",
     "wifi-name": "^3.1.1"
-  },
-  "engines": {
-    "node": "20.x"
   }
 }

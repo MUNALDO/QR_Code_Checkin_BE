@@ -9,6 +9,8 @@ import ShiftSchema from "../models/ShiftSchema.js";
 import StatsSchema from "../models/StatsSchema.js";
 import { createError } from "../utils/error.js";
 import wifi from 'node-wifi';
+import { s3Client } from "../awsConfig.js";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 
 wifi.init({
     iface: null,
@@ -558,6 +560,23 @@ export const checkAttendance = async (req, res, next) => {
     }
 }
 
+async function uploadImageToS3(file) {
+    const uploadParams = {
+        Bucket: process.env.AWS_S3_BUCKET,
+        Key: `${file.originalname}-${Date.now()}`,
+        Body: file.buffer,
+        ContentType: file.mimetype
+    };
+
+    try {
+        const command = new PutObjectCommand(uploadParams);
+        await s3Client.send(command);
+        return `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+    } catch (error) {
+        throw error;
+    }
+}
+
 export const updateAttendance = async (req, res, next) => {
     const attendanceID = req.query.attendanceID;
     try {
@@ -694,7 +713,9 @@ export const updateAttendance = async (req, res, next) => {
                     existingAttendance.kassen_schniff = req.body.kassen_schniff;
                     existingAttendance.gesamt_ligerbude = req.body.gesamt_ligerbude;
                     existingAttendance.gesamt_liegerando = req.body.gesamt_liegerando;
-                    existingAttendance.lito_image = req.file ? req.file.path : undefined;
+                    const file = req.file;
+                    const imageUrl = await uploadImageToS3(file);
+                    existingAttendance.lito_image = imageUrl;
                     if (!req.body.bar || !req.body.kredit_karte || !req.body.kassen_schniff || !req.body.gesamt_ligerbude || !req.body.gesamt_liegerando) {
                         return res.status(BAD_REQUEST).json({
                             success: false,
@@ -1095,6 +1116,9 @@ export const createRequest = async (req, res, next) => {
         const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
+        const file = req.file;
+        const imageUrl = await uploadImageToS3(file);
+
         if (employee.realistic_day_off > 0) {
             const newRequest = new RequestSchema({
                 employee_id: employee.id,
@@ -1104,7 +1128,7 @@ export const createRequest = async (req, res, next) => {
                 request_dayOff_start: req.body.request_dayOff_start,
                 request_dayOff_end: req.body.request_dayOff_end,
                 request_content: req.body.request_content,
-                image: req.file ? req.file.path : undefined
+                image: imageUrl,
             })
 
             if (newRequest.request_content != "Sick day") {

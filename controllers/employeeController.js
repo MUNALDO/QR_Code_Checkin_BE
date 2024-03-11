@@ -976,14 +976,46 @@ export const getColleaguesWorkingTodayByEmployee = async (req, res, next) => {
 
 export const getColleaguesWorkingTodayByEmployees = async (req, res, next) => {
     const targetDate = req.query.date ? new Date(req.query.date) : new Date();
+    const { employeeID, employeeName } = req.query;
     targetDate.setHours(0, 0, 0, 0);
     try {
-        const employeesWorkingToday = await EmployeeSchema.find({
+        // Find the specific employee's departments for the target date
+        const specificEmployee = await EmployeeSchema.findOne({
+            id: employeeID,
+            name: employeeName,
             "department.schedules.date": {
                 $gte: targetDate,
                 $lt: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000), // Plus one day in milliseconds
             }
-        }).lean(); // Using lean() for performance, since we only read data.
+        }).lean();
+
+        // If the specific employee does not have any shifts on that day, return an empty list
+        if (!specificEmployee) {
+            return res.status(OK).json({
+                success: true,
+                status: OK,
+                data: [],
+            });
+        }
+
+        // Get the list of departments where the specific employee is working on the target date
+        const employeeDepartmentsOnDate = specificEmployee.department
+            .flatMap(dep => dep.schedules)
+            .filter(sch => {
+                const scheduleDate = new Date(sch.date);
+                scheduleDate.setHours(0, 0, 0, 0);
+                return scheduleDate.getTime() === targetDate.getTime();
+            })
+            .flatMap(sch => sch.shift_design.map(sd => sd.position));
+
+        // Get all employees working in those departments on the same day
+        const employeesWorkingToday = await EmployeeSchema.find({
+            "department.name": { $in: employeeDepartmentsOnDate },
+            "department.schedules.date": {
+                $gte: targetDate,
+                $lt: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000),
+            }
+        }).lean();
 
         let shiftsByDepartment = {};
 

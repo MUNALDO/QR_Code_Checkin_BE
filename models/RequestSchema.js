@@ -30,7 +30,10 @@ const requestSchema = new mongoose.Schema(
             type: String,
             enum: ['approved', 'denied', 'pending'],
             default: 'pending'
-        }
+        },
+        image: {
+            type: String,
+        },
     },
     { timestamps: true }
 );

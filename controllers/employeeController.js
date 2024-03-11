@@ -694,6 +694,7 @@ export const updateAttendance = async (req, res, next) => {
                     existingAttendance.kassen_schniff = req.body.kassen_schniff;
                     existingAttendance.gesamt_ligerbude = req.body.gesamt_ligerbude;
                     existingAttendance.gesamt_liegerando = req.body.gesamt_liegerando;
+                    existingAttendance.lito_image = req.file ? req.file.path : undefined;
                     if (!req.body.bar || !req.body.kredit_karte || !req.body.kassen_schniff || !req.body.gesamt_ligerbude || !req.body.gesamt_liegerando) {
                         return res.status(BAD_REQUEST).json({
                             success: false,
@@ -1102,7 +1103,8 @@ export const createRequest = async (req, res, next) => {
                 realistic_day_off: employee.realistic_day_off,
                 request_dayOff_start: req.body.request_dayOff_start,
                 request_dayOff_end: req.body.request_dayOff_end,
-                request_content: req.body.request_content
+                request_content: req.body.request_content,
+                image: req.file ? req.file.path : undefined
             })
 
             if (newRequest.request_content != "Sick day") {

@@ -85,6 +85,6 @@ router.get('/manage-car/get-by-id/:carID', verifyTokenInhaber, getCarById);
 router.put('/manage-car/update-by-id/:carID', verifyTokenInhaber, updateCarByIdInhaber);
 router.put('/manage-car/update', verifyTokenInhaber, updateCarByInhaber);
 router.delete('/manage-car/delete', verifyTokenInhaber, deleteCarByInhaber);
-router.delete('/manage-car/delete-by-id', verifyTokenInhaber, deleteCarByIdInhaber);
+router.delete('/manage-car/delete-by-id/:carID', verifyTokenInhaber, deleteCarByIdInhaber);
 
 export default router;

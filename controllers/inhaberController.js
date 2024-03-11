@@ -721,7 +721,7 @@ export const getAttendanceForInhaber = async (req, res, next) => {
 
 export const getSalaryForInhaber = async (req, res, next) => {
     try {
-        const { year, month, employeeID, employeeName, department_name } = req.query;
+        const { year, month, employeeID, employeeName } = req.query;
         const inhaberName = req.query.inhaber_name;
 
         const inhaber = await EmployeeSchema.findOne({ name: inhaberName, role: 'Inhaber' });
@@ -733,19 +733,18 @@ export const getSalaryForInhaber = async (req, res, next) => {
         if (year) query.year = parseInt(year);
         if (month) query.month = parseInt(month);
 
-        let employeeIds = [];
-        if (department_name) {
-            const employeesInDepartment = await EmployeeSchema.find({ 'department.name': { $in: inhaber.department.map(dep => dep.name) } }).select('id');
-            employeeIds = employeesInDepartment.map(employee => employee.id);
-        }
+        // Get employees in the same departments as the Inhaber
+        const employeesInDepartment = await EmployeeSchema.find({ 'department.name': { $in: inhaber.department.map(dep => dep.name) } });
 
-        // let departmentFilter = department_name ?
-        //     { 'department.name': department_name } :
-        //     { 'department.name': { $in: inhaber.department.map(dep => dep.name) } };
+        // Map employee ids from the employeesInDepartment array
+        const employeeIds = employeesInDepartment.map(employee => employee.id);
 
+        // Filter employees based on provided employeeID and employeeName
         const employees = employeeID ?
-        await EmployeeSchema.find({ id: employeeID, name: employeeName }) :
-        await EmployeeSchema.find(department_name ? { id: { $in: employeeIds } } : {});        if (employees.length === 0) {
+            await EmployeeSchema.find({ id: employeeID, name: employeeName, id: { $in: employeeIds } }) :
+            employeesInDepartment;
+
+        if (employees.length === 0) {
             return res.status(NOT_FOUND).json({ error: "No employees found in selected departments" });
         }
 
@@ -1474,7 +1473,10 @@ export const updateCarByIdInhaber = async (req, res, next) => {
         const car = await CarSchema.findById(carID);
         if (!car) return next(createError(NOT_FOUND, "Car not found!"));
 
-        if (!inhaberDepartments.includes(car.department_name)) {
+        // Check if any department of the car belongs to Inhaber's departments
+        const carDepartments = car.department_name;
+        const departmentMatch = carDepartments.some(dep => inhaberDepartments.includes(dep));
+        if (!departmentMatch) {
             return next(createError(FORBIDDEN, "Access denied to modify car in this department."));
         }
 
@@ -1560,11 +1562,15 @@ export const deleteCarByIdInhaber = async (req, res, next) => {
 
         const inhaberDepartments = inhaber.department.map(dep => dep.name);
 
+        // Find the car and validate if it belongs to Inhaber's departments
         const car = await CarSchema.findById(carID);
         if (!car) return next(createError(NOT_FOUND, "Car not found!"));
 
-        if (!inhaberDepartments.includes(car.department_name)) {
-            return next(createError(FORBIDDEN, "Access denied to delete car in this department."));
+        // Check if any department of the car belongs to Inhaber's departments
+        const carDepartments = car.department_name;
+        const departmentMatch = carDepartments.some(dep => inhaberDepartments.includes(dep));
+        if (!departmentMatch) {
+            return next(createError(FORBIDDEN, "Access denied to modify car in this department."));
         }
 
         const departments = await DepartmentSchema.find({
@@ -1623,7 +1629,7 @@ export const getAttendanceStatsForInhaber = async (req, res, next) => {
             attendance_stats: emp.department
                 // Filter for mutual departments between Inhaber and Employee, or for a specific department if provided
                 .filter(dept => (inhaberDepartments.length === 0 || inhaberDepartments.includes(dept.name)) &&
-                                (!department_name || dept.name === department_name))
+                    (!department_name || dept.name === department_name))
                 .flatMap(dept => dept.attendance_stats
                     .filter(stat => (!year || stat.year === parseInt(year)) && (!month || stat.month === parseInt(month)))
                     .map(stat => ({

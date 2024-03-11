@@ -136,6 +136,10 @@ const attendanceSchema = new mongoose.Schema(
             type: Number,
             default: 0
         },
+        lito_image: {
+            // lito
+            type: String
+        },
         status: {
             type: String,
             enum: ['checked', 'missing']

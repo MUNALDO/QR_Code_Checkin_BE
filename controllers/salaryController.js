@@ -125,17 +125,17 @@ export const salaryCalculate = async (req, res, next) => {
 
     // Calculate day-off salary
     const days_off = ensureNumber(employee.default_day_off) - ensureNumber(employee.realistic_day_off);
-    const salary_day_off = [(b * 3) / 65] * days_off;
+    const salary_day_off = [(ensureNumber(b) * 3) / 65] * ensureNumber(days_off);
 
     if (salaryRecord.total_times > ensureNumber(employee.total_time_per_month)) {
         let calculatedSalary = (ensureNumber(a) / ensureNumber(employee.total_time_per_month)) * ensureNumber(employee.total_time_per_month) +
             (ensureNumber(salaryRecord.total_times) - ensureNumber(employee.total_time_per_month)) * ensureNumber(f) - ensureNumber(b) - ensureNumber(c) + ensureNumber(salary_day_off) -
             ensureNumber(employee.house_rent_money) + ensureNumber(salaryRecord.total_km_company) + ensureNumber(salaryRecord.total_km_private) * ensureNumber(d);
-        salaryRecord.total_salary = Number(calculatedSalary.toFixed(2));
+        salaryRecord.total_salary = ensureNumber(Number(calculatedSalary.toFixed(2)));
     } else if (salaryRecord.total_times <= ensureNumber(employee.total_time_per_month)) {
         let calculatedSalary = (ensureNumber(a) / ensureNumber(employee.total_time_per_month)) * ensureNumber(salaryRecord.total_times) - ensureNumber(b) - ensureNumber(c) +
             ensureNumber(salary_day_off) - ensureNumber(employee.house_rent_money) + ensureNumber(salaryRecord.total_km_company) + ensureNumber(salaryRecord.total_km_private) * ensureNumber(d);
-        salaryRecord.total_salary = Number(calculatedSalary.toFixed(2));
+        salaryRecord.total_salary = ensureNumber(Number(calculatedSalary.toFixed(2)));
     }
 
     await employee.save();

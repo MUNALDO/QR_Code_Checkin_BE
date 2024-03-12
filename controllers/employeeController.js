@@ -713,9 +713,11 @@ export const updateAttendance = async (req, res, next) => {
                     existingAttendance.kassen_schniff = req.body.kassen_schniff;
                     existingAttendance.gesamt_ligerbude = req.body.gesamt_ligerbude;
                     existingAttendance.gesamt_liegerando = req.body.gesamt_liegerando;
-                    const file = req.file;
-                    const imageUrl = await uploadImageToS3(file);
-                    existingAttendance.lito_image = imageUrl;
+                    if (req.file) {
+                        const file = req.file;
+                        const imageUrl = await uploadImageToS3(file);
+                        existingAttendance.lito_image = imageUrl;
+                    }
                     if (!req.body.bar || !req.body.kredit_karte || !req.body.kassen_schniff || !req.body.gesamt_ligerbude || !req.body.gesamt_liegerando) {
                         return res.status(BAD_REQUEST).json({
                             success: false,
@@ -1116,9 +1118,6 @@ export const createRequest = async (req, res, next) => {
         const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
         if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
 
-        const file = req.file;
-        const imageUrl = await uploadImageToS3(file);
-
         if (employee.realistic_day_off > 0) {
             const newRequest = new RequestSchema({
                 employee_id: employee.id,
@@ -1128,8 +1127,13 @@ export const createRequest = async (req, res, next) => {
                 request_dayOff_start: req.body.request_dayOff_start,
                 request_dayOff_end: req.body.request_dayOff_end,
                 request_content: req.body.request_content,
-                image: imageUrl,
             })
+
+            if (req.file) {
+                const file = req.file;
+                const imageUrl = await uploadImageToS3(file);
+                newRequest.image = imageUrl;
+            }
 
             if (newRequest.request_content != "Sick day") {
                 const oneMonthBeforeStart = new Date(newRequest.request_dayOff_start);

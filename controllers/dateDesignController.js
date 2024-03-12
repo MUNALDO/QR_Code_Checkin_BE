@@ -200,58 +200,54 @@ export const createMultipleDateDesigns = async (req, res, next) => {
 };
 
 export const getDateDesign = async (req, res, next) => {
-    const employeeID = req.query.employeeID;
-    const employeeName = req.query.employeeName;
-    const targetYear = req.query.year ? parseInt(req.query.year) : null;
-    const targetMonth = req.query.month ? parseInt(req.query.month) - 1 : null;
-    const targetDate = req.query.date ? new Date(req.query.date) : null;
-    const departmentName = req.query.department_name;
+    const { employeeID, employeeName, year, month, date, department_name } = req.query;
+    const targetYear = year ? parseInt(year) : null;
+    const targetMonth = month ? parseInt(month) - 1 : null;
+    const targetDate = date ? new Date(date) : null;
+
     try {
-        const employee = await EmployeeSchema.findOne({ id: employeeID, name: employeeName });
-        if (!employee) return next(createError(NOT_FOUND, "Employee not found!"));
+        let employeeQuery = {};
+        if (employeeID && employeeName) {
+            employeeQuery = { id: employeeID, name: employeeName };
+        }
+        
+        const employeeFilter = department_name ? { 'department.name': department_name } : {};
+        const employees = await EmployeeSchema.find({ ...employeeQuery, ...employeeFilter });
 
-        const shiftDesigns = [];
+        if (!employees.length) return next(createError(NOT_FOUND, "No employees found!"));
 
-        // Retrieve all employees once instead of in each iteration
-        const allEmployees = await EmployeeSchema.find({ 'department.name': departmentName });
+        let shiftDesigns = [];
 
-        employee.department.forEach(department => {
-            if (departmentName && department.name !== departmentName) {
-                return;
-            }
-
-            department.schedules.forEach(schedule => {
-                const scheduleDate = new Date(schedule.date);
-                if ((!targetYear || scheduleDate.getFullYear() === targetYear) &&
-                    (!targetMonth || scheduleDate.getMonth() === targetMonth) &&
-                    (!targetDate || scheduleDate.getTime() === targetDate.getTime())) {
-
-                    schedule.shift_design.forEach(shift => {
-                        const employeesWithDesign = allEmployees.filter(e => {
-                            return e.department.some(d => {
-                                return d.name === department.name && d.schedules.some(s => {
-                                    const sDate = new Date(s.date);
-                                    return sDate.getTime() === scheduleDate.getTime() &&
-                                        s.shift_design.some(sd => sd.shift_code === shift.shift_code);
-                                });
-                            });
-                        }).map(e => ({ id: e.id, name: e.name })); // Map to desired format
-
-                        shiftDesigns.push({
-                            date: scheduleDate,
-                            department_name: department.name,
-                            position: shift.position,
-                            shift_code: shift.shift_code,
-                            time_slot: shift.time_slot,
-                            shift_type: shift.shift_type,
-                            employees: employeesWithDesign
-                        });
-                    });
+        for (const employee of employees) {
+            for (const department of employee.department) {
+                if (department_name && department.name !== department_name) {
+                    continue;
                 }
-            });
-        });
 
-        if (shiftDesigns.length === 0) {
+                for (const schedule of department.schedules) {
+                    const scheduleDate = new Date(schedule.date);
+                    if ((!targetYear || scheduleDate.getFullYear() === targetYear) &&
+                        (!targetMonth || scheduleDate.getMonth() === targetMonth) &&
+                        (!targetDate || scheduleDate.toDateString() === targetDate.toDateString())) {
+                        for (const shift of schedule.shift_design) {
+                            shiftDesigns.push({
+                                employee_id: employee.id,
+                                employee_name: employee.name,
+                                date: scheduleDate,
+                                department_name: department.name,
+                                position: shift.position,
+                                shift_code: shift.shift_code,
+                                time_slot: shift.time_slot,
+                                shift_type: shift.shift_type,
+                                // Other details can be added here
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!shiftDesigns.length) {
             return next(createError(NOT_FOUND, "No shift designs found for the specified criteria!"));
         }
 

@@ -1000,100 +1000,89 @@ export const getColleaguesWorkingTodayByEmployee = async (req, res, next) => {
 
 export const getColleaguesWorkingTodayByEmployees = async (req, res, next) => {
     const targetDate = req.query.date ? new Date(req.query.date) : new Date();
-    const { employeeID, employeeName } = req.query;
-    targetDate.setHours(0, 0, 0, 0);
+    targetDate.setHours(0, 0, 0, 0); // Set to start of day for consistent querying
+
     try {
-        // Find the specific employee's departments for the target date
-        const specificEmployee = await EmployeeSchema.findOne({
-            id: employeeID,
-            name: employeeName,
+        // Get all employees with shifts on the target date
+        const employees = await EmployeeSchema.find({
             "department.schedules.date": {
                 $gte: targetDate,
-                $lt: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000), // Plus one day in milliseconds
+                $lt: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000) // Plus one day in milliseconds
             }
         }).lean();
 
-        // If the specific employee does not have any shifts on that day, return an empty list
-        if (!specificEmployee) {
-            return res.status(OK).json({
-                success: true,
-                status: OK,
-                data: [],
-            });
-        }
+        let departmentShifts = {};
 
-        // Get the list of departments where the specific employee is working on the target date
-        const employeeDepartmentsOnDate = specificEmployee.department
-            .flatMap(dep => dep.schedules)
-            .filter(sch => {
-                const scheduleDate = new Date(sch.date);
-                scheduleDate.setHours(0, 0, 0, 0);
-                return scheduleDate.getTime() === targetDate.getTime();
-            })
-            .flatMap(sch => sch.shift_design.map(sd => sd.position));
-
-        // Get all employees working in those departments on the same day
-        const employeesWorkingToday = await EmployeeSchema.find({
-            "department.name": { $in: employeeDepartmentsOnDate },
-            "department.schedules.date": {
-                $gte: targetDate,
-                $lt: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000),
-            }
-        }).lean();
-
-        let shiftsByDepartment = {};
-
-        // Iterate through each employee and their schedules to populate the shiftsByDepartment object
-        for (const employee of employeesWorkingToday) {
-            for (const department of employee.department) {
-                for (const schedule of department.schedules) {
+        // Iterate through all employees and organize the data by department and shift
+        employees.forEach(employee => {
+            employee.department.forEach(dep => {
+                dep.schedules.forEach(schedule => {
                     const scheduleDate = new Date(schedule.date);
                     scheduleDate.setHours(0, 0, 0, 0);
 
                     if (scheduleDate.getTime() === targetDate.getTime()) {
-                        for (const shift of schedule.shift_design) {
-                            // Ensure the department exists in the shiftsByDepartment object
-                            if (!shiftsByDepartment[department.name]) {
-                                shiftsByDepartment[department.name] = {};
+                        schedule.shift_design.forEach(shift => {
+                            // Initialize department in map if it doesn't exist
+                            if (!departmentShifts[dep.name]) {
+                                departmentShifts[dep.name] = {};
                             }
 
-                            // Ensure the shift exists under this department
-                            if (!shiftsByDepartment[department.name][shift.shift_code]) {
-                                shiftsByDepartment[department.name][shift.shift_code] = [];
+                            // Initialize shift code in department if it doesn't exist
+                            if (!departmentShifts[dep.name][shift.shift_code]) {
+                                departmentShifts[dep.name][shift.shift_code] = {
+                                    time: `${shift.time_slot.start_time} - ${shift.time_slot.end_time}`,
+                                    employees: [],
+                                    startTime: shift.time_slot.start_time // Store the start time for sorting purposes
+                                };
                             }
 
-                            // Add the employee to the shift under their department
-                            shiftsByDepartment[department.name][shift.shift_code].push({
+                            // Add employee to the shift
+                            departmentShifts[dep.name][shift.shift_code].employees.push({
                                 id: employee.id,
-                                name: employee.name,
+                                name: employee.name
                             });
-                        }
+                        });
                     }
-                }
-            }
-        }
+                });
+            });
+        });
 
-        // Convert the shiftsByDepartment object into a structured array for a cleaner API response
-        let result = [];
-        for (const departmentName of Object.keys(shiftsByDepartment)) {
-            for (const shiftCode of Object.keys(shiftsByDepartment[departmentName])) {
-                const shift_info = await ShiftSchema.findOne({ code: shiftCode });
-                if (shift_info) {
-                    result.push({
-                        department: departmentName,
+        // Sort the shifts within each department
+        let results = Object.keys(departmentShifts).map(departmentName => {
+            let shifts = departmentShifts[departmentName];
+            let sortedShifts = Object.keys(shifts)
+                .sort((a, b) => {
+                    // Convert times to date objects for comparison
+                    let timeA = shifts[a].startTime.split(':');
+                    let dateA = new Date(targetDate);
+                    dateA.setHours(parseInt(timeA[0]), parseInt(timeA[1]));
+
+                    let timeB = shifts[b].startTime.split(':');
+                    let dateB = new Date(targetDate);
+                    dateB.setHours(parseInt(timeB[0]), parseInt(timeB[1]));
+
+                    return dateA - dateB;
+                })
+                .map(shiftCode => {
+                    return {
                         shift_code: shiftCode,
-                        time: `${shift_info.time_slot.start_time} - ${shift_info.time_slot.end_time}`,
-                        employees: shiftsByDepartment[departmentName][shiftCode],
-                    });
-                }
-            }
-        }
+                        time: shifts[shiftCode].time,
+                        employees: shifts[shiftCode].employees
+                    };
+                });
+
+            return {
+                department: departmentName,
+                shifts: sortedShifts
+            };
+        });
 
         res.status(OK).json({
             success: true,
             status: OK,
-            data: result,
+            data: results,
         });
+
     } catch (err) {
         next(err);
     }

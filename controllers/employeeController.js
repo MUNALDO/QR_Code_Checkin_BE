@@ -1001,78 +1001,85 @@ export const getColleaguesWorkingTodayByEmployee = async (req, res, next) => {
 export const getColleaguesWorkingTodayByEmployees = async (req, res, next) => {
     const targetDate = req.query.date ? new Date(req.query.date) : new Date();
     targetDate.setHours(0, 0, 0, 0); // Set to start of day for consistent querying
+    const { employeeID, employeeName } = req.query;
 
     try {
-        // Get all employees with shifts on the target date
-        const employees = await EmployeeSchema.find({
+        // Find the departments of the specific employee
+        const specificEmployee = await EmployeeSchema.findOne({
+            id: employeeID,
+            name: employeeName
+        }, 'department.name').lean();
+
+        if (!specificEmployee) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                status: NOT_FOUND,
+                message: "Employee not found."
+            });
+        }
+
+        // Extract department names
+        const employeeDepartments = specificEmployee.department.map(dep => dep.name);
+
+        // Get all employees working in those departments on the target date
+        const employeesWorkingToday = await EmployeeSchema.find({
+            "department.name": { $in: employeeDepartments },
             "department.schedules.date": {
                 $gte: targetDate,
-                $lt: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000) // Plus one day in milliseconds
+                $lt: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000)
             }
         }).lean();
 
         let departmentShifts = {};
 
-        // Iterate through all employees and organize the data by department and shift
-        employees.forEach(employee => {
-            employee.department.forEach(dep => {
-                dep.schedules.forEach(schedule => {
+        // Iterate through each employee and their schedules
+        for (const employee of employeesWorkingToday) {
+            for (const department of employee.department) {
+                if (!employeeDepartments.includes(department.name)) continue;
+
+                for (const schedule of department.schedules) {
                     const scheduleDate = new Date(schedule.date);
                     scheduleDate.setHours(0, 0, 0, 0);
 
                     if (scheduleDate.getTime() === targetDate.getTime()) {
-                        schedule.shift_design.forEach(shift => {
-                            // Initialize department in map if it doesn't exist
-                            if (!departmentShifts[dep.name]) {
-                                departmentShifts[dep.name] = {};
+                        for (const shift of schedule.shift_design) {
+                            // Initialize department in the result if it doesn't exist
+                            if (!departmentShifts[department.name]) {
+                                departmentShifts[department.name] = {};
                             }
 
-                            // Initialize shift code in department if it doesn't exist
-                            if (!departmentShifts[dep.name][shift.shift_code]) {
-                                departmentShifts[dep.name][shift.shift_code] = {
+                            // Initialize shift code in the department if it doesn't exist
+                            if (!departmentShifts[department.name][shift.shift_code]) {
+                                departmentShifts[department.name][shift.shift_code] = {
                                     time: `${shift.time_slot.start_time} - ${shift.time_slot.end_time}`,
-                                    employees: [],
-                                    startTime: shift.time_slot.start_time // Store the start time for sorting purposes
+                                    employees: []
                                 };
                             }
 
                             // Add employee to the shift
-                            departmentShifts[dep.name][shift.shift_code].employees.push({
+                            departmentShifts[department.name][shift.shift_code].employees.push({
                                 id: employee.id,
                                 name: employee.name
                             });
-                        });
+                        }
                     }
-                });
-            });
-        });
+                }
+            }
+        }
 
-        // Sort the shifts within each department
-        let results = Object.keys(departmentShifts).map(departmentName => {
-            let shifts = departmentShifts[departmentName];
-            let sortedShifts = Object.keys(shifts)
-                .sort((a, b) => {
-                    // Convert times to date objects for comparison
-                    let timeA = shifts[a].startTime.split(':');
-                    let dateA = new Date(targetDate);
-                    dateA.setHours(parseInt(timeA[0]), parseInt(timeA[1]));
-
-                    let timeB = shifts[b].startTime.split(':');
-                    let dateB = new Date(targetDate);
-                    dateB.setHours(parseInt(timeB[0]), parseInt(timeB[1]));
-
-                    return dateA - dateB;
-                })
-                .map(shiftCode => {
-                    return {
-                        shift_code: shiftCode,
-                        time: shifts[shiftCode].time,
-                        employees: shifts[shiftCode].employees
-                    };
-                });
+        // Prepare the result with sorted shifts
+        let results = Object.entries(departmentShifts).map(([deptName, shifts]) => {
+            let sortedShifts = Object.entries(shifts).sort((a, b) => {
+                let timeA = a[1].time.split(' - ')[0].split(':').map(Number);
+                let timeB = b[1].time.split(' - ')[0].split(':').map(Number);
+                return timeA[0] * 60 + timeA[1] - (timeB[0] * 60 + timeB[1]);
+            }).map(([shiftCode, shiftData]) => ({
+                shift_code: shiftCode,
+                ...shiftData
+            }));
 
             return {
-                department: departmentName,
+                department: deptName,
                 shifts: sortedShifts
             };
         });
@@ -1080,9 +1087,8 @@ export const getColleaguesWorkingTodayByEmployees = async (req, res, next) => {
         res.status(OK).json({
             success: true,
             status: OK,
-            data: results,
+            data: results
         });
-
     } catch (err) {
         next(err);
     }

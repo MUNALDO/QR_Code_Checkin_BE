@@ -708,6 +708,8 @@ export const getForm = async (req, res, next) => {
     const employeeName = req.query.employeeName;
     const department_name = req.query.department_name;
     const position = req.query.position;
+    const startDateQuery = req.query.startDate; // Expected in 'YYYY-MM-DD' format
+    const endDateQuery = req.query.endDate;
 
     let query = {};
 
@@ -733,8 +735,17 @@ export const getForm = async (req, res, next) => {
         });
     }
 
+    if (startDateQuery && endDateQuery) {
+        // Parsing the startDate and endDate from the query
+        const customStartDate = new Date(startDateQuery);
+        const customEndDate = new Date(endDateQuery);
+        customEndDate.setDate(customEndDate.getDate() + 1); // Ensure endDate is inclusive
+
+        query.date = { $gte: customStartDate, $lt: customEndDate };
+    }
+
     try {
-        const attendanceRecords = await AttendanceSchema.find(query);
+        const attendanceRecords = await AttendanceSchema.find(query).sort({date: 1}); // Sorts in ascending order by date
 
         if (attendanceRecords.length === 0) {
             return res.status(NOT_FOUND).json({

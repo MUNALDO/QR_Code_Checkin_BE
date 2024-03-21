@@ -9,6 +9,7 @@ import DayOffSchema from "../models/DayOffSchema.js";
 import cron from 'node-cron';
 import StatsSchema from "../models/StatsSchema.js";
 import LogSchema from "../models/LogSchema.js";
+import nodemailer from 'nodemailer';
 
 export const updateEmployee = async (req, res, next) => {
     const employeeID = req.query.employeeID;
@@ -205,6 +206,28 @@ export const deleteEmployeeById = async (req, res, next) => {
             success: true,
             status: OK,
             message: "Employee deleted successfully",
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const deleteAdminById = async (req, res, next) => {
+    const superiorAdminID = req.query.supAdminID;
+    const adminID = req.query.adminID;
+    try {
+        const superiorAdmin = await AdminSchema.findOne({ id: superiorAdminID, role: "Superior Admin" });
+        if (!superiorAdmin) return next(createError(NOT_FOUND, "Superior Admin not found"));
+
+        const admin = await AdminSchema.findOne({ id: adminID, role: "Admin" });
+        if (!admin) return next(createError(NOT_FOUND, "Admin not found!"));
+
+        // Finally, delete the employee record
+        await AdminSchema.findOneAndDelete({ id: adminID, role: "Admin" });
+        res.status(OK).json({
+            success: true,
+            status: OK,
+            message: "Admin deleted successfully",
         });
     } catch (err) {
         next(err);
@@ -457,6 +480,36 @@ export const handleRequest = async (req, res, next) => {
             await employee.save();
             await DayOffSchema.findOneAndDelete({ _id: req.params._id });
         }
+
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.MAIL_ADDRESS,
+                pass: process.env.MAIL_PASSWORD,
+            },
+        });
+
+        const emailSubject = `Response Request ${updateRequest.request_content} - #${updateRequest.id}`;
+        const emailContent = `
+            <div>
+                <p>Hi ${updateRequest.employee_id} - ${updateRequest.employee_name},</p>
+                <p>Here is the result for your request ${updateRequest.request_content}, from date ${updateRequest.request_dayOff_start} to ${updateRequest.request_dayOff_end}</p>
+                <p>Request Date: ${updateRequest.request_dayOff_start} - ${updateRequest.request_dayOff_end}</p>
+                <p>Type: ${updateRequest.request_content}</p>
+                <p>Answer Status: ${updateRequest.answer_status}</p>
+                <p>Best Regards !</p>
+            </div>
+        `;
+
+        const mailOptions = {
+            from: '"No Reply" <no-reply@gmail.com>',
+            to: employee.email,
+            subject: emailSubject,
+            html: emailContent,
+        };
+
+        // Send email
+        await transporter.sendMail(mailOptions);
         res.status(OK).json({
             success: true,
             status: OK,
@@ -745,7 +798,7 @@ export const getForm = async (req, res, next) => {
     }
 
     try {
-        const attendanceRecords = await AttendanceSchema.find(query).sort({date: 1}); // Sorts in ascending order by date
+        const attendanceRecords = await AttendanceSchema.find(query).sort({ date: 1 }); // Sorts in ascending order by date
 
         if (attendanceRecords.length === 0) {
             return res.status(NOT_FOUND).json({

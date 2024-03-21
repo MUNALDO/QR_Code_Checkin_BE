@@ -11,6 +11,7 @@ import { createError } from "../utils/error.js";
 import wifi from 'node-wifi';
 import { s3Client } from "../awsConfig.js";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
+import nodemailer from 'nodemailer';
 
 wifi.init({
     iface: null,
@@ -1213,6 +1214,35 @@ export const createRequest = async (req, res, next) => {
             }
 
             await newRequest.save();
+
+            const transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: process.env.MAIL_ADDRESS,
+                    pass: process.env.MAIL_PASSWORD,
+                },
+            });
+
+            const emailSubject = `Request ${newRequest.request_content} - #${newRequest.id}`;
+            const emailContent = `
+                <div>
+                    <p>Hi Admins,</p>
+                    <p>We sending request ${newRequest.request_content}, from date ${newRequest.request_dayOff_start} to ${newRequest.request_dayOff_end} for you to response</p>
+                    <p>Request Date: ${newRequest.request_dayOff_start} - ${newRequest.request_dayOff_end}</p>
+                    <p>Type: ${newRequest.request_content}</p>
+                    <p>Best Regards !</p>
+                </div>
+            `;
+
+            const mailOptions = {
+                from: '"No Reply" <no-reply@gmail.com>',
+                to: employee.email,
+                subject: emailSubject,
+                html: emailContent,
+            };
+
+            // Send email
+            await transporter.sendMail(mailOptions);
             return res.status(CREATED).json({
                 success: true,
                 status: CREATED,

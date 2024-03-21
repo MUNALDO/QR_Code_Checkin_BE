@@ -1,6 +1,6 @@
 import express from 'express';
 import {
-    createAttendance, deleteEmployeeById, getAllEmployeesSchedules, getAllRequests, getAttendance,
+    createAttendance, deleteAdminById, deleteEmployeeById, getAllEmployeesSchedules, getAllRequests, getAttendance,
     getAttendanceStats, getEmployeeById, getForm, getLogs, getRequestById, getStats, handleRequest,
     madeEmployeeInactive, searchSpecific, updateAttendance, updateEmployee
 } from '../controllers/adminController.js';
@@ -32,6 +32,9 @@ const router = express.Router();
 
 // all
 router.get('/manage-all/search-specific', verifyTokenAdmin, searchSpecific);
+
+// admin
+router.delete('/manage-admin/delete-byId', verifyTokenAdmin, deleteAdminById);
 
 // employee
 router.get('/manage-employee/get-all-schedules', verifyTokenAdmin, getAllEmployeesSchedules);

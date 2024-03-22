@@ -14,18 +14,18 @@ const router = express.Router();
 // authen admin
 router.post('/manage-admin/register-admin', verifyTokenAdmin, registerAdmin);
 router.post('/manage-admin/login-admin', loginAdmin);
-router.post('/manage-admin/logout-admin', verifyTokenAdmin, logoutAdmin);
+router.post('/manage-admin/logout-admin', logoutAdmin);
 
 // authen inhaber
 router.post('/manage-admin/register-inhaber', verifyTokenAdmin, registerInhaberByAdmin);
 router.post('/manage-inhaber/login-inhaber', loginInhaber);
-router.post('/manage-inhaber/logout-inhaber', verifyTokenInhaber, logoutInhaber);
+router.post('/manage-inhaber/logout-inhaber', logoutInhaber);
 
 // authen manager
 router.post('/manage-admin/register-manager', verifyTokenAdmin, registerManagerByAdmin);
 router.post('/manage-inhaber/register-manager', verifyTokenInhaber, registerManagerByInhaber);
 router.post('/manage-manager/login-manager', loginManager);
-router.post('/manage-manager/logout-manager', verifyTokenManager, logoutManager);
+router.post('/manage-manager/logout-manager', logoutManager);
 
 // authen employee
 router.post('/manage-admin/register-employee', verifyTokenAdmin, registerEmployeeByAdmin);

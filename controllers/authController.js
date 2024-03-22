@@ -145,7 +145,7 @@ export const loginAdmin = async (req, res, next) => {
         )
         if (!isPasswordCorrect) return next(createError(BAD_REQUEST, "Wrong password!"))
         const token_admin = jwt.sign(
-            { id: admin.id, role: admin.role == "Admin" },
+            { id: admin.id, role: admin.role == "Admin" || "Superior Admin" },
             process.env.JWT_ADMIN,
             { expiresIn: "24h" },
         )

@@ -161,9 +161,11 @@ export const loginAdmin = async (req, res, next) => {
 };
 
 export const logoutAdmin = (req, res, next) => {
-    res.clearCookie("access_token_admin")
-        .status(OK)
-        .json("Admin has been successfully logged out.");
+    res.clearCookie("access_token_admin", {
+        httpOnly: true,
+        sameSite: "none",
+        secure: true,
+    }).status(OK).json("Admin has been successfully logged out.");
 };
 
 export const registerInhaberByAdmin = async (req, res, next) => {
@@ -282,10 +284,12 @@ export const loginInhaber = async (req, res, next) => {
     }
 };
 
-export const logoutInhaber = (req, res, next) => {
-    res.clearCookie("access_token_inhaber")
-        .status(OK)
-        .json("Inhaber has been successfully logged out.");
+export const logoutAdmin = (req, res, next) => {
+    res.clearCookie("access_token_inhaber", {
+        httpOnly: true,
+        sameSite: "none",
+        secure: true,
+    }).status(OK).json("Inhaber has been successfully logged out.");
 };
 
 export const registerManagerByAdmin = async (req, res, next) => {
@@ -507,10 +511,12 @@ export const loginManager = async (req, res, next) => {
     }
 };
 
-export const logoutManager = (req, res, next) => {
-    res.clearCookie("access_token_manager")
-        .status(OK)
-        .json("Manager has been successfully logged out.");
+export const logoutAdmin = (req, res, next) => {
+    res.clearCookie("access_token_manager", {
+        httpOnly: true,
+        sameSite: "none",
+        secure: true,
+    }).status(OK).json("Manager has been successfully logged out.");
 };
 
 export const registerEmployeeByAdmin = async (req, res, next) => {

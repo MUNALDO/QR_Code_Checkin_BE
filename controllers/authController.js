@@ -284,7 +284,7 @@ export const loginInhaber = async (req, res, next) => {
     }
 };
 
-export const logoutAdmin = (req, res, next) => {
+export const logoutInhaber = (req, res, next) => {
     res.clearCookie("access_token_inhaber", {
         httpOnly: true,
         sameSite: "none",
@@ -511,7 +511,7 @@ export const loginManager = async (req, res, next) => {
     }
 };
 
-export const logoutAdmin = (req, res, next) => {
+export const logoutManager = (req, res, next) => {
     res.clearCookie("access_token_manager", {
         httpOnly: true,
         sameSite: "none",
